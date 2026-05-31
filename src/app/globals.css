@@ -1,0 +1,242 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@utility trello-board-bg {
+  background-size: cover;
+  background-position: center;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Trello semantic palette ── */
+  --color-trello-bg:             var(--background);
+  --color-trello-surface:        var(--surface);
+  --color-trello-surfaceRaised:  var(--surface-raised);
+  --color-trello-surfaceOverlay: var(--surface-overlay);
+  --color-trello-listBg:         var(--list-bg);
+  --color-trello-cardBg:         var(--card-bg);
+  --color-trello-cardHover:      var(--card-hover);
+  --color-trello-text:           var(--text-primary);
+  --color-trello-textSecondary:  var(--text-secondary);
+  --color-trello-textSubtle:     var(--text-subtle);
+  --color-trello-textOnBold:     var(--text-on-bold);
+  --color-trello-border:         var(--border-default);
+  --color-trello-borderSubtle:   var(--border-subtle);
+  --color-trello-accent:         var(--accent);
+  --color-trello-accentHover:    var(--accent-hover);
+  --color-trello-primary:        var(--primary);
+  --color-trello-primaryHover:   var(--primary-hover);
+  --color-trello-success:        var(--success);
+  --color-trello-warning:        var(--warning);
+  --color-trello-danger:         var(--danger);
+  --color-trello-info:           var(--info);
+  /* backward-compat aliases for unlisted components */
+  --color-trello-list:           var(--list-bg);
+  --color-trello-card:           var(--card-bg);
+  --color-trello-card-hover:     var(--card-hover);
+  --color-trello-bar:            var(--background);
+  --color-trello-board:          #0079bf;
+
+  --shadow-card:       0 1px 0 rgba(0,0,0,0.25);
+  --shadow-card-hover: 0 1px 0 rgba(0,0,0,0.25), 0 0 0 2px var(--card-border-hover) inset;
+}
+
+/* ── Dark theme (default) ─────────────────────────────────────────────────── */
+:root, .dark {
+  --background:        #1D2125;
+  --surface:           #22272B;
+  --surface-raised:    #282E33;
+  --surface-overlay:   #323940;
+  --list-bg:           #101204;
+  --card-bg:           #22272B;
+  --card-hover:        #2A2F34;
+  --card-border-hover: #85B8FF;
+  --text-primary:      #B6C2CF;
+  --text-secondary:    #9FADBC;
+  --text-subtle:       #8C9BAB;
+  --text-on-bold:      #FFFFFF;
+  --border-default:    #A6C5E229;
+  --border-subtle:     #38414A;
+  --accent:            #579DFF;
+  --accent-hover:      #85B8FF;
+  --primary:           #1D7AFC;
+  --primary-hover:     #388BFF;
+  --success:           #4BCE97;
+  --warning:           #F5CD47;
+  --danger:            #F87168;
+  --info:              #579DFF;
+  --label-green:       #4BCE97;
+  --label-yellow:      #F5CD47;
+  --label-orange:      #FEA362;
+  --label-red:         #F87168;
+  --label-purple:      #9F8FEF;
+  --label-blue:        #579DFF;
+  --label-sky:         #6CC3E0;
+  --label-lime:        #94C748;
+  --label-pink:        #E774BB;
+  --label-black:       #8C9BAB;
+  /* shadcn compat */
+  --foreground:              #B6C2CF;
+  --card:                    #22272B;
+  --card-foreground:         #B6C2CF;
+  --popover:                 #282E33;
+  --popover-foreground:      #B6C2CF;
+  --primary-foreground:      #FFFFFF;
+  --secondary:               #323940;
+  --secondary-foreground:    #B6C2CF;
+  --muted:                   #323940;
+  --muted-foreground:        #9FADBC;
+  --accent-foreground:       #B6C2CF;
+  --destructive:             #F87168;
+  --border:                  #A6C5E229;
+  --input:                   #38414A;
+  --ring:                    #579DFF;
+  --chart-1: #4BCE97; --chart-2: #579DFF; --chart-3: #F5CD47;
+  --chart-4: #FEA362; --chart-5: #F87168;
+  --radius:                  0.5rem;
+  --sidebar:                 #1D2125;
+  --sidebar-foreground:      #B6C2CF;
+  --sidebar-primary:         #1D7AFC;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:          #282E33;
+  --sidebar-accent-foreground: #B6C2CF;
+  --sidebar-border:          #A6C5E229;
+  --sidebar-ring:            #579DFF;
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────────── */
+.light {
+  --background:        #F7F8F9;
+  --surface:           #FFFFFF;
+  --surface-raised:    #FFFFFF;
+  --surface-overlay:   #FFFFFF;
+  --list-bg:           #F1F2F4;
+  --card-bg:           #FFFFFF;
+  --card-hover:        #F1F2F4;
+  --card-border-hover: #1D7AFC;
+  --text-primary:      #172B4D;
+  --text-secondary:    #44546F;
+  --text-subtle:       #626F86;
+  --text-on-bold:      #FFFFFF;
+  --border-default:    #091E4224;
+  --border-subtle:     #DCDFE4;
+  --accent:            #1D7AFC;
+  --accent-hover:      #0055CC;
+  --primary:           #1D7AFC;
+  --primary-hover:     #0055CC;
+  --success:           #1F845A;
+  --warning:           #946F00;
+  --danger:            #C9372C;
+  --info:              #1D7AFC;
+  /* shadcn compat */
+  --foreground:              #172B4D;
+  --card:                    #FFFFFF;
+  --card-foreground:         #172B4D;
+  --popover:                 #FFFFFF;
+  --popover-foreground:      #172B4D;
+  --primary-foreground:      #FFFFFF;
+  --secondary:               #F1F2F4;
+  --secondary-foreground:    #172B4D;
+  --muted:                   #F1F2F4;
+  --muted-foreground:        #626F86;
+  --accent-foreground:       #172B4D;
+  --destructive:             #C9372C;
+  --border:                  #091E4224;
+  --input:                   #DCDFE4;
+  --ring:                    #1D7AFC;
+  --sidebar:                 #F7F8F9;
+  --sidebar-foreground:      #172B4D;
+  --sidebar-primary:         #1D7AFC;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:          #F1F2F4;
+  --sidebar-accent-foreground: #172B4D;
+  --sidebar-border:          #091E4224;
+  --sidebar-ring:            #1D7AFC;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background: var(--background);
+    color: var(--text-primary);
+  }
+  html {
+    @apply font-sans;
+  }
+  html, body {
+    height: 100%;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@layer components {
+  .btn-soft    { @apply bg-trello-cardHover hover:brightness-110 text-trello-text rounded transition; }
+  .btn-primary { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition; }
+  .btn-ghost   { @apply hover:bg-trello-cardHover text-trello-text rounded transition; }
+}
+
+* {
+  scrollbar-color: #5e6c84 transparent;
+  scrollbar-width: thin;
+}
+::-webkit-scrollbar { height: 12px; width: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #5e6c8466; border-radius: 9999px; }
+
+@keyframes card-enter { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes list-enter { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
+.anim-card-enter { animation: card-enter 0.18s ease-out }
+.anim-list-enter { animation: list-enter 0.22s ease-out }
