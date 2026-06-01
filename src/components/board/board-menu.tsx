@@ -60,7 +60,7 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
     <>
       <div className="fixed inset-0 bg-black/40 z-30" onClick={onClose} aria-hidden="true" />
 
-      <div className="fixed top-12 md:top-11 right-0 z-40 w-85 h-[calc(100vh-48px)] md:h-[calc(100vh-44px)] bg-trello-surfaceRaised border-l border-trello-border flex flex-col shadow-2xl">
+      <div className="anim-menu-enter fixed top-12 md:top-11 right-0 z-40 w-85 h-[calc(100vh-48px)] md:h-[calc(100vh-44px)] bg-trello-surfaceRaised border-l border-trello-border flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-trello-border shrink-0">
           <h2 className="font-semibold text-sm text-trello-text">Menu</h2>
           <button

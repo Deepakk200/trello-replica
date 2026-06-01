@@ -48,7 +48,7 @@ export function FilterBar({ boardId }: { boardId: ID }) {
   }, [open]);
 
   return (
-    <div className="relative flex items-center gap-2 mb-2">
+    <div className="relative flex items-center gap-2">
       <button
         id="filter-trigger"
         ref={triggerRef}

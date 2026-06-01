@@ -33,7 +33,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
   return (
     <>
-      <div className="bg-black/30 backdrop-blur-sm rounded-md px-3 py-1.5 mb-3 flex items-center gap-2 w-fit">
+      <div className="flex items-center gap-2 flex-wrap">
         {editing ? (
           <input
             ref={inputRef}
@@ -53,8 +53,8 @@ export function BoardHeader({ board }: { board: Board }) {
           </button>
         )}
 
-        <button className="p-1 rounded hover:bg-white/10 transition-colors" aria-label="Star board">
-          <Star className="w-4 h-4 text-white" />
+        <button className="p-1 rounded hover:bg-white/10 transition-colors text-white/60 hover:text-yellow-400" aria-label="Star board">
+          <Star className="w-4 h-4" />
         </button>
 
         <VisibilityBadge boardId={board.id} />
@@ -65,7 +65,7 @@ export function BoardHeader({ board }: { board: Board }) {
           <Users className="w-4 h-4 text-white" />
         </button>
 
-        <button className="px-3 py-1 rounded bg-white text-slate-900 text-sm font-medium hover:bg-white/90 shadow-sm transition-colors">
+        <button className="h-8 px-4 rounded bg-white/90 hover:bg-white text-slate-900 text-sm font-semibold shadow-sm transition-colors">
           Share
         </button>
 

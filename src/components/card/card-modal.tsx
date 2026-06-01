@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Archive, ArrowRight, Bookmark, Calendar, CheckSquare,
-  Copy, CreditCard, Image, Paperclip, Plus, RotateCcw, Tag, Users, X,
+  Copy, CreditCard, Image, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import { useShallow } from 'zustand/shallow';
@@ -19,6 +19,7 @@ import { ChecklistSection } from './checklist-section';
 import { MembersPopover } from './members-popover';
 import { AttachmentsSection } from './attachments-section';
 import { LinkedCardsSection } from './linked-cards-section';
+import { MoveCardPopover } from './move-card-popover';
 
 const LABEL_VAR: Record<LabelColor, string> = {
   green: 'var(--label-green)', yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
@@ -37,6 +38,8 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const updateCard     = useBoardStore((s) => s.updateCard);
   const archiveCard    = useBoardStore((s) => s.archiveCard);
   const restoreCard    = useBoardStore((s) => s.restoreCard);
+  const deleteCard     = useBoardStore((s) => s.deleteCard);
+  const createCard     = useBoardStore((s) => s.createCard);
   const createChecklist    = useBoardStore((s) => s.createChecklist);
   const saveCardAsTemplate = useBoardStore((s) => s.saveCardAsTemplate);
 
@@ -46,6 +49,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const [showCover, setShowCover]         = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [showMembers, setShowMembers]     = useState(false);
+  const [showMove, setShowMove]           = useState(false);
   const [clTitle, setClTitle]             = useState('Checklist');
   const [mounted, setMounted]             = useState(false);
   const dialogRef     = useRef<HTMLDivElement>(null);
@@ -92,7 +96,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   if (!card || !mounted) return null;
 
-  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); }
+  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); setShowMove(false); }
 
   function commitTitle() {
     const t = titleDraft.trim();
@@ -109,7 +113,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   const modal = (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} aria-hidden="true" />
+      <div className="animate-backdrop-enter fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} aria-hidden="true" />
 
       <div
         ref={dialogRef}
@@ -158,7 +162,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
                   ref={titleRef}
                   id="card-modal-title"
                   rows={1}
-                  className="w-full bg-transparent text-lg font-semibold text-trello-text resize-none outline-none focus:bg-trello-surface rounded px-1 -ml-1 leading-snug transition-colors"
+                  className="w-full bg-transparent text-xl font-semibold text-trello-text resize-none outline-none focus:bg-trello-surface rounded px-1 -ml-1 leading-snug transition-colors"
                   value={titleDraft}
                   onChange={(e) => { setTitleDraft(e.target.value); autoResize(e.target); }}
                   onBlur={commitTitle}
@@ -329,8 +333,19 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">Actions</p>
               <div className="flex flex-col gap-1">
-                <SidebarBtn icon={<ArrowRight className="w-4 h-4" />} label="Move" />
-                <SidebarBtn icon={<Copy className="w-4 h-4" />} label="Copy" />
+                <div className="relative">
+                  <SidebarBtn
+                    icon={<ArrowRight className="w-4 h-4" />}
+                    label="Move"
+                    onClick={() => { closeAll(); setShowMove((v) => !v); }}
+                  />
+                  {showMove && <MoveCardPopover cardId={cardId} onClose={() => setShowMove(false)} />}
+                </div>
+                <SidebarBtn
+                  icon={<Copy className="w-4 h-4" />}
+                  label="Copy"
+                  onClick={() => { createCard(card!.listId, `${card!.title} (copy)`); onClose(); }}
+                />
                 <SidebarBtn
                   icon={<Bookmark className="w-4 h-4" />}
                   label="Save as template"
@@ -340,12 +355,24 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
                   }}
                 />
                 {card.isArchived ? (
-                  <button
-                    onClick={() => { restoreCard(cardId); onClose(); }}
-                    className="btn-soft flex items-center gap-2 hover:bg-trello-accent/20 text-trello-accent text-sm h-8 px-3 w-full"
-                  >
-                    <RotateCcw className="w-4 h-4" />Send to board
-                  </button>
+                  <>
+                    <button
+                      onClick={() => { restoreCard(cardId); onClose(); }}
+                      className="btn-soft flex items-center gap-2 hover:bg-trello-accent/20 text-trello-accent text-sm h-8 px-3 w-full"
+                    >
+                      <RotateCcw className="w-4 h-4" />Send to board
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Permanently delete this card? This cannot be undone.')) {
+                          deleteCard(cardId); onClose();
+                        }
+                      }}
+                      className="btn-soft flex items-center gap-2 hover:bg-red-500/20 text-trello-danger text-sm h-8 px-3 w-full"
+                    >
+                      <Trash2 className="w-4 h-4" />Delete card
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={() => { archiveCard(cardId); onClose(); }}
@@ -369,7 +396,7 @@ function SidebarBtn({ icon, label, onClick }: { icon: React.ReactNode; label: st
   return (
     <button
       onClick={onClick}
-      className="btn-soft flex items-center gap-2 text-sm h-8 px-3 w-full justify-start"
+      className="btn-soft flex items-center gap-2 text-sm h-11 md:h-8 px-3 w-full justify-start"
     >
       {icon}{label}
     </button>

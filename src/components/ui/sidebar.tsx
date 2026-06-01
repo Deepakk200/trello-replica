@@ -24,7 +24,7 @@ function BoardRow({ board, isActive, isStarred, onNavigate, onStar }: {
     <div
       onClick={onNavigate}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(); } }}
-      className={`h-8 px-2 rounded hover:bg-trello-cardHover flex items-center gap-2 cursor-pointer group transition-colors ${isActive ? 'bg-white/10' : ''}`}
+      className={`h-9 px-3 rounded-lg hover:bg-white/[0.06] flex items-center gap-3 cursor-pointer group transition-colors ${isActive ? 'bg-white/[0.10] font-medium' : ''}`}
     >
       <div
         className="h-5 w-6 rounded-sm shrink-0 bg-trello-cardHover"
@@ -131,7 +131,7 @@ export function Sidebar() {
                 key={label}
                 role="button"
                 tabIndex={0}
-                className={`h-8 px-3 rounded hover:bg-trello-cardHover flex items-center gap-3 cursor-pointer text-sm transition-colors select-none ${accent ? 'text-yellow-400' : 'text-trello-text'}`}
+                className={`h-9 px-3 rounded-lg hover:bg-white/[0.06] flex items-center gap-3 cursor-pointer text-sm transition-colors select-none ${accent ? 'text-[var(--warning)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
               >
                 {icon}
                 {label}

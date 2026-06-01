@@ -234,6 +234,7 @@
   .btn-primary { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition-all active:scale-[0.98]; }
   .btn-ghost   { @apply hover:bg-trello-cardHover text-trello-text rounded transition; }
   .btn-icon    { @apply p-1.5 rounded hover:bg-trello-cardHover text-trello-text transition-all active:scale-90; }
+  .btn-press   { @apply active:scale-[0.97] transition-transform duration-75; }
 }
 
 * {
@@ -250,12 +251,31 @@
 .cards-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
 .cards-scroll::-webkit-scrollbar-track { background: transparent; }
 
-@keyframes card-enter  { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
-@keyframes list-enter  { from { opacity:0; transform:translateX(8px)  } to { opacity:1; transform:translateX(0) } }
-@keyframes modal-enter { from { opacity:0; transform:scale(0.96)      } to { opacity:1; transform:scale(1)    } }
-.anim-card-enter  { animation: card-enter  0.18s ease-out; }
-.anim-list-enter  { animation: list-enter  0.22s ease-out; }
-.anim-modal-enter { animation: modal-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes card-enter     { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+@keyframes list-enter     { from { opacity:0; transform:translateX(8px)  } to { opacity:1; transform:translateX(0) } }
+@keyframes modal-enter    { from { opacity:0; transform:scale(0.96)      } to { opacity:1; transform:scale(1)    } }
+@keyframes backdrop-enter { from { opacity:0 }                             to { opacity:1 }                        }
+@keyframes menu-enter     { from { transform:translateX(100%) }             to { transform:translateX(0) }          }
+.anim-card-enter        { animation: card-enter     0.18s ease-out; }
+.anim-list-enter        { animation: list-enter     0.22s ease-out; }
+.anim-modal-enter       { animation: modal-enter    0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-backdrop-enter { animation: backdrop-enter 0.15s ease-out; }
+.anim-menu-enter        { animation: menu-enter     0.2s ease-out; }
+
+/* Themed thin scrollbar utility for list columns and popovers */
+/* Mobile snap scroll aliases (board already uses max-md:snap-x via Tailwind) */
+.snap-x-mobile { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+.snap-center-mobile { scroll-snap-align: center; }
+@media (min-width: 768px) { .snap-x-mobile { scroll-snap-type: none; } }
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar         { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track   { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb   { background: rgba(255,255,255,0.1); border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
 /* iOS input zoom prevention — font-size < 16px triggers zoom on Safari */
 @media (max-width: 767px) {
@@ -264,11 +284,15 @@
   select {
     font-size: max(16px, 1em) !important;
   }
+  /* iOS momentum scrolling for horizontal list scroll */
+  body, .overflow-x-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Safe area utilities for notch/home-indicator devices */
-.pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.pb-safe+ { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+.pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pb-safe-lg  { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

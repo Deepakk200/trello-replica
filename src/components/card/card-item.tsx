@@ -55,6 +55,7 @@ export const CardItem = memo(
 
     const cardMemberIds = card.memberIds ?? [];
     const isSelected    = selectedCardIds.includes(cardId);
+    const isNew         = Date.now() - new Date(card.createdAt).getTime() < 2000;
 
     return (
       <>
@@ -78,8 +79,8 @@ export const CardItem = memo(
           onContextMenu={(e) => { e.preventDefault(); setQuickEditPos({ x: e.clientX, y: e.clientY }); }}
           aria-label={`Open card: ${card.title}`}
           className={[
-            'anim-card-enter group relative bg-[var(--card-bg)] rounded-lg cursor-pointer overflow-hidden',
-            'shadow-[0_1px_0_rgba(0,0,0,0.25)]',
+            `${isNew ? 'anim-card-enter' : ''} group relative bg-[var(--card-bg)] rounded-lg cursor-pointer overflow-hidden`,
+            'shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)]',
             'border-2 border-transparent hover:border-[var(--accent)]/50',
             'transition-colors duration-75',
             isDragging ? 'opacity-30 ring-2 ring-trello-accent' : '',

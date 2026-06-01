@@ -49,7 +49,7 @@ export function ListHeader({ listId, onAddCard }: Props) {
   }
 
   return (
-    <div className="px-3 pt-2 pb-1 flex items-center justify-between">
+    <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
       {editing ? (
         <input
           ref={inputRef}
@@ -82,7 +82,7 @@ export function ListHeader({ listId, onAddCard }: Props) {
       <div ref={menuContainerRef} className="relative ml-1">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="p-1 rounded hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+          className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors text-white/70 hover:text-white"
           aria-label="List actions"
           title="List actions"
         >

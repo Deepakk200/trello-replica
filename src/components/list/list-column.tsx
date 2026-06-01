@@ -66,7 +66,7 @@ export const ListColumn = memo(
           setNodeRef(node);
           rootRef.current = node;
         }}
-        className={`anim-list-enter w-[calc(100vw-24px)] sm:w-[300px] md:w-[272px] shrink-0 max-h-[calc(100vh-120px)] flex flex-col bg-trello-listBg rounded-xl snap-start [contain:layout_style] ${isDragging ? 'opacity-20' : ''}`}
+        className={`anim-list-enter w-[calc(100vw-32px)] md:w-[272px] shrink-0 max-h-[calc(100vh-140px)] flex flex-col bg-trello-listBg rounded-xl snap-start [contain:layout_style] ${isDragging ? 'opacity-20' : ''}`}
       >
         {/* Drag handle — header only so cards/footer remain interactive */}
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
@@ -75,7 +75,7 @@ export const ListColumn = memo(
 
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           <div
-            className="flex-1 overflow-y-auto cards-scroll px-1 space-y-1.5 pb-1 min-h-2"
+            className="flex-1 overflow-y-auto cards-scroll px-1.5 space-y-1.5 pb-1 min-h-2"
             role="list"
             aria-label="Cards"
           >

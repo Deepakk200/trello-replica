@@ -51,7 +51,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -203,7 +203,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
         {overlayCard && (() => {
           const cover   = overlayCard.cover;
           const hasCover = cover?.type !== 'none';
@@ -212,7 +212,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
                          : cover?.type === 'image' ? cover.image
                          : undefined;
           return (
-            <div className="w-[272px] rotate-3 scale-105 cursor-grabbing">
+            <div className="w-[272px] rotate-3 scale-105 opacity-95 cursor-grabbing">
               <div className="bg-[var(--card-bg)] rounded-lg shadow-2xl overflow-hidden border border-[var(--accent)]/30">
                 {hasCover && (
                   <div
@@ -243,7 +243,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
           );
         })()}
         {overlayList && (
-          <div className="w-[272px] shrink-0 rounded-xl bg-trello-listBg opacity-50 min-h-[5rem] border-2 border-trello-accent/30 cursor-grabbing" />
+          <div className="w-[272px] shrink-0 rounded-xl bg-trello-listBg opacity-70 min-h-[5rem] border-2 border-dashed border-white/30 cursor-grabbing" />
         )}
       </DragOverlay>
     </DndContext>

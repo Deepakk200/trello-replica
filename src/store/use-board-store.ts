@@ -158,30 +158,86 @@ function buildSeed(): BoardState {
   };
 
   const labels: Record<ID, Label> = {};
-  for (const def of labelDefs) { const id = newId(); labels[id] = { id, ...def }; }
+  const seedLabelIds: ID[] = [];
+  for (const def of labelDefs) { const id = newId(); labels[id] = { id, ...def }; seedLabelIds.push(id); }
+  // [0]=Bug/red [1]=Feature/green [2]=Improvement/blue [3]=Question/yellow [4]=Design/purple [5]=Urgent/orange
+
+  const overdueDt = new Date(Date.now() - 2 * 86400000).toISOString();
+  const soonDt    = new Date(Date.now() + 20 * 3600000).toISOString();
+  const futureDt  = new Date(Date.now() + 7 * 86400000).toISOString();
+  const pastDt    = new Date(Date.now() - 3 * 86400000).toISOString();
+
+  type RichDef = {
+    title: string; description: string; lIdxs: number[];
+    dueDate: string | null; completed: boolean;
+    cls: Array<{ title: string; items: Array<{ text: string; completed: boolean }> }>;
+    mIdxs: number[];
+    cover?: { type: 'color'; color: string; size: 'half' };
+    comments?: string[];
+  };
+  const richDefs: RichDef[][] = [
+    // Backlog
+    [
+      { title: 'Research competitors', description: 'Analyze Trello, Jira, Asana for feature gaps and UX patterns.', lIdxs: [3], dueDate: overdueDt, completed: false, cls: [], mIdxs: [0], cover: { type: 'color', color: '#579DFF', size: 'half' } },
+      { title: 'Define MVP scope',     description: '', lIdxs: [1, 5], dueDate: null, completed: false, cls: [], mIdxs: [1] },
+    ],
+    // To Do
+    [
+      { title: 'Set up project repo', description: 'Initialize Next.js with TypeScript, Tailwind, and Zustand.',
+        lIdxs: [2], dueDate: soonDt, completed: false,
+        cls: [{ title: 'Setup Tasks', items: [
+          { text: 'Create GitHub repo', completed: true },
+          { text: 'Install dependencies', completed: true },
+          { text: 'Configure ESLint', completed: false },
+          { text: 'Setup CI/CD', completed: false },
+        ] }],
+        mIdxs: [0, 2] },
+      { title: 'Write user stories', description: '', lIdxs: [1], dueDate: futureDt, completed: false, cls: [], mIdxs: [1], comments: ['Should we include edge cases in the stories?', 'Added acceptance criteria to each story.'] },
+    ],
+    // In Progress
+    [
+      { title: 'Build board view', description: 'Implement the main Kanban board with draggable lists and cards.', lIdxs: [1, 2], dueDate: null, completed: false, cls: [], mIdxs: [0] },
+      { title: 'Implement drag-and-drop', description: '', lIdxs: [0], dueDate: soonDt, completed: false,
+        cls: [{ title: 'DnD Checklist', items: [
+          { text: 'Card drag within list', completed: true },
+          { text: 'Cross-list drag', completed: true },
+          { text: 'List reorder', completed: true },
+          { text: 'Touch + keyboard support', completed: true },
+        ] }],
+        mIdxs: [2, 3] },
+    ],
+    // Done
+    [
+      { title: 'Deploy to Vercel', description: 'Configure production deployment with environment variables.', lIdxs: [5], dueDate: pastDt, completed: true, cls: [], mIdxs: [0] },
+      { title: 'Write README',     description: '', lIdxs: [4], dueDate: null, completed: false, cls: [], mIdxs: [1] },
+    ],
+  ];
 
   const lists: Record<ID, List> = {};
   const cards: Record<ID, Card> = {};
-  const sampleTitles: Record<number, [string, string]> = {
-    0: ['Research competitors', 'Define MVP scope'],
-    1: ['Set up project repo', 'Write user stories'],
-    2: ['Build board view', 'Implement drag-and-drop'],
-    3: ['Deploy to Vercel', 'Write README'],
-  };
 
   let cardNumber = 1;
   listIds.forEach((listId, i) => {
     const cardIds: ID[] = [];
-    const [title1, title2] = sampleTitles[i];
-    for (const title of [title1, title2]) {
+    for (const def of richDefs[i]) {
       const cardId = newId(); const ts = now();
+      const checklists: Checklist[] = def.cls.map((cl) => ({
+        id: newId(), title: cl.title,
+        items: cl.items.map((it) => ({ id: newId(), text: it.text, completed: it.completed, createdAt: ts })),
+      }));
+      const activity = [
+        makeActivity({ type: 'created', text: `Card "${def.title}" created` }),
+        ...(def.comments ?? []).map((text) => makeActivity({ type: 'commented', text })),
+      ];
       cards[cardId] = {
-        id: cardId, listId, title, description: '',
-        number: cardNumber++, memberIds: [], attachments: [],
-        labelIds: [], dueDate: null, completed: false, isArchived: false,
-        linkedCardIds: [],
-        cover: { type: 'none', size: 'half' }, checklists: [],
-        activity: [makeActivity({ type: 'created', text: `Card "${title}" created` })],
+        id: cardId, listId, title: def.title, description: def.description,
+        number: cardNumber++,
+        memberIds: def.mIdxs.map((mi) => memberIds[mi]).filter(Boolean),
+        attachments: [],
+        labelIds: def.lIdxs.map((li) => seedLabelIds[li]).filter(Boolean),
+        dueDate: def.dueDate, completed: def.completed, isArchived: false, linkedCardIds: [],
+        cover: def.cover ?? { type: 'none', size: 'half' }, checklists,
+        activity,
         createdAt: ts, updatedAt: ts,
       };
       cardIds.push(cardId);
@@ -264,6 +320,9 @@ type Actions = {
   restoreCard(cardId: ID): void;
   archiveList(listId: ID): void;
   restoreList(listId: ID): void;
+  sortList(listId: ID, by: 'created-asc' | 'created-desc' | 'name' | 'due'): void;
+  copyList(listId: ID): ID;
+  moveAllCards(fromListId: ID, toListId: ID): void;
   updateBoardBackground(boardId: ID, background: string): void;
   updateBoardDescription(boardId: ID, description: string): void;
   pushNotification(n: Omit<Notification, 'id' | 'createdAt' | 'read'>): void;
@@ -823,6 +882,70 @@ export const boardStore = create<Store>()(
       },
       archiveList(listId) { set((s) => { if (s.lists[listId]) s.lists[listId].isArchived = true; }); },
       restoreList(listId) { set((s) => { if (s.lists[listId]) s.lists[listId].isArchived = false; }); },
+      sortList(listId, by) {
+        set((s) => {
+          const list = s.lists[listId];
+          if (!list) return;
+          list.cardIds = [...list.cardIds].sort((a, b) => {
+            const ca = s.cards[a], cb = s.cards[b];
+            if (!ca || !cb) return 0;
+            if (by === 'name') return ca.title.localeCompare(cb.title);
+            if (by === 'due') {
+              if (!ca.dueDate && !cb.dueDate) return 0;
+              if (!ca.dueDate) return 1;
+              if (!cb.dueDate) return -1;
+              return ca.dueDate.localeCompare(cb.dueDate);
+            }
+            if (by === 'created-asc') return ca.createdAt.localeCompare(cb.createdAt);
+            return cb.createdAt.localeCompare(ca.createdAt);
+          });
+        });
+      },
+      copyList(listId) {
+        const origList = boardStore.getState().lists[listId];
+        if (!origList) return '' as ID;
+        const newListId = newId(); const ts = now();
+        set((s) => {
+          const board = s.boards[origList.boardId];
+          if (!board) return;
+          const newCardIds: ID[] = [];
+          for (const cardId of origList.cardIds) {
+            const orig = s.cards[cardId];
+            if (!orig || orig.isArchived) continue;
+            const newCardId = newId();
+            s.cards[newCardId] = {
+              ...orig, id: newCardId, listId: newListId,
+              number: board.nextCardNumber++,
+              checklists: orig.checklists.map((cl) => ({
+                ...cl, id: newId(),
+                items: cl.items.map((it) => ({ ...it, id: newId() })),
+              })),
+              activity: [makeActivity({ type: 'created', text: `Card "${orig.title}" copied` })],
+              createdAt: ts, updatedAt: ts,
+            };
+            newCardIds.push(newCardId);
+          }
+          s.lists[newListId] = {
+            id: newListId, boardId: origList.boardId,
+            title: `${origList.title} Copy`,
+            cardIds: newCardIds, order: board.listIds.length, isArchived: false,
+          };
+          board.listIds.push(newListId);
+        });
+        return newListId;
+      },
+      moveAllCards(fromListId, toListId) {
+        set((s) => {
+          const from = s.lists[fromListId];
+          const to   = s.lists[toListId];
+          if (!from || !to) return;
+          const active = from.cardIds.filter((id) => !s.cards[id]?.isArchived);
+          for (const cardId of active) {
+            if (s.cards[cardId]) { s.cards[cardId].listId = toListId; to.cardIds.push(cardId); }
+          }
+          from.cardIds = from.cardIds.filter((id) => !active.includes(id));
+        });
+      },
       updateBoardBackground(boardId, background) {
         set((s) => { if (s.boards[boardId]) s.boards[boardId].background = background; });
       },

@@ -17,7 +17,7 @@ export function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <header className="h-12 md:h-11 flex items-center px-3 gap-3 bg-trello-bg/95 backdrop-blur-sm border-b border-trello-border shrink-0">
+    <header className="h-11 flex items-center px-3 gap-3 bg-trello-bg/90 backdrop-blur-md border-b border-white/[0.08] shrink-0">
 
       {/* Left: burger + logo + board switcher */}
       <div className="flex items-center gap-2 shrink-0">
@@ -29,7 +29,7 @@ export function TopBar() {
           <Menu className="w-4 h-4" />
         </button>
         <LayoutGrid className="w-5 h-5 shrink-0" />
-        <span className="font-bold text-sm hidden md:inline">Trello Clone</span>
+        <span className="font-bold text-base tracking-tight text-white hidden md:inline">Trello Clone</span>
         <BoardSwitcher />
       </div>
 

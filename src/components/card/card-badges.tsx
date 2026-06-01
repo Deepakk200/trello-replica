@@ -18,9 +18,9 @@ function formatDate(iso: string) {
 }
 
 const DUE_STYLES: Record<DueStatus, string> = {
-  overdue:   'bg-red-700/80 text-white rounded px-1.5 py-0.5',
-  soon:      'bg-amber-700 text-white rounded px-1.5 py-0.5',
-  completed: 'bg-emerald-700/80 text-white rounded px-1.5 py-0.5 line-through',
+  overdue:   'bg-[#F87168]/80 text-white rounded px-1.5 py-0.5',
+  soon:      'bg-[#F5CD47]/80 text-[#172B4D] rounded px-1.5 py-0.5',
+  completed: 'bg-[#4BCE97]/80 text-[#172B4D] rounded px-1.5 py-0.5 line-through',
   normal:    'text-trello-textSecondary',
 };
 
