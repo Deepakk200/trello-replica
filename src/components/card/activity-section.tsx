@@ -45,6 +45,7 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle">
             Activity
           </p>
+          <h1>DEPLOY TEST 999</h1>
           <button
             onClick={() => setShowDetails((v) => !v)}
             className="text-xs text-trello-textSubtle hover:text-trello-text hover:bg-trello-cardHover px-2 py-1 rounded transition-colors"
