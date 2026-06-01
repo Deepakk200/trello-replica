@@ -79,9 +79,9 @@ export function CoverPopover({ cardId, onClose }: { cardId: ID; onClose: () => v
   }
 
   function coverPreviewClass() {
-    if (cover.type === 'color' && cover.color) return COVER_COLOR_CLASS[cover.color] ?? 'bg-[#1d2125]';
-    if (cover.type === 'image' && cover.image) return COVER_GRADIENT_CLASS[cover.image] ?? 'bg-[#1d2125]';
-    return 'bg-[#1d2125]';
+    if (cover.type === 'color' && cover.color) return COVER_COLOR_CLASS[cover.color] ?? 'bg-trello-bg';
+    if (cover.type === 'image' && cover.image) return COVER_GRADIENT_CLASS[cover.image] ?? 'bg-trello-bg';
+    return 'bg-trello-bg';
   }
 
   function removeCover() {
@@ -92,7 +92,7 @@ export function CoverPopover({ cardId, onClose }: { cardId: ID; onClose: () => v
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 w-64 bg-[#282e33] border border-white/10 rounded-lg shadow-2xl z-50 p-3 flex flex-col gap-3"
+      className="absolute right-0 top-full mt-1 w-64 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-2xl z-50 p-3 flex flex-col gap-3"
     >
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide text-center">Cover</p>
 
@@ -105,7 +105,7 @@ export function CoverPopover({ cardId, onClose }: { cardId: ID; onClose: () => v
               onClick={() => setSize('half')}
               className={`flex-1 flex flex-col items-center gap-1 p-2 rounded transition-colors ${cover.size === 'half' ? 'bg-white/20 ring-1 ring-white/40' : 'bg-white/5 hover:bg-white/10'}`}
             >
-              <div className="w-full h-8 rounded bg-[#1d2125] overflow-hidden flex flex-col justify-start">
+              <div className="w-full h-8 rounded bg-trello-bg overflow-hidden flex flex-col justify-start">
                 <div className={`h-2.5 w-full rounded-t ${coverPreviewClass()}`} />
               </div>
               <span className="text-xs text-slate-300">Half</span>
@@ -132,7 +132,7 @@ export function CoverPopover({ cardId, onClose }: { cardId: ID; onClose: () => v
               key={hex}
               title={label}
               onClick={() => setColor(hex, textColor)}
-              className={`h-8 rounded transition-transform hover:scale-105 active:scale-95 ${cover.type === 'color' && cover.color === hex ? 'ring-2 ring-white ring-offset-1 ring-offset-[#282e33]' : ''} ${COVER_COLOR_CLASS[hex] ?? 'bg-slate-600'}`}
+              className={`h-8 rounded transition-transform hover:scale-105 active:scale-95 ${cover.type === 'color' && cover.color === hex ? 'ring-2 ring-white ring-offset-1 ring-offset-trello-surfaceRaised' : ''} ${COVER_COLOR_CLASS[hex] ?? 'bg-slate-600'}`}
             />
           ))}
         </div>
@@ -146,7 +146,7 @@ export function CoverPopover({ cardId, onClose }: { cardId: ID; onClose: () => v
             <button
               key={gradient}
               onClick={() => setGradient(gradient)}
-              className={`h-10 rounded transition-transform hover:scale-105 active:scale-95 ${cover.type === 'image' && cover.image === gradient ? 'ring-2 ring-white ring-offset-1 ring-offset-[#282e33]' : ''} ${COVER_GRADIENT_CLASS[gradient] ?? 'bg-slate-600'}`}
+              className={`h-10 rounded transition-transform hover:scale-105 active:scale-95 ${cover.type === 'image' && cover.image === gradient ? 'ring-2 ring-white ring-offset-1 ring-offset-trello-surfaceRaised' : ''} ${COVER_GRADIENT_CLASS[gradient] ?? 'bg-slate-600'}`}
               title="Set photo cover"
               aria-label="Set photo cover"
             />

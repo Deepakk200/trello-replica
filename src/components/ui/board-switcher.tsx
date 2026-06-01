@@ -57,8 +57,8 @@ export function BoardSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-9 w-72 bg-[#282e33] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="absolute left-0 top-9 w-72 bg-trello-surfaceRaised rounded-xl shadow-2xl border border-trello-border z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-trello-border">
             <span className="text-sm font-semibold">Your boards</span>
             <button
               onClick={() => { setOpen(false); setCreating(false); }}

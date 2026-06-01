@@ -6,10 +6,16 @@ import { Sidebar } from './sidebar';
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <a
+        href="#board-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:bg-trello-primary focus:text-trello-textOnBold focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-medium focus:shadow-lg"
+      >
+        Skip to board content
+      </a>
       <TopBar />
-      <div className="flex h-[calc(100vh-40px)]">
+      <div className="flex h-[calc(100vh-48px)] md:h-[calc(100vh-44px)]">
         <Sidebar />
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <main id="board-main" className="flex-1 overflow-hidden">{children}</main>
       </div>
     </>
   );

@@ -16,7 +16,7 @@ export function ListMenu({ listId, onClose, onAddCard }: Props) {
   ];
 
   return (
-    <div className="absolute right-0 top-8 w-72 bg-[#282e33] rounded-lg shadow-xl border border-white/10 p-2 text-sm z-40">
+    <div className="absolute right-0 top-8 w-72 bg-trello-surfaceRaised rounded-lg shadow-xl border border-trello-border p-2 text-sm z-40">
       <p className="text-center text-xs text-white/50 pb-1.5 font-medium">List actions</p>
 
       {items.map(({ label, action }) => (

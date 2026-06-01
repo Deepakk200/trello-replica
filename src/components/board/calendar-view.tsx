@@ -124,7 +124,7 @@ export function CalendarView({ boardId }: { boardId: ID }) {
 
       {/* Calendar grid */}
       <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-px bg-trello-borderSubtle overflow-hidden">
-        {cells.map((date, i) => {
+        {cells.map((date) => {
           const inMonth = date.getMonth() === current.month;
           const dateKey = toDateKey(date);
           const dayCards = cardsByDate[dateKey] ?? [];
@@ -132,7 +132,7 @@ export function CalendarView({ boardId }: { boardId: ID }) {
 
           return (
             <div
-              key={i}
+              key={dateKey}
               className={`bg-trello-surface p-1.5 overflow-hidden flex flex-col ${!inMonth ? 'opacity-40' : ''}`}
             >
               {/* Day number */}

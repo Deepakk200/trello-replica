@@ -39,7 +39,7 @@ export function CardBadges({ card }: { card: Card }) {
   const dueStatus = card.dueDate ? getDueStatus(card.dueDate, card.completed) : null;
 
   return (
-    <div className="flex flex-row flex-wrap gap-2 mt-1 text-xs text-trello-textSecondary items-center">
+    <div className="px-3 pb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-subtle)]">
       {card.dueDate && dueStatus && (
         <span className={`flex items-center gap-1 ${DUE_STYLES[dueStatus]}`}>
           <Clock className="w-3 h-3 shrink-0" />

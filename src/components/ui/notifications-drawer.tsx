@@ -75,9 +75,18 @@ export function NotificationsDrawer() {
 
   return createPortal(
     <div
-      className={`fixed top-10 right-0 z-40 h-[calc(100vh-40px)] w-95 bg-trello-surface border-l border-trello-border transition-transform duration-200 ${open ? 'translate-x-0' : 'translate-x-full pointer-events-none'}`}
+      className={[
+        'fixed z-40 bg-trello-surface border-trello-border transition-transform duration-300',
+        // Mobile: bottom sheet
+        'inset-x-0 bottom-0 h-[85vh] rounded-t-xl border-t',
+        // Desktop: right-side drawer
+        'md:inset-x-auto md:top-11 md:right-0 md:h-[calc(100vh-44px)] md:w-95 md:rounded-none md:border-t-0 md:border-l',
+        open
+          ? 'translate-y-0 md:translate-x-0 md:translate-y-0'
+          : 'translate-y-full md:translate-x-full md:translate-y-0 pointer-events-none',
+      ].join(' ')}
     >
-      {open && <div className="fixed inset-0 right-95 bg-black/40" onClick={closeDrawer} aria-hidden="true" />}
+      {open && <div className="fixed inset-0 md:right-95 bg-black/40" onClick={closeDrawer} aria-hidden="true" />}
 
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-trello-border px-4 h-14 shrink-0">

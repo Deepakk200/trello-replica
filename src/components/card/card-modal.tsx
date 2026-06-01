@@ -51,6 +51,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const dialogRef     = useRef<HTMLDivElement>(null);
   const titleRef      = useRef<HTMLTextAreaElement>(null);
   const prevFocusRef  = useRef<HTMLElement | null>(null);
+  const prevTitleRef  = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     prevFocusRef.current = document.activeElement as HTMLElement;
@@ -76,7 +77,12 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
     return () => dialog.removeEventListener('keydown', trapTab);
   }, [mounted]);
 
-  useEffect(() => { if (card) setTitleDraft(card.title); }, [card?.title]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cardTitle = card?.title;
+  useEffect(() => {
+    if (cardTitle === undefined || cardTitle === prevTitleRef.current) return;
+    prevTitleRef.current = cardTitle;
+    setTitleDraft(cardTitle);
+  }, [cardTitle]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -103,7 +109,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   const modal = (
     <>
-      <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} aria-hidden="true" />
 
       <div
         ref={dialogRef}
@@ -111,7 +117,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
         role="dialog"
         aria-modal="true"
         aria-labelledby="card-modal-title"
-        className="fixed left-1/2 top-12 -translate-x-1/2 w-[768px] max-w-[95vw] max-h-[85vh] overflow-y-auto bg-trello-surfaceOverlay rounded-xl shadow-2xl z-50 text-trello-text outline-none"
+        className="anim-modal-enter fixed inset-0 overflow-y-auto pb-safe bg-trello-surfaceOverlay shadow-2xl z-50 text-trello-text outline-none md:inset-auto md:pb-0 md:left-1/2 md:top-12 md:-translate-x-1/2 md:w-[700px] md:max-w-[95vw] md:max-h-[85vh] md:rounded-xl lg:w-[768px]"
       >
         <button
           onClick={onClose}
@@ -139,7 +145,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
           </div>
         )}
 
-        <div className="p-5 md:grid md:grid-cols-[1fr_200px] md:gap-6">
+        <div className="p-5 md:grid md:grid-cols-[1fr_190px] md:gap-6">
           {/* ── MAIN ─────────────────────────────────────────────── */}
           <div className="flex flex-col gap-5 min-w-0">
 

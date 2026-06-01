@@ -55,7 +55,7 @@ export function ListHeader({ listId, onAddCard }: Props) {
           ref={inputRef}
           autoFocus
           title="List title"
-          className="flex-1 bg-white text-slate-900 rounded px-1.5 py-0.5 text-sm font-semibold outline-none"
+          className="flex-1 bg-trello-surfaceRaised text-trello-text rounded px-1.5 py-0.5 text-sm font-semibold outline-none ring-1 ring-trello-accent"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -63,7 +63,16 @@ export function ListHeader({ listId, onAddCard }: Props) {
         />
       ) : (
         <h2
+          role="button"
+          tabIndex={0}
           onClick={startEdit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              startEdit();
+            }
+          }}
           className="flex-1 text-sm font-semibold text-white cursor-pointer px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
         >
           {list.title}

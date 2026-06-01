@@ -13,31 +13,21 @@ import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
 import { CommandPalette } from '@/components/ui/command-palette';
 import { NotificationsDrawer } from '@/components/ui/notifications-drawer';
 import { BulkActionBar } from './bulk-action-bar';
-import { CardModal } from '@/components/card/card-modal';
+import dynamic from 'next/dynamic';
+const CardModal = dynamic(
+  () => import('@/components/card/card-modal').then((m) => m.CardModal),
+  { ssr: false },
+);
 import { useShallow } from 'zustand/shallow';
-
-const BOARD_BG_CLASSES: Record<string, string> = {
-  'linear-gradient(135deg,#0079bf,#5067c5)': 'bg-[linear-gradient(135deg,#0079bf,#5067c5)]',
-  'linear-gradient(135deg,#d29034,#e67e22)': 'bg-[linear-gradient(135deg,#d29034,#e67e22)]',
-  'linear-gradient(135deg,#519839,#70a246)': 'bg-[linear-gradient(135deg,#519839,#70a246)]',
-  'linear-gradient(135deg,#b04632,#e74c3c)': 'bg-[linear-gradient(135deg,#b04632,#e74c3c)]',
-  'linear-gradient(135deg,#89609e,#8e44ad)': 'bg-[linear-gradient(135deg,#89609e,#8e44ad)]',
-  'linear-gradient(135deg,#1d6fa4,#27ae60)': 'bg-[linear-gradient(135deg,#1d6fa4,#27ae60)]',
-  '#1d6fa5': 'bg-[#1d6fa5]',
-  '#4a235a': 'bg-[#4a235a]',
-};
-
-function boardBackgroundClass(background: string) {
-  return BOARD_BG_CLASSES[background] ?? 'bg-trello-bg';
-}
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 function BoardSkeleton() {
   return (
-    <div className="h-full w-full pt-3 px-3 bg-[#1d2125]">
+    <div className="h-full w-full pt-3 px-3 bg-trello-bg">
       <div className="h-8 w-48 rounded-md bg-white/10 animate-pulse mb-3" />
       <div className="flex gap-3 items-start">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="w-72 shrink-0 rounded-xl bg-[#101204]/80 animate-pulse">
+          <div key={i} className="w-[272px] shrink-0 rounded-xl bg-trello-listBg/80 animate-pulse">
             <div className="h-8 mx-3 mt-2 mb-1 rounded bg-white/10" />
             {[1, 2].map((j) => (
               <div key={j} className="mx-2 mb-2 h-14 rounded-lg bg-white/10" />
@@ -83,42 +73,61 @@ export function BoardView() {
       <CommandPalette />
       <NotificationsDrawer />
       <BulkActionBar />
+
+      {/* Board fills the remaining viewport height below the top-bar */}
       <div
-        className={`h-full w-full flex flex-col ${boardBackgroundClass(board.background)}`}
+        className="h-full w-full flex flex-col"
+        style={{ background: board.background }}
       >
-        {/* Fixed header: BoardHeader + ViewSwitcher */}
-        <div className="pt-3 px-3 shrink-0">
+        {/* Unified header — title row + view/filter row in one z-10 stacking context */}
+        <div className="px-3 pt-3 pb-2 shrink-0 relative z-10 flex flex-col gap-1.5">
           <BoardHeader board={board} />
-          <ViewSwitcher boardId={board.id} />
+          <div className="flex items-center gap-2">
+            <ViewSwitcher boardId={board.id} />
+            <div className="flex-1" />
+            {activeView === 'board' && <FilterBar boardId={board.id} />}
+          </div>
         </div>
 
-        {/* View content — takes remaining height */}
-        <div
-          className={`flex-1 min-h-0 px-3 pb-3 ${
-            activeView === 'board'
-              ? 'overflow-x-auto overflow-y-hidden'
-              : 'overflow-hidden'
-          }`}
-        >
-          {activeView === 'board' && (
-            <>
-              <FilterBar boardId={board.id} />
-              {board.listIds.length === 0 && (
-                <div className="flex items-center gap-2 text-white/60 text-sm mb-3 pl-1">
-                  <span>Add your first list to get started</span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              )}
+        {/* Board view */}
+        {activeView === 'board' && (
+          <>
+            {board.listIds.length === 0 && (
+              <div className="px-4 shrink-0 pb-2 flex items-center gap-2 text-white/60 text-sm">
+                <span>Add your first list to get started</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            )}
+            <div
+              className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-3 pb-3 max-md:snap-x max-md:snap-mandatory overscroll-x-contain"
+              style={{ scrollBehavior: 'smooth' }}
+            >
               <ListsRow board={board} />
-            </>
-          )}
-          {activeView === 'calendar'  && <CalendarView  boardId={board.id} />}
-          {activeView === 'table'     && <TableView     boardId={board.id} />}
-          {activeView === 'dashboard' && <DashboardView boardId={board.id} />}
-        </div>
+            </div>
+          </>
+        )}
+
+        {activeView === 'calendar' && (
+          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
+            <CalendarView boardId={board.id} />
+          </div>
+        )}
+        {activeView === 'table' && (
+          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
+            <TableView boardId={board.id} />
+          </div>
+        )}
+        {activeView === 'dashboard' && (
+          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
+            <DashboardView boardId={board.id} />
+          </div>
+        )}
       </div>
+
       {activeCardModalId && (
-        <CardModal key={activeCardModalId} cardId={activeCardModalId} onClose={() => clearActiveCardModal()} />
+        <ErrorBoundary fallback={null}>
+          <CardModal key={activeCardModalId} cardId={activeCardModalId} onClose={clearActiveCardModal} />
+        </ErrorBoundary>
       )}
     </>
   );

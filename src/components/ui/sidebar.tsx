@@ -15,12 +15,6 @@ const BOARD_GRADIENTS = [
   'linear-gradient(135deg,#b04632,#e74c3c)',
 ];
 
-const BOARD_BG_CLASS: Record<string, string> = {
-  'linear-gradient(135deg,#0079bf,#5067c5)': 'bg-[linear-gradient(135deg,#0079bf,#5067c5)]',
-  'linear-gradient(135deg,#d29034,#e67e22)': 'bg-[linear-gradient(135deg,#d29034,#e67e22)]',
-  'linear-gradient(135deg,#519839,#70a246)': 'bg-[linear-gradient(135deg,#519839,#70a246)]',
-  'linear-gradient(135deg,#b04632,#e74c3c)': 'bg-[linear-gradient(135deg,#b04632,#e74c3c)]',
-};
 
 function BoardRow({ board, isActive, isStarred, onNavigate, onStar }: {
   board: Board; isActive: boolean; isStarred: boolean;
@@ -30,10 +24,11 @@ function BoardRow({ board, isActive, isStarred, onNavigate, onStar }: {
     <div
       onClick={onNavigate}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(); } }}
-      className={`h-8 px-2 rounded hover:bg-trello-cardHover flex items-center gap-2 cursor-pointer group transition-colors ${isActive ? 'bg-trello-cardHover' : ''}`}
+      className={`h-8 px-2 rounded hover:bg-trello-cardHover flex items-center gap-2 cursor-pointer group transition-colors ${isActive ? 'bg-white/10' : ''}`}
     >
       <div
-        className={`h-5 w-6 rounded-sm shrink-0 ${BOARD_BG_CLASS[board.background] ?? 'bg-trello-cardHover'}`}
+        className="h-5 w-6 rounded-sm shrink-0 bg-trello-cardHover"
+        style={{ background: board.background }}
       />
       <span className="flex-1 truncate text-sm text-trello-text">{board.title}</span>
       <button
@@ -89,17 +84,17 @@ export function Sidebar() {
     <>
       {/* Mobile backdrop */}
       {!sidebarCollapsed && (
-        <div className="fixed inset-0 top-10 bg-black/50 z-20 md:hidden" onClick={toggleSidebar} aria-hidden="true" />
+        <div className="fixed inset-0 top-12 bg-black/40 z-20 md:hidden" onClick={toggleSidebar} aria-hidden="true" />
       )}
 
       <aside
         className={[
-          'fixed top-10 left-0 z-30',
+          'fixed top-12 left-0 z-30',
           'md:static md:z-auto md:top-0',
-          'h-[calc(100vh-40px)] bg-trello-bg border-r border-trello-borderSubtle',
+          'h-[calc(100vh-48px)] md:h-full bg-trello-bg border-r border-trello-border',
           'flex flex-col shrink-0 overflow-hidden',
           'transition-all duration-200 ease-in-out',
-          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-5' : 'translate-x-0 w-65',
+          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-5' : 'translate-x-0 w-[280px] md:w-65',
         ].join(' ')}
       >
         {/* Collapse / expand toggle */}

@@ -18,7 +18,7 @@ export function ViewSwitcher({ boardId }: { boardId: ID }) {
   const setBoardView = useBoardStore((s) => s.setBoardView);
 
   return (
-    <div className="inline-flex items-center gap-1 bg-black/30 backdrop-blur-sm rounded-lg px-1 py-1 mb-3">
+    <div className="inline-flex items-center gap-1 bg-black/30 backdrop-blur-sm rounded-lg px-1 py-1 mb-3 max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
       {TABS.map(({ view, label, icon }) => (
         <button
           key={view}

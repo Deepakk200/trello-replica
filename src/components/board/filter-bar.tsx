@@ -81,25 +81,25 @@ export function FilterBar({ boardId }: { boardId: ID }) {
       {open && (
         <div
           ref={popoverRef}
-          className="absolute left-0 top-full mt-1 w-72 bg-[#282e33] rounded-lg shadow-2xl border border-white/10 p-3 z-50 flex flex-col gap-3"
+          className="absolute left-0 top-full mt-1 w-72 bg-trello-surfaceRaised rounded-lg shadow-2xl border border-trello-border p-3 z-50 flex flex-col gap-3"
         >
           {/* Search */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Search</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-1.5">Search</p>
             <input
               autoFocus
               type="text"
               placeholder="Filter by title…"
               value={filterState.search}
               onChange={(e) => setFilter({ search: e.target.value })}
-              className="w-full bg-[#22272b] border border-white/10 focus:border-sky-500 rounded px-2 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-500 transition-colors"
+              className="w-full bg-trello-cardBg border border-trello-borderSubtle focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none placeholder:text-trello-textSubtle transition-colors"
             />
           </div>
 
           {/* Labels */}
           {labels.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Labels</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-1.5">Labels</p>
               <div className="flex flex-wrap gap-1.5">
                 {labels.map((label) => {
                   const active = filterState.labelIds.includes(label.id);
@@ -126,7 +126,7 @@ export function FilterBar({ boardId }: { boardId: ID }) {
 
           {/* Due date */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Due date</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-1.5">Due date</p>
             <div className="flex flex-col gap-1.5">
               {DUE_OPTIONS.map(({ value, label }) => (
                 <label key={value} className="flex items-center gap-2 cursor-pointer group">
@@ -136,9 +136,9 @@ export function FilterBar({ boardId }: { boardId: ID }) {
                     checked={filterState.dueFilter === value}
                     onChange={() => setFilter({ dueFilter: value })}
                     onClick={() => { if (filterState.dueFilter === value) setFilter({ dueFilter: '' }); }}
-                    className="accent-sky-500"
+                    className="accent-trello-accent"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                  <span className="text-sm text-trello-textSecondary group-hover:text-trello-text transition-colors">
                     {label}
                   </span>
                 </label>

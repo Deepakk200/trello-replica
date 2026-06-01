@@ -2,11 +2,14 @@
 
 import { AppShell } from '@/components/ui/app-shell';
 import { BoardView } from '@/components/board/board-view';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export default function Home() {
   return (
     <AppShell>
-      <BoardView />
+      <ErrorBoundary>
+        <BoardView />
+      </ErrorBoundary>
     </AppShell>
   );
 }

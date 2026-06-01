@@ -41,7 +41,7 @@ export function ShortcutsOverlay() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-130 max-w-[95vw] bg-[#282e33] rounded-xl shadow-2xl p-6 z-50 text-slate-100"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-130 max-w-[95vw] bg-trello-surfaceRaised rounded-xl shadow-2xl p-6 z-50 text-trello-text"
       >
         <div className="flex items-center justify-between mb-5">
           <h2 id="shortcuts-title" className="text-lg font-semibold">Keyboard shortcuts</h2>
@@ -57,7 +57,7 @@ export function ShortcutsOverlay() {
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           {SHORTCUTS.map(({ key, desc }) => (
             <div key={key} className="flex items-center gap-3">
-              <kbd className="shrink-0 font-mono text-xs bg-[#22272b] border border-white/20 text-slate-200 px-2 py-0.5 rounded min-w-8 text-center">
+              <kbd className="shrink-0 font-mono text-xs bg-trello-cardBg border border-trello-border text-trello-text px-2 py-0.5 rounded min-w-8 text-center">
                 {key}
               </kbd>
               <span className="text-sm text-slate-300">{desc}</span>

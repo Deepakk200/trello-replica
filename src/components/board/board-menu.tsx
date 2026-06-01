@@ -15,18 +15,9 @@ const PRESET_BACKGROUNDS = [
   '#4a235a',
 ];
 
-const BG_CLASS: Record<string, string> = {
-  'linear-gradient(135deg,#0079bf,#5067c5)': 'bg-[linear-gradient(135deg,#0079bf,#5067c5)]',
-  'linear-gradient(135deg,#d29034,#e67e22)': 'bg-[linear-gradient(135deg,#d29034,#e67e22)]',
-  'linear-gradient(135deg,#519839,#70a246)': 'bg-[linear-gradient(135deg,#519839,#70a246)]',
-  'linear-gradient(135deg,#b04632,#e74c3c)': 'bg-[linear-gradient(135deg,#b04632,#e74c3c)]',
-  '#1d6fa5': 'bg-[#1d6fa5]',
-  '#4a235a': 'bg-[#4a235a]',
-};
-
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(ms / 1000);
+  const s  = Math.floor(ms / 1000);
   if (s < 60) return 'just now';
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ago`;
@@ -40,12 +31,12 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const { board, lists, cards } = useBoardStore(
     useShallow((s) => ({ board: s.boards[boardId], lists: s.lists, cards: s.cards })),
   );
-  const updateBoardBackground = useBoardStore((s) => s.updateBoardBackground);
+  const updateBoardBackground  = useBoardStore((s) => s.updateBoardBackground);
   const updateBoardDescription = useBoardStore((s) => s.updateBoardDescription);
-  const restoreCard = useBoardStore((s) => s.restoreCard);
-  const restoreList = useBoardStore((s) => s.restoreList);
+  const restoreCard            = useBoardStore((s) => s.restoreCard);
+  const restoreList            = useBoardStore((s) => s.restoreList);
 
-  const [descDraft, setDescDraft] = useState(board?.description ?? '');
+  const [descDraft, setDescDraft]   = useState(board?.description ?? '');
   const [archiveTab, setArchiveTab] = useState<'cards' | 'lists'>('cards');
 
   if (!board) return null;
@@ -53,14 +44,12 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const boardListIds = new Set(
     Object.values(lists).filter((l) => l.boardId === boardId).map((l) => l.id),
   );
-
   const archivedCards = Object.values(cards).filter(
     (c) => c.isArchived && boardListIds.has(c.listId),
   );
   const archivedLists = Object.values(lists).filter(
     (l) => l.isArchived && l.boardId === boardId,
   );
-
   const allActivities = Object.values(cards)
     .filter((c) => boardListIds.has(c.listId))
     .flatMap((c) => c.activity.map((a) => ({ ...a, cardTitle: c.title })))
@@ -69,19 +58,14 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/40 z-30"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 bg-black/40 z-30" onClick={onClose} aria-hidden="true" />
 
-      <div className="fixed top-10 right-0 z-40 w-85 h-[calc(100vh-40px)] bg-[#282e33] border-l border-white/10 flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-          <h2 className="font-semibold text-sm text-slate-100">Menu</h2>
+      <div className="fixed top-12 md:top-11 right-0 z-40 w-85 h-[calc(100vh-48px)] md:h-[calc(100vh-44px)] bg-trello-surfaceRaised border-l border-trello-border flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-trello-border shrink-0">
+          <h2 className="font-semibold text-sm text-trello-text">Menu</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-            title="Close board menu"
+            className="p-1.5 rounded hover:bg-trello-cardHover text-trello-textSubtle hover:text-trello-text transition-colors"
             aria-label="Close board menu"
           >
             <X className="w-4 h-4" />
@@ -93,14 +77,14 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
           <MenuSection icon={<Info className="w-4 h-4" />} label="About this board">
             <textarea
               rows={3}
-              className="w-full bg-[#22272b] border border-white/10 focus:border-sky-500 rounded px-2 py-1.5 text-sm text-slate-100 outline-none resize-none placeholder:text-slate-500 transition-colors"
+              className="w-full bg-trello-cardBg border border-trello-border focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none resize-none placeholder:text-trello-textSubtle transition-colors"
               placeholder="Add a description so visitors know what this board is for"
               value={descDraft}
               onChange={(e) => setDescDraft(e.target.value)}
             />
             <button
               onClick={() => updateBoardDescription(boardId, descDraft)}
-              className="mt-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium rounded transition-colors"
+              className="mt-1.5 btn-primary text-xs font-medium px-3 py-1.5"
             >
               Save
             </button>
@@ -114,7 +98,8 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
                 <button
                   key={bg}
                   onClick={() => updateBoardBackground(boardId, bg)}
-                  className={`h-12 rounded-md border-2 transition-all hover:scale-105 border-transparent hover:border-white/50 ${BG_CLASS[bg] ?? 'bg-trello-cardHover'}`}
+                  style={{ background: bg }}
+                  className="h-12 rounded-md border-2 transition-all hover:scale-105 border-transparent hover:border-white/50"
                   aria-label="Change board background"
                 />
               ))}
@@ -125,20 +110,20 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
 
           <MenuSection icon={<Activity className="w-4 h-4" />} label="Activity">
             {allActivities.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">No activity yet</p>
+              <p className="text-xs text-trello-textSubtle italic">No activity yet</p>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {allActivities.map((a) => (
                   <div key={a.id} className="flex gap-2">
-                    <div className="w-6 h-6 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-[10px] font-bold shrink-0 select-none">
+                    <div className="w-6 h-6 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-[10px] font-bold text-white shrink-0 select-none">
                       U
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 wrap-break-word leading-snug">
-                        <span className="font-medium text-slate-100">{a.cardTitle}</span>
+                      <p className="text-xs text-trello-textSecondary break-words leading-snug">
+                        <span className="font-medium text-trello-text">{a.cardTitle}</span>
                         {' — '}{a.text}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{timeAgo(a.createdAt)}</p>
+                      <p className="text-[10px] text-trello-textSubtle mt-0.5">{timeAgo(a.createdAt)}</p>
                     </div>
                   </div>
                 ))}
@@ -156,15 +141,15 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
 
             {archiveTab === 'cards' && (
               archivedCards.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No archived cards</p>
+                <p className="text-xs text-trello-textSubtle italic">No archived cards</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {archivedCards.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between bg-[#22272b] rounded px-2 py-1.5 gap-2">
-                      <span className="text-sm text-slate-200 truncate">{c.title}</span>
+                    <div key={c.id} className="flex items-center justify-between bg-trello-cardBg rounded px-2 py-1.5 gap-2">
+                      <span className="text-sm text-trello-text truncate">{c.title}</span>
                       <button
                         onClick={() => restoreCard(c.id)}
-                        className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 shrink-0 transition-colors"
+                        className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover shrink-0 transition-colors"
                       >
                         <RotateCcw className="w-3 h-3" />
                         Send to board
@@ -177,15 +162,15 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
 
             {archiveTab === 'lists' && (
               archivedLists.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No archived lists</p>
+                <p className="text-xs text-trello-textSubtle italic">No archived lists</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {archivedLists.map((l) => (
-                    <div key={l.id} className="flex items-center justify-between bg-[#22272b] rounded px-2 py-1.5 gap-2">
-                      <span className="text-sm text-slate-200 truncate">{l.title}</span>
+                    <div key={l.id} className="flex items-center justify-between bg-trello-cardBg rounded px-2 py-1.5 gap-2">
+                      <span className="text-sm text-trello-text truncate">{l.title}</span>
                       <button
                         onClick={() => restoreList(l.id)}
-                        className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 shrink-0 transition-colors"
+                        className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover shrink-0 transition-colors"
                       >
                         <RotateCcw className="w-3 h-3" />
                         Send to board
@@ -202,10 +187,12 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   );
 }
 
-function MenuSection({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+function MenuSection({ icon, label, children }: {
+  icon: React.ReactNode; label: string; children: React.ReactNode;
+}) {
   return (
     <div className="py-1">
-      <div className="flex items-center gap-2 text-slate-400 mb-2">
+      <div className="flex items-center gap-2 text-trello-textSubtle mb-2">
         {icon}
         <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
       </div>
@@ -215,15 +202,19 @@ function MenuSection({ icon, label, children }: { icon: React.ReactNode; label: 
 }
 
 function Divider() {
-  return <div className="border-t border-white/10 my-2" />;
+  return <div className="border-t border-trello-border my-2" />;
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className={`flex-1 py-1 text-xs rounded font-medium transition-colors ${
-        active ? 'bg-sky-600 text-white' : 'bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200'
+        active
+          ? 'bg-trello-primary text-trello-textOnBold'
+          : 'bg-trello-cardHover text-trello-textSubtle hover:brightness-110 hover:text-trello-text'
       }`}
     >
       {children}

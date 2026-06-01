@@ -8,62 +8,30 @@ import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import type { ID, LabelColor } from '@/types';
+import { useLabelExpansion } from '@/lib/label-expansion';
 import { CardBadges } from './card-badges';
 import { QuickEditPopover } from './quick-edit-popover';
 
 const LABEL_VAR: Record<LabelColor, string> = {
-  green: 'var(--label-green)', yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
-  red:   'var(--label-red)',   purple: 'var(--label-purple)', blue:   'var(--label-blue)',
-  sky:   'var(--label-sky)',   lime:   'var(--label-lime)',   pink:   'var(--label-pink)',
-  black: 'var(--label-black)',
+  green:  'var(--label-green)',  yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
+  red:    'var(--label-red)',    purple: 'var(--label-purple)', blue:   'var(--label-blue)',
+  sky:    'var(--label-sky)',    lime:   'var(--label-lime)',   pink:   'var(--label-pink)',
+  black:  'var(--label-black)',
 };
-
-const LABEL_CLASS: Record<LabelColor, string> = {
-  green: 'bg-[var(--label-green)]', yellow: 'bg-[var(--label-yellow)]', orange: 'bg-[var(--label-orange)]',
-  red: 'bg-[var(--label-red)]', purple: 'bg-[var(--label-purple)]', blue: 'bg-[var(--label-blue)]',
-  sky: 'bg-[var(--label-sky)]', lime: 'bg-[var(--label-lime)]', pink: 'bg-[var(--label-pink)]',
-  black: 'bg-[var(--label-black)]',
-};
-
-const COVER_COLOR_CLASS: Record<string, string> = {
-  '#10b981': 'bg-[#10b981]',
-  '#facc15': 'bg-[#facc15]',
-  '#fb923c': 'bg-[#fb923c]',
-  '#ef4444': 'bg-[#ef4444]',
-  '#a855f7': 'bg-[#a855f7]',
-  '#2563eb': 'bg-[#2563eb]',
-  '#22d3ee': 'bg-[#22d3ee]',
-  '#a3e635': 'bg-[#a3e635]',
-  '#f472b6': 'bg-[#f472b6]',
-  '#334155': 'bg-[#334155]',
-};
-
-const COVER_IMAGE_CLASS: Record<string, string> = {
-  'linear-gradient(135deg,#0079bf,#5067c5)': 'bg-[linear-gradient(135deg,#0079bf,#5067c5)]',
-  'linear-gradient(135deg,#d29034,#e67e22)': 'bg-[linear-gradient(135deg,#d29034,#e67e22)]',
-  'linear-gradient(135deg,#519839,#70a246)': 'bg-[linear-gradient(135deg,#519839,#70a246)]',
-  'linear-gradient(135deg,#b04632,#e74c3c)': 'bg-[linear-gradient(135deg,#b04632,#e74c3c)]',
-  'linear-gradient(135deg,#89609e,#8e44ad)': 'bg-[linear-gradient(135deg,#89609e,#8e44ad)]',
-  'linear-gradient(135deg,#1d6fa4,#27ae60)': 'bg-[linear-gradient(135deg,#1d6fa4,#27ae60)]',
-};
-
-function coverClass(cover: { type: 'none' | 'color' | 'image'; color?: string; image?: string }) {
-  if (cover.type === 'color' && cover.color) return COVER_COLOR_CLASS[cover.color] ?? 'bg-trello-cardHover';
-  if (cover.type === 'image' && cover.image) return COVER_IMAGE_CLASS[cover.image] ?? 'bg-trello-cardHover';
-  return 'bg-trello-cardHover';
-}
 
 export const CardItem = memo(
   function CardItem({ boardId, listId, cardId }: { boardId: ID; listId: ID; cardId: ID }) {
     void boardId;
 
-    const card = useBoardStore((s) => s.cards[cardId]);
-    const cardLabels = useBoardStore(
+    const card           = useBoardStore((s) => s.cards[cardId]);
+    const cardLabels     = useBoardStore(
       useShallow((s) => (s.cards[cardId]?.labelIds ?? []).map((id) => s.labels[id]).filter(Boolean)),
     );
-    const selectedCardIds = useBoardStore((s) => s.selectedCardIds);
+    const selectedCardIds    = useBoardStore((s) => s.selectedCardIds);
     const toggleCardSelection = useBoardStore((s) => s.toggleCardSelection);
-    const setActiveCardModal = useBoardStore((s) => s.setActiveCardModal);
+    const setActiveCardModal  = useBoardStore((s) => s.setActiveCardModal);
+    const { expanded: labelsExpanded, toggle: toggleLabels } = useLabelExpansion();
+
     const [quickEditPos, setQuickEditPos] = useState<{ x: number; y: number } | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
 
@@ -78,19 +46,22 @@ export const CardItem = memo(
 
     if (!card) return null;
 
-    const cover       = card.cover ?? { type: 'none' as const, size: 'half' as const };
-    const hasCover    = cover.type !== 'none';
-    const isFull      = hasCover && cover.size === 'full';
+    const cover    = card.cover ?? { type: 'none' as const, size: 'half' as const };
+    const hasCover = cover.type !== 'none';
+    const isFull   = hasCover && cover.size === 'full';
+    const coverBg  = cover.type === 'color' ? cover.color
+                   : cover.type === 'image' ? cover.image
+                   : undefined;
 
     const cardMemberIds = card.memberIds ?? [];
-    const isSelected = selectedCardIds.includes(cardId);
+    const isSelected    = selectedCardIds.includes(cardId);
 
     return (
       <>
         <div
           ref={(node) => {
             setNodeRef(node);
-            rootRef.current = node;
+            (rootRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
           {...attributes}
           {...listeners}
@@ -98,21 +69,35 @@ export const CardItem = memo(
             if (e.shiftKey) toggleCardSelection(cardId);
             else setActiveCardModal(cardId);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.shiftKey ? toggleCardSelection(cardId) : setActiveCardModal(cardId);
+            }
+          }}
           onContextMenu={(e) => { e.preventDefault(); setQuickEditPos({ x: e.clientX, y: e.clientY }); }}
           aria-label={`Open card: ${card.title}`}
           className={[
-            'anim-card-enter group relative bg-trello-cardBg hover:bg-trello-cardHover rounded-lg',
-            'shadow-card hover:shadow-card-hover',
-            'cursor-pointer transition-all duration-100',
-            hasCover ? 'overflow-hidden' : 'px-3 py-2',
+            'anim-card-enter group relative bg-[var(--card-bg)] rounded-lg cursor-pointer overflow-hidden',
+            'shadow-[0_1px_0_rgba(0,0,0,0.25)]',
+            'border-2 border-transparent hover:border-[var(--accent)]/50',
+            'transition-colors duration-75',
             isDragging ? 'opacity-30 ring-2 ring-trello-accent' : '',
             isSelected ? 'ring-2 ring-trello-accent ring-offset-2 ring-offset-trello-listBg' : '',
           ].join(' ')}
         >
+          {/* Cover band */}
           {hasCover && (
-            <div className={`relative w-full ${isFull ? 'h-24' : 'h-8'} ${coverClass(cover)}`}>
+            <div
+              className={`relative w-full ${isFull ? 'h-24' : 'h-8'}`}
+              style={coverBg ? { background: coverBg } : undefined}
+            >
               {isFull && (
-                <p className={`absolute bottom-2 left-3 right-10 text-sm font-medium leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] ${cover.textColor === 'dark' ? 'text-slate-900' : 'text-white'}`}>
+                <p className={[
+                  'absolute bottom-2 left-3 right-10 text-sm font-medium leading-snug',
+                  '[text-shadow:0_1px_2px_rgba(0,0,0,0.5)]',
+                  cover.textColor === 'dark' ? 'text-slate-900' : 'text-white',
+                ].join(' ')}>
                   {card.title}
                 </p>
               )}
@@ -120,24 +105,39 @@ export const CardItem = memo(
           )}
 
           {!isFull && (
-            <div className={hasCover ? 'px-3 py-2' : ''}>
+            <>
+              {/* Label strip */}
               {cardLabels.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-1.5" aria-hidden="true">
+                <div className="px-3 pt-2 pb-0 flex flex-wrap gap-1">
                   {cardLabels.map((label) => (
-                    <span
+                    <button
                       key={label.id}
                       title={label.name}
-                      className={`h-2 w-10 rounded-sm ${LABEL_CLASS[label.color]}`}
-                    />
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); toggleLabels(); }}
+                      aria-label={labelsExpanded ? `Collapse label: ${label.name}` : `Expand label: ${label.name}`}
+                      className={`transition-all duration-150 rounded-sm text-white text-[11px] font-medium leading-none ${
+                        labelsExpanded ? 'h-5 px-2 min-w-10' : 'h-2 w-10'
+                      }`}
+                      style={{ background: LABEL_VAR[label.color] }}
+                    >
+                      {labelsExpanded ? label.name : null}
+                    </button>
                   ))}
                 </div>
               )}
-              <p className="text-sm leading-snug text-trello-text pr-5">{card.title}</p>
+
+              {/* Title */}
+              <p className="px-3 py-1.5 pr-8 text-sm font-medium leading-snug text-[var(--text-primary)] break-words">
+                {card.title}
+              </p>
+
+              {/* Badges — CardBadges returns null when nothing to show */}
               <CardBadges card={card} />
 
-              {/* Avatar stack */}
+              {/* Member avatar stack */}
               {cardMemberIds.length > 0 && (
-                <div className="flex items-center justify-end mt-1.5">
+                <div className="px-3 pb-2 flex justify-end">
                   <div className="flex items-center">
                     {cardMemberIds.slice(0, 3).map((memberId, i) => (
                       <div key={memberId} className={i > 0 ? '-ml-1.5' : ''}>
@@ -152,13 +152,14 @@ export const CardItem = memo(
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
 
+          {/* Edit pencil — always rendered, visible on hover/focus */}
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setActiveCardModal(cardId); }}
-            className="absolute top-2 right-2 p-0.5 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-trello-cardHover transition-opacity"
+            className="absolute top-1 right-1 h-7 w-7 rounded-full bg-[var(--surface-raised)] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 hover:brightness-125 transition-opacity"
             aria-label={`Edit card: ${card.title}`}
             tabIndex={0}
           >

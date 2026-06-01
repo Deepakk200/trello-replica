@@ -211,6 +211,13 @@
   }
   html, body {
     height: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    overscroll-behavior-x: none;
+  }
+  button, [role="button"], a {
+    touch-action: manipulation;
   }
   :focus-visible {
     outline: 2px solid var(--accent);
@@ -223,9 +230,10 @@
 }
 
 @layer components {
-  .btn-soft    { @apply bg-trello-cardHover hover:brightness-110 text-trello-text rounded transition; }
-  .btn-primary { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition; }
+  .btn-soft    { @apply bg-trello-cardHover hover:brightness-110 text-trello-text rounded transition-all active:scale-[0.98]; }
+  .btn-primary { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition-all active:scale-[0.98]; }
   .btn-ghost   { @apply hover:bg-trello-cardHover text-trello-text rounded transition; }
+  .btn-icon    { @apply p-1.5 rounded hover:bg-trello-cardHover text-trello-text transition-all active:scale-90; }
 }
 
 * {
@@ -236,7 +244,37 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #5e6c8466; border-radius: 9999px; }
 
-@keyframes card-enter { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-@keyframes list-enter { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
-.anim-card-enter { animation: card-enter 0.18s ease-out }
-.anim-list-enter { animation: list-enter 0.22s ease-out }
+/* Narrow scrollbar for card list containers */
+.cards-scroll { scrollbar-width: thin; scrollbar-color: var(--border-default) transparent; }
+.cards-scroll::-webkit-scrollbar { width: 4px; }
+.cards-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
+.cards-scroll::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes card-enter  { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+@keyframes list-enter  { from { opacity:0; transform:translateX(8px)  } to { opacity:1; transform:translateX(0) } }
+@keyframes modal-enter { from { opacity:0; transform:scale(0.96)      } to { opacity:1; transform:scale(1)    } }
+.anim-card-enter  { animation: card-enter  0.18s ease-out; }
+.anim-list-enter  { animation: list-enter  0.22s ease-out; }
+.anim-modal-enter { animation: modal-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* iOS input zoom prevention — font-size < 16px triggers zoom on Safari */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* Safe area utilities for notch/home-indicator devices */
+.pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pb-safe+ { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

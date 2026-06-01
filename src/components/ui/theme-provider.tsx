@@ -13,7 +13,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!stored && window.matchMedia('(prefers-color-scheme: light)').matches) {
       setTheme('light');
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setTheme]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -1,81 +1,55 @@
 # Trello Clone
 
-A feature-complete Trello-style board built with Next.js, TypeScript, and dnd-kit.
-
-## Stack
-
-Next.js 16 · React 19 · TypeScript 5 · Tailwind CSS 4 · Zustand 5 + Immer · dnd-kit · shadcn/ui · lucide-react · nanoid
+A production-quality Trello replica built with Next.js 16, React 19, and TypeScript.
 
 ## Features
 
-**Core**
-- Multiple boards with gradient / solid-colour backgrounds
-- Drag-and-drop lists and cards — mouse and keyboard
-- Create, rename, and delete lists
-- Create, rename, and delete cards via a full-screen modal
-- 10-colour labels with search and custom names
-- Due dates with overdue / due-soon visual badges
-- Click-to-edit card descriptions
-- Activity log: auto-events (created, moved, renamed, labeled, due) + comments
-- All data persists automatically to `localStorage`
+- **Boards** — multiple boards with custom gradient/solid-color backgrounds
+- **Lists & Cards** — full CRUD, inline title editing, drag-and-drop reorder and cross-list move
+- **Card detail** — description (with `@card` mention linking), labels, due dates, checklists, attachments, members, cover images, activity feed
+- **Views** — Board, Calendar, Table, Dashboard per board
+- **Sidebar** — workspace switcher, starred/recent boards, collapsible (desktop) / overlay drawer (mobile)
+- **Filter bar** — filter cards by search, label, or due-date window
+- **Bulk actions** — shift-click to select multiple cards, then move/label/archive
+- **Notifications drawer** — activity feed with unread badge
+- **Command palette** — `Cmd+K` / `Ctrl+K` fuzzy search across boards and cards
+- **Keyboard shortcuts** — `?` opens the shortcuts overlay; full Tab/Enter/Esc keyboard flow
+- **Themes** — dark (default) and light mode toggle
+- **Persistence** — localStorage via Zustand persist; survives page refresh
 
-**Advanced**
-- Cross-list card drag with optimistic mid-drag updates
-- `DragOverlay` ghost — rotated card tile, translucent list placeholder
-- Full focus trap, `Escape`-to-close, and previous-focus restore on modal
-- ARIA live announcements for every drag event (screen-reader friendly)
-- Hydration skeleton prevents SSR flash
-- `React.memo` + narrow Zustand selectors — zero unnecessary re-renders
+## Stack
 
-## Quickstart
+| Layer | Library |
+|---|---|
+| Framework | Next.js 16 (App Router, all `use client`) |
+| UI | React 19, Tailwind CSS v4, shadcn |
+| State | Zustand 5 + Immer 11 |
+| Drag-and-drop | @dnd-kit/core + /sortable |
+| Icons | lucide-react |
+
+## Getting started
 
 ```bash
 npm install
-npm run dev
-# open http://localhost:3000
+npm run dev        # http://localhost:3000
+npm run build      # production build
+npm run start      # serve production build
 ```
 
 ## Architecture
 
-```
-TopBar ─ board switcher · Settings (clear all) · search
-└── AppShell  (40 px bar + calc(100vh-40px) main)
-    └── BoardView  (hydration guard, board background)
-        ├── BoardHeader  (editable title)
-        └── ListsRow
-            └── BoardDndContext  (DndContext + DragOverlay)
-                └── SortableContext (horizontal, lists)
-                    └── ListColumn × N
-                        ├── ListHeader  (editable title, menu)
-                        ├── SortableContext (vertical, cards)
-                        │   └── CardItem × N  (useSortable)
-                        │       └── CardModal  (createPortal)
-                        │           ├── DescriptionEditor
-                        │           ├── ActivitySection
-                        │           ├── LabelPopover
-                        │           └── DatePopover
-                        └── ListFooter  (add-card form)
+- **Single route** — `src/app/page.tsx` → `AppShell` → `BoardView`
+- **Flat normalized state** — `Record<ID, Entity>` maps; no nested objects
+- **Narrow selectors** — `useBoardStore(s => s.cards[id])` + `useShallow` for arrays prevent over-rendering
+- **Performance** — `React.memo` on `CardItem`/`ListColumn`; `next/dynamic` lazy-loads `CardModal`; CSS `contain: layout style` on list columns
+- **Error boundaries** — wrap `BoardView` and `CardModal` independently
 
-State
-└── use-board-store.ts  (Zustand + immer)
-    └── persist middleware → localStorage  key: "trello-clone-v1"
-```
-
-## Keyboard Shortcuts
+## Keyboard shortcuts
 
 | Key | Action |
-|-----|--------|
-| `Enter` | Confirm title rename / submit add-card form |
-| `Escape` | Close modal · cancel editable field · cancel drag |
-| `Tab` / `Shift+Tab` | Cycle focusable elements; trapped inside open modal |
-| `Space` / `Enter` | Begin keyboard drag on a focused card or list handle |
-| `Arrow keys` | Move dragged item while keyboard drag is active |
-
-> **Known:** dnd-kit's `KeyboardSensor` intercepts `Enter`/`Space` on cards,
-> starting a drag instead of opening the modal. Use `Tab` to reach the pencil
-> button as a workaround.
-
-## LocalStorage
-
-Key: **`trello-clone-v1`** (version 1 — bump + add `migrate` logic on schema changes).  
-Clear via the Settings icon in the top-right corner, or `localStorage.removeItem('trello-clone-v1')`.
+|---|---|
+| `?` | Shortcuts overlay |
+| `Cmd/Ctrl K` | Command palette |
+| `Esc` | Close modal / popover |
+| `Enter` / `Space` | Open card (when focused) |
+| `Shift + click` | Multi-select cards |

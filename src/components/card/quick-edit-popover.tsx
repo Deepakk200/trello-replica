@@ -56,7 +56,7 @@ export function QuickEditPopover({
   return createPortal(
     <div
       ref={ref}
-      className="z-50 w-48 bg-[#282e33] rounded-lg shadow-xl border border-white/10 p-1"
+      className="z-50 w-48 bg-trello-surfaceRaised rounded-lg shadow-xl border border-trello-border p-1"
     >
       {items.map(({ icon, label, action }) => (
         <button

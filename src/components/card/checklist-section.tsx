@@ -65,7 +65,7 @@ export function ChecklistSection({ cardId, checklist }: { cardId: ID; checklist:
             <input
               autoFocus
               title="Checklist title"
-              className="w-full bg-[#22272b] border border-sky-500 rounded px-2 py-1 text-base font-semibold text-slate-100 outline-none"
+              className="w-full bg-trello-cardBg border border-sky-500 rounded px-2 py-1 text-base font-semibold text-slate-100 outline-none"
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               onBlur={commitTitle}
@@ -129,7 +129,7 @@ export function ChecklistSection({ cardId, checklist }: { cardId: ID; checklist:
                 <input
                   autoFocus
                   title="Checklist item"
-                  className="flex-1 bg-[#22272b] border border-sky-500 rounded px-2 py-0.5 text-sm text-slate-100 outline-none"
+                  className="flex-1 bg-trello-cardBg border border-sky-500 rounded px-2 py-0.5 text-sm text-slate-100 outline-none"
                   value={editingItemText}
                   onChange={(e) => setEditingItemText(e.target.value)}
                   onBlur={() => commitItemRename(item.id)}
@@ -171,7 +171,7 @@ export function ChecklistSection({ cardId, checklist }: { cardId: ID; checklist:
               autoFocus
               rows={2}
               placeholder="Add an item"
-              className="w-full bg-[#22272b] border border-sky-500 rounded px-3 py-2 text-sm text-slate-100 resize-none outline-none placeholder:text-slate-500"
+              className="w-full bg-trello-cardBg border border-sky-500 rounded px-3 py-2 text-sm text-slate-100 resize-none outline-none placeholder:text-slate-500"
               value={newItemText}
               onChange={(e) => { setNewItemText(e.target.value); autoResize(e.target); }}
               onKeyDown={(e) => {

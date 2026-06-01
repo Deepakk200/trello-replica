@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   KeyboardSensor,
   closestCorners,
   useSensor,
@@ -12,45 +13,66 @@ import {
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
+  type DragCancelEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
+import { useShallow } from 'zustand/shallow';
 import { boardStore, useBoardStore } from '@/store/use-board-store';
-import type { ID } from '@/types';
+import type { ID, LabelColor } from '@/types';
 
 type ActiveType = 'card' | 'list' | null;
 
-export function BoardDndContext({ children }: { children: React.ReactNode }) {
-  const [activeId, setActiveId] = useState<ID | null>(null);
-  const [activeType, setActiveType] = useState<ActiveType>(null);
+const LABEL_VAR: Record<LabelColor, string> = {
+  green:  'var(--label-green)',  yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
+  red:    'var(--label-red)',    purple: 'var(--label-purple)', blue:   'var(--label-blue)',
+  sky:    'var(--label-sky)',    lime:   'var(--label-lime)',   pink:   'var(--label-pink)',
+  black:  'var(--label-black)',
+};
 
-  // Reactive reads for the DragOverlay only
+export function BoardDndContext({ children }: { children: React.ReactNode }) {
+  const [activeId, setActiveId]     = useState<ID | null>(null);
+  const [activeType, setActiveType] = useState<ActiveType>(null);
+  const originalListIdRef           = useRef<ID | null>(null);
+
+  // Reactive reads for DragOverlay
   const overlayCard = useBoardStore((s) =>
     activeId && activeType === 'card' ? s.cards[activeId] : null,
+  );
+  const overlayCardLabels = useBoardStore(
+    useShallow((s) =>
+      activeId && activeType === 'card'
+        ? (s.cards[activeId]?.labelIds ?? []).map((id) => s.labels[id]).filter(Boolean)
+        : [],
+    ),
   );
   const overlayList = useBoardStore((s) =>
     activeId && activeType === 'list' ? s.lists[activeId] : null,
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  function onDragStart({ active }: DragStartEvent) {
-    setActiveId(active.id as ID);
+  const onDragStart = useCallback(function ({ active }: DragStartEvent) {
+    const id = active.id as ID;
+    setActiveId(id);
     setActiveType((active.data.current?.type ?? null) as ActiveType);
-  }
+    if (active.data.current?.type === 'card') {
+      originalListIdRef.current = boardStore.getState().cards[id]?.listId ?? null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function onDragOver({ active, over }: DragOverEvent) {
+  const onDragOver = useCallback(function ({ active, over }: DragOverEvent) {
     if (!over) return;
-    const activeData = active.data.current;
-    if (activeData?.type !== 'card') return;
+    if (active.data.current?.type !== 'card') return;
 
-    // Read freshest state — avoid stale closure
     const card = boardStore.getState().cards[active.id as ID];
     if (!card) return;
 
-    const overData = over.data.current;
+    const overData   = over.data.current;
     const overListId: ID | null =
       overData?.type === 'card' ? (overData.listId as ID) :
       overData?.type === 'list' ? (over.id as ID) :
@@ -63,16 +85,19 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
     if (destList) {
       boardStore.getState().moveCard(active.id as ID, overListId, destList.cardIds.length);
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function onDragEnd({ active, over }: DragEndEvent) {
+  const onDragEnd = useCallback(function ({ active, over }: DragEndEvent) {
     setActiveId(null);
     setActiveType(null);
+    originalListIdRef.current = null;
+
     if (!over || active.id === over.id) return;
 
-    const state = boardStore.getState();
+    const state      = boardStore.getState();
     const activeData = active.data.current;
-    const overData = over.data.current;
+    const overData   = over.data.current;
 
     // ── List reorder ──────────────────────────────────────────────────────────
     if (activeData?.type === 'list') {
@@ -88,29 +113,45 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ── Card reorder / cross-list final position ──────────────────────────────
-    if (activeData?.type === 'card') {
-      // Card's listId was already updated by onDragOver
+    // ── Card reorder within the same list ──────────────────────────────────────
+    if (activeData?.type === 'card' && overData?.type === 'card') {
       const card = state.cards[active.id as ID];
       if (!card) return;
+      const overCardListId = overData.listId as ID;
+      if (card.listId !== overCardListId) return;
 
-      if (overData?.type === 'card') {
-        // Only reorder when both cards are now in the same list
-        const overCardListId = overData.listId as ID;
-        if (card.listId !== overCardListId) return;
+      const list = state.lists[card.listId];
+      if (!list) return;
 
-        const list = state.lists[card.listId];
-        if (!list) return;
+      const oldIdx = list.cardIds.indexOf(active.id as ID);
+      const newIdx = list.cardIds.indexOf(over.id as ID);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        state.reorderCardsInList(card.listId, arrayMove(list.cardIds, oldIdx, newIdx));
+      }
+    }
+    // Card over empty list container → already placed by onDragOver
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-        const oldIdx = list.cardIds.indexOf(active.id as ID);
-        const newIdx = list.cardIds.indexOf(over.id as ID);
-        if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-          state.reorderCardsInList(card.listId, arrayMove(list.cardIds, oldIdx, newIdx));
+  const onDragCancel = useCallback(function ({ active }: DragCancelEvent) {
+    const origListId = originalListIdRef.current;
+    setActiveId(null);
+    setActiveType(null);
+    originalListIdRef.current = null;
+
+    // Revert optimistic cross-list move
+    if (active.data.current?.type === 'card' && origListId) {
+      const state = boardStore.getState();
+      const card  = state.cards[active.id as ID];
+      if (card && card.listId !== origListId) {
+        const origList = state.lists[origListId];
+        if (origList) {
+          state.moveCard(active.id as ID, origListId, origList.cardIds.length);
         }
       }
-      // If over a list container (empty list): card already placed by onDragOver
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <DndContext
@@ -119,6 +160,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
       accessibility={{
         announcements: {
           onDragStart({ active }) {
@@ -144,7 +186,7 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
             const s = boardStore.getState();
             if (active.data.current?.type === 'card') {
               const title = s.cards[active.id as ID]?.title ?? active.id;
-              const list = s.lists[s.cards[active.id as ID]?.listId ?? '']?.title;
+              const list  = s.lists[s.cards[active.id as ID]?.listId ?? '']?.title;
               return over
                 ? `Card ${title} dropped into ${list ?? over.id}.`
                 : `Card ${title} dropped.`;
@@ -154,23 +196,54 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
           onDragCancel({ active }) {
             const s = boardStore.getState();
             return active.data.current?.type === 'card'
-              ? `Drag cancelled. Card ${s.cards[active.id as ID]?.title ?? active.id} returned to original position.`
-              : `Drag cancelled. List ${s.lists[active.id as ID]?.title ?? active.id} returned to original position.`;
+              ? `Drag cancelled. Card ${s.cards[active.id as ID]?.title ?? active.id} returned.`
+              : `Drag cancelled. List ${s.lists[active.id as ID]?.title ?? active.id} returned.`;
           },
         },
       }}
     >
       {children}
-      <DragOverlay dropAnimation={{ duration: 150, easing: 'ease' }}>
-        {overlayCard && (
-          <div className="w-[272px]">
-            <div className="bg-[#22272b] rounded-lg px-3 py-2 text-sm text-slate-100 shadow-2xl ring-2 ring-sky-400 rotate-2 opacity-95 w-full cursor-grabbing">
-              {overlayCard.title}
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+        {overlayCard && (() => {
+          const cover   = overlayCard.cover;
+          const hasCover = cover?.type !== 'none';
+          const isFull   = hasCover && cover?.size === 'full';
+          const coverBg  = cover?.type === 'color' ? cover.color
+                         : cover?.type === 'image' ? cover.image
+                         : undefined;
+          return (
+            <div className="w-[272px] rotate-3 scale-105 cursor-grabbing">
+              <div className="bg-[var(--card-bg)] rounded-lg shadow-2xl overflow-hidden border border-[var(--accent)]/30">
+                {hasCover && (
+                  <div
+                    className={`w-full ${isFull ? 'h-24' : 'h-8'}`}
+                    style={coverBg ? { background: coverBg } : undefined}
+                  />
+                )}
+                {!isFull && (
+                  <>
+                    {overlayCardLabels.length > 0 && (
+                      <div className="px-3 pt-2 pb-0 flex flex-wrap gap-1">
+                        {overlayCardLabels.map((label) => (
+                          <span
+                            key={label.id}
+                            className="h-2 w-10 rounded-full"
+                            style={{ background: LABEL_VAR[label.color] }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="px-3 py-1.5 text-sm font-medium leading-snug text-[var(--text-primary)] break-words">
+                      {overlayCard.title}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {overlayList && (
-          <div className="w-[272px] shrink-0 rounded-xl bg-[#101204] opacity-60 min-h-[5rem] border-2 border-sky-400/40 cursor-grabbing" />
+          <div className="w-[272px] shrink-0 rounded-xl bg-trello-listBg opacity-50 min-h-[5rem] border-2 border-trello-accent/30 cursor-grabbing" />
         )}
       </DragOverlay>
     </DndContext>
