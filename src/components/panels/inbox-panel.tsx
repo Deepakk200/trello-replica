@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Bell } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 
@@ -13,7 +14,11 @@ function formatTime(iso: string) {
 }
 
 export function InboxPanel() {
-  const notifications = useBoardStore((s) => s.notifications.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  const notifications = useBoardStore((s) => s.notifications);
+  const sortedNotifications = useMemo(
+    () => [...notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [notifications],
+  );
 
   return (
     <div className="h-full overflow-y-auto p-4">
@@ -30,13 +35,13 @@ export function InboxPanel() {
           </div>
         </div>
 
-        {notifications.length === 0 ? (
+        {sortedNotifications.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-black/10 p-6 text-sm text-white/60">
             No notifications yet.
           </div>
         ) : (
           <div className="space-y-2">
-            {notifications.map((notification) => (
+            {sortedNotifications.map((notification) => (
               <div key={notification.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
