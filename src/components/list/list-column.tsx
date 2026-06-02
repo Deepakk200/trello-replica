@@ -44,6 +44,9 @@ export const ListColumn = memo(
         });
       }),
     );
+    const title = useBoardStore((s) => s.lists[listId]?.title ?? '');
+    const collapsed = useBoardStore((s) => s.lists[listId]?.collapsed ?? false);
+    const toggleListCollapse = useBoardStore((s) => s.toggleListCollapse);
     const [addingCard, setAddingCard] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
@@ -60,13 +63,39 @@ export const ListColumn = memo(
 
     const hiddenSet = new Set(hiddenCardIds);
 
+    // Collapsed lists render as a slim vertical bar but still participate in DnD
+    // reordering — the whole bar is the drag handle, and a click expands it.
+    if (collapsed) {
+      return (
+        <div
+          ref={(node) => {
+            setNodeRef(node);
+            rootRef.current = node;
+          }}
+          {...attributes}
+          {...listeners}
+          onClick={() => toggleListCollapse(listId)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Expand list ${title}`}
+          title={`Expand list "${title}"`}
+          className={`anim-list-enter w-10 shrink-0 max-h-[calc(100vh-140px)] bg-trello-listBg rounded-xl flex flex-col items-center pt-2 pb-3 cursor-pointer hover:bg-trello-listBg/80 snap-start [contain:layout_style] transition-all duration-200 ${isDragging ? 'opacity-20' : ''}`}
+        >
+          <span className="text-xs text-trello-textSubtle mb-2">{cardIds.length}</span>
+          <span className="[writing-mode:vertical-lr] rotate-180 text-sm font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis max-h-[200px]">
+            {title}
+          </span>
+        </div>
+      );
+    }
+
     return (
       <div
         ref={(node) => {
           setNodeRef(node);
           rootRef.current = node;
         }}
-        className={`anim-list-enter w-[calc(100vw-32px)] md:w-[272px] shrink-0 max-h-[calc(100vh-140px)] flex flex-col bg-trello-listBg rounded-xl snap-start [contain:layout_style] ${isDragging ? 'opacity-20' : ''}`}
+        className={`anim-list-enter w-[calc(100vw-32px)] md:w-[272px] shrink-0 max-h-[calc(100vh-140px)] flex flex-col bg-trello-listBg rounded-xl snap-start [contain:layout_style] transition-all duration-200 ${isDragging ? 'opacity-20' : ''}`}
       >
         {/* Drag handle — header only so cards/footer remain interactive */}
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">

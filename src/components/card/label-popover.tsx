@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID, LabelColor } from '@/types';
-
-const LABEL_COLORS: LabelColor[] = [
-  'green', 'yellow', 'orange', 'red', 'purple', 'blue', 'sky', 'lime', 'pink', 'black',
-];
+import { LABEL_COLORS } from '@/lib/colors';
 
 function genId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {

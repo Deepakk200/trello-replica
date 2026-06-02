@@ -48,7 +48,7 @@ function BoardRow({ board, isActive, isStarred, onNavigate, onStar }: {
 }
 
 export function Sidebar() {
-  const { boards, activeBoardId, starredBoardIds, recentBoardIds, sidebarCollapsed, activeWorkspaceId } = useBoardStore(
+  const { boards, activeBoardId, starredBoardIds, recentBoardIds, sidebarCollapsed, activeWorkspaceId, workspaces } = useBoardStore(
     useShallow((s) => ({
       boards: s.boards,
       activeBoardId: s.activeBoardId,
@@ -56,8 +56,10 @@ export function Sidebar() {
       recentBoardIds: s.recentBoardIds ?? [],
       sidebarCollapsed: s.sidebarCollapsed,
       activeWorkspaceId: s.activeWorkspaceId,
+      workspaces: s.workspaces,
     })),
   );
+  const ws = activeWorkspaceId ? workspaces[activeWorkspaceId] : null;
   const setActiveBoard   = useBoardStore((s) => s.setActiveBoard);
   const toggleStarBoard  = useBoardStore((s) => s.toggleStarBoard);
   const toggleSidebar    = useBoardStore((s) => s.toggleSidebar);
@@ -94,21 +96,57 @@ export function Sidebar() {
           'h-[calc(100vh-48px)] md:h-full bg-trello-bg border-r border-trello-border',
           'flex flex-col shrink-0 overflow-hidden',
           'transition-all duration-200 ease-in-out',
-          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-5' : 'translate-x-0 w-[280px] md:w-65',
+          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-12' : 'translate-x-0 w-[280px] md:w-65',
         ].join(' ')}
       >
-        {/* Collapse / expand toggle */}
-        <button
-          onClick={toggleSidebar}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={[
-            'hidden md:flex items-center justify-center shrink-0',
-            'text-trello-textSubtle hover:text-trello-text hover:bg-trello-cardHover transition-colors',
-            sidebarCollapsed ? 'h-14 w-full' : 'self-end w-7 h-7 rounded m-1.5',
-          ].join(' ')}
-        >
-          {sidebarCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-        </button>
+        {/* Collapse toggle — shown in the expanded state */}
+        {!sidebarCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            aria-label="Collapse sidebar"
+            className="hidden md:flex items-center justify-center shrink-0 self-end w-7 h-7 rounded m-1.5 text-trello-textSubtle hover:text-trello-text hover:bg-trello-cardHover transition-colors"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {/* Collapsed icon strip — desktop only (mobile collapses off-screen) */}
+        {sidebarCollapsed && (
+          <div className="hidden md:flex flex-col items-center gap-1 pt-2 px-1 w-full">
+            {ws && (
+              <div
+                className="h-8 w-8 rounded-md flex items-center justify-center text-xs font-bold text-white select-none mb-1"
+                style={{ background: ws.color }}
+                title={ws.name}
+              >
+                {ws.shortName}
+              </div>
+            )}
+            {([
+              { icon: <LayoutGrid className="h-4 w-4" />, label: 'Boards' },
+              { icon: <Users className="h-4 w-4" />, label: 'Members' },
+              { icon: <Settings className="h-4 w-4" />, label: 'Settings' },
+            ] as { icon: React.ReactNode; label: string }[]).map(({ icon, label }) => (
+              <button
+                key={label}
+                onClick={toggleSidebar}
+                title={label}
+                aria-label={label}
+                className="h-8 w-8 rounded-md flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-trello-cardHover transition-colors"
+              >
+                {icon}
+              </button>
+            ))}
+            <button
+              onClick={toggleSidebar}
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+              className="h-8 w-8 mt-1 rounded-md flex items-center justify-center text-trello-textSubtle hover:text-trello-text hover:bg-trello-cardHover transition-colors"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         <div className={`flex flex-col flex-1 overflow-y-auto min-h-0 ${sidebarCollapsed ? 'hidden' : ''}`}>
 

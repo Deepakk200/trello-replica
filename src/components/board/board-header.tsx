@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { MoreHorizontal, Star, Users } from 'lucide-react';
+import { MoreHorizontal, Plus, Star } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Board } from '@/types';
+import { MemberAvatar } from '@/components/ui/member-avatar';
 import { BoardMenu } from './board-menu';
 import { VisibilityBadge } from './visibility-badge';
 
@@ -61,9 +62,21 @@ export function BoardHeader({ board }: { board: Board }) {
 
         <div className="w-px h-4 bg-white/30" />
 
-        <button className="p-1 rounded hover:bg-white/10 transition-colors" aria-label="Members">
-          <Users className="w-4 h-4 text-white" />
-        </button>
+        {/* Member avatar stack + invite */}
+        <div className="flex items-center">
+          {board.memberIds.slice(0, 3).map((mid, i) => (
+            <div key={mid} className={i > 0 ? '-ml-1.5' : ''}>
+              <MemberAvatar memberId={mid} size="sm" className="ring-2 ring-black/20" />
+            </div>
+          ))}
+          <button
+            aria-label="Invite members"
+            title="Invite members"
+            className={`${board.memberIds.length ? '-ml-1.5' : ''} h-7 w-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors ring-2 ring-black/10`}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
 
         <button className="h-8 px-4 rounded bg-white/90 hover:bg-white text-slate-900 text-sm font-semibold shadow-sm transition-colors">
           Share

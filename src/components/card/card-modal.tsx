@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import { useShallow } from 'zustand/shallow';
-import type { ID, LabelColor } from '@/types';
+import type { ID } from '@/types';
+import { LABEL_VAR } from '@/lib/colors';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { DescriptionEditor } from './description-editor';
 import { ActivitySection } from './activity-section';
@@ -20,12 +21,6 @@ import { MembersPopover } from './members-popover';
 import { AttachmentsSection } from './attachments-section';
 import { LinkedCardsSection } from './linked-cards-section';
 import { MoveCardPopover } from './move-card-popover';
-
-const LABEL_VAR: Record<LabelColor, string> = {
-  green: 'var(--label-green)', yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
-  red: 'var(--label-red)', purple: 'var(--label-purple)', blue: 'var(--label-blue)',
-  sky: 'var(--label-sky)', lime: 'var(--label-lime)', pink: 'var(--label-pink)', black: 'var(--label-black)',
-};
 
 function fmtDate(iso: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso));

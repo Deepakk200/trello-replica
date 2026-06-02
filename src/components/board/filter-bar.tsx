@@ -5,12 +5,7 @@ import { Filter, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import type { DueFilter, ID, LabelColor } from '@/types';
-
-const LABEL_BG: Record<LabelColor, string> = {
-  green: 'bg-emerald-500', yellow: 'bg-yellow-400', orange: 'bg-orange-400',
-  red: 'bg-red-500', purple: 'bg-purple-500', blue: 'bg-blue-600',
-  sky: 'bg-cyan-400', lime: 'bg-lime-400', pink: 'bg-pink-400', black: 'bg-slate-700',
-};
+import { LABEL_BG } from '@/lib/colors';
 
 const DUE_OPTIONS: { value: DueFilter; label: string }[] = [
   { value: 'none',     label: 'No dates' },

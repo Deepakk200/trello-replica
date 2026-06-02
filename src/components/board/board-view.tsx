@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { BoardHeader } from './board-header';
@@ -56,6 +57,22 @@ export function BoardView() {
     return (id ? s.activeViewByBoard[id] : null) ?? 'board';
   }) as 'board' | 'calendar' | 'table' | 'dashboard';
 
+  const visibleListCount = useBoardStore((s) => {
+    const id = s.activeBoardId ?? Object.keys(s.boards)[0] ?? null;
+    const b = id ? s.boards[id] : null;
+    return b ? b.listIds.filter((lid) => !s.lists[lid]?.isArchived).length : 0;
+  });
+
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const [listIndex, setListIndex] = useState(0);
+
+  function handleListScroll() {
+    const el = listScrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setListIndex(Math.max(0, Math.min(idx, visibleListCount - 1)));
+  }
+
   if (!hydrated) return <BoardSkeleton />;
 
   if (!board) {
@@ -95,11 +112,27 @@ export function BoardView() {
                 </div>
               )}
               <div
+                ref={listScrollRef}
+                onScroll={handleListScroll}
                 className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-3 pb-28 max-md:snap-x max-md:snap-mandatory overscroll-x-contain"
                 style={{ scrollBehavior: 'smooth' }}
               >
                 <ListsRow board={board} />
               </div>
+
+              {/* Mobile list carousel indicator */}
+              {visibleListCount > 1 && (
+                <div className="md:hidden fixed bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/30 backdrop-blur-sm">
+                  {Array.from({ length: visibleListCount }, (_, i) => (
+                    <button
+                      key={i}
+                      aria-label={`Go to list ${i + 1}`}
+                      onClick={() => listScrollRef.current?.scrollTo({ left: i * (listScrollRef.current?.clientWidth ?? 0), behavior: 'smooth' })}
+                      className={`h-1.5 rounded-full transition-all duration-200 ${i === listIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
 

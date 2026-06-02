@@ -4,19 +4,7 @@ import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
-
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const s  = Math.floor(ms / 1000);
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d ago`;
-  return `${Math.floor(d / 30)}mo ago`;
-}
+import { timeAgo } from '@/lib/time';
 
 export function ActivitySection({ cardId }: { cardId: ID }) {
   const card         = useBoardStore((s) => s.cards[cardId]);
@@ -45,7 +33,6 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle">
             Activity
           </p>
-          <h1>DEPLOY TEST 999</h1>
           <button
             onClick={() => setShowDetails((v) => !v)}
             className="text-xs text-trello-textSubtle hover:text-trello-text hover:bg-trello-cardHover px-2 py-1 rounded transition-colors"

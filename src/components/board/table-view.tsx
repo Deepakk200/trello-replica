@@ -5,22 +5,11 @@ import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { CardModal } from '@/components/card/card-modal';
-import type { ID, LabelColor } from '@/types';
+import type { ID } from '@/types';
+import { LABEL_VAR, LABEL_CLASS } from '@/lib/colors';
 
 type SortCol = 'number' | 'title' | 'list' | 'due' | 'created';
 type SortDir = 'asc' | 'desc';
-
-const LABEL_VAR: Record<LabelColor, string> = {
-  green: 'var(--label-green)', yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
-  red: 'var(--label-red)', purple: 'var(--label-purple)', blue: 'var(--label-blue)',
-  sky: 'var(--label-sky)', lime: 'var(--label-lime)', pink: 'var(--label-pink)', black: 'var(--label-black)',
-};
-
-const LABEL_CLASS: Record<LabelColor, string> = {
-  green: 'bg-[var(--label-green)]', yellow: 'bg-[var(--label-yellow)]', orange: 'bg-[var(--label-orange)]',
-  red: 'bg-[var(--label-red)]', purple: 'bg-[var(--label-purple)]', blue: 'bg-[var(--label-blue)]',
-  sky: 'bg-[var(--label-sky)]', lime: 'bg-[var(--label-lime)]', pink: 'bg-[var(--label-pink)]', black: 'bg-[var(--label-black)]',
-};
 
 function relDate(iso: string) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);

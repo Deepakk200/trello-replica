@@ -35,9 +35,9 @@
 - `BoardState { boards, lists, cards, labels, members, workspaces, activeWorkspaceId, boardTemplates, cardTemplates, activeBoardId, starredBoardIds, recentBoardIds, sidebarCollapsed, activeViewByBoard, notifications, selectedCardIds }`
 
 ## Store Actions (src/store/use-board-store.ts)
-Boards: `createBoard` `renameBoard` `deleteBoard` `setActiveBoard` `toggleStarBoard` `pushRecentBoard` `updateBoardBackground` `updateBoardDescription` `updateBoardVisibility`
-Lists: `createList` `renameList` `deleteList` `reorderLists` `archiveList` `restoreList`
-Cards: `createCard` `updateCard` `deleteCard` `moveCard` `reorderCardsInList` `archiveCard` `restoreCard`
+Boards: `createBoard` `copyBoard` `renameBoard` `deleteBoard` `setActiveBoard` `toggleStarBoard` `pushRecentBoard` `updateBoardBackground` `updateBoardDescription` `updateBoardVisibility`
+Lists: `createList` `renameList` `deleteList` `reorderLists` `reorderListToPosition` `toggleListCollapse` `archiveList` `restoreList` `sortList` `copyList` `moveAllCards` `archiveAllCardsInList` `toggleWatchList`
+Cards: `createCard` `updateCard` `deleteCard` `moveCard` (accepts explicit toIndex) `reorderCardsInList` `archiveCard` `restoreCard`
 Labels: `upsertLabel` `toggleCardLabel`
 Members: `addMember` `addMemberToBoard` `toggleCardMember`
 Attachments: `addAttachment` `removeAttachment` `setCardCoverFromAttachment`
@@ -65,4 +65,10 @@ Tailwind v4 with `@theme inline` in `globals.css`. No `tailwind.config.*`. Dark 
 **Board background:** rendered via `style={{ background: board.background }}` (inline CSS — works for any gradient/color). No class map in board-view.tsx. Note: sidebar.tsx and board-switcher.tsx still use a BOARD_BG_CLASSES lookup map for the mini board swatch — needs fix in Phase 14.
 
 ## External Dependencies (production)
-`nanoid@5.1.11`, `zustand@5`, `immer@11`, `@dnd-kit/*`, `lucide-react`, `clsx`, `tailwind-merge`, `class-variance-authority`, `tw-animate-css`, `@base-ui/react` (unused)
+`nanoid@5.1.11`, `zustand@5`, `immer@11`, `@dnd-kit/*`, `lucide-react`, `clsx`, `tailwind-merge`, `class-variance-authority`, `tw-animate-css`
+- `@base-ui/react` REMOVED (was unused). `shadcn` moved to devDependencies. `node_modules` may still contain both until `npm install` is re-run.
+
+## Shared libs
+- `src/lib/colors.ts` — `LABEL_COLORS`, `LABEL_VAR`, `getLabelColor`, `LABEL_BG`, `LABEL_CLASS` (single source; all local label maps removed from components)
+- `src/lib/time.ts` — `timeAgo`, `formatDate(iso, opts?)` (consumed by activity-section, notifications-drawer, board-menu, card-badges, planner-panel)
+- WCAG: `--text-subtle` dark token is now `#9AABB8` (≥4.5:1 on dark surfaces)
