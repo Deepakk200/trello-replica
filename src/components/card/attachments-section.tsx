@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react';
+import { FileText, Globe, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
 
@@ -20,8 +20,10 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
   const setCardCoverFromAttachment = useBoardStore((s) => s.setCardCoverFromAttachment);
 
   const [adding, setAdding]     = useState(false);
+  const [tab, setTab]           = useState<'url' | 'file'>('url');
   const [url, setUrl]           = useState('');
   const [name, setName]         = useState('');
+  const [error, setError]       = useState('');
   const [openMenu, setOpenMenu] = useState<ID | null>(null);
 
   if (!card) return null;
@@ -44,6 +46,34 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
     setUrl(''); setName(''); setAdding(false);
   }
 
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('File exceeds the 5MB limit.'); return; }
+    setError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const isImage = file.type.startsWith('image/');
+      addAttachment(cardId, {
+        name: file.name,
+        url: dataUrl,
+        type: isImage ? 'image' : 'file',
+        thumbnail: isImage ? dataUrl : undefined,
+        addedBy: 'me',
+      });
+      setAdding(false);
+    };
+    reader.onerror = () => setError('Could not read that file.');
+    reader.readAsDataURL(file);
+  }
+
+  function extOf(fileName: string): string {
+    const m = /\.([a-z0-9]+)$/i.exec(fileName);
+    return m ? m[1].toUpperCase() : 'FILE';
+  }
+
   return (
     <div>
       {/* Header */}
@@ -61,27 +91,60 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
       {/* Add form */}
       {adding && (
         <div className="ml-8 mb-3 bg-trello-surfaceRaised border border-trello-borderSubtle rounded-lg p-3 flex flex-col gap-2">
-          <label className="text-xs text-trello-textSubtle">URL</label>
-          <input
-            autoFocus
-            placeholder="Paste a link…"
-            className="bg-trello-cardBg border border-trello-borderSubtle focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); if (!name) setName(hostnameOf(e.target.value)); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setAdding(false); setUrl(''); setName(''); } }}
-          />
-          <label className="text-xs text-trello-textSubtle">Display name</label>
-          <input
-            placeholder="Link name"
-            className="bg-trello-cardBg border border-trello-borderSubtle focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setAdding(false); setUrl(''); setName(''); } }}
-          />
-          <div className="flex gap-2">
-            <button onClick={submit} className="btn-primary text-xs px-3 py-1.5">Add</button>
-            <button onClick={() => { setAdding(false); setUrl(''); setName(''); }} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
+          {/* Tabs */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => { setTab('url'); setError(''); }}
+              className={`flex-1 py-1 text-xs rounded font-medium transition-colors ${tab === 'url' ? 'bg-trello-primary text-trello-textOnBold' : 'bg-trello-cardHover text-trello-textSubtle hover:text-trello-text'}`}
+            >
+              Link
+            </button>
+            <button
+              onClick={() => { setTab('file'); setError(''); }}
+              className={`flex-1 py-1 text-xs rounded font-medium transition-colors ${tab === 'file' ? 'bg-trello-primary text-trello-textOnBold' : 'bg-trello-cardHover text-trello-textSubtle hover:text-trello-text'}`}
+            >
+              Upload file
+            </button>
           </div>
+
+          {tab === 'url' ? (
+            <>
+              <label className="text-xs text-trello-textSubtle">URL</label>
+              <input
+                autoFocus
+                placeholder="Paste a link…"
+                className="bg-trello-cardBg border border-trello-borderSubtle focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); if (!name) setName(hostnameOf(e.target.value)); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setAdding(false); setUrl(''); setName(''); } }}
+              />
+              <label className="text-xs text-trello-textSubtle">Display name</label>
+              <input
+                placeholder="Link name"
+                className="bg-trello-cardBg border border-trello-borderSubtle focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setAdding(false); setUrl(''); setName(''); } }}
+              />
+              <div className="flex gap-2">
+                <button onClick={submit} className="btn-primary text-xs px-3 py-1.5">Add</button>
+                <button onClick={() => { setAdding(false); setUrl(''); setName(''); }} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="text-xs text-trello-textSubtle">Choose a file (max 5MB)</label>
+              <input
+                type="file"
+                accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+                onChange={handleFile}
+                className="text-xs text-trello-textSecondary file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-trello-primary file:text-trello-textOnBold file:text-xs file:font-medium hover:file:brightness-110 file:cursor-pointer"
+              />
+              <button onClick={() => { setAdding(false); setError(''); }} className="btn-ghost text-xs px-3 py-1.5 self-start">Cancel</button>
+            </>
+          )}
+
+          {error && <p className="text-xs text-trello-danger">{error}</p>}
         </div>
       )}
 
@@ -97,6 +160,11 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
                   alt={att.name}
                   className="h-16 w-28 rounded object-cover bg-trello-cardHover border border-trello-borderSubtle"
                 />
+              ) : att.type === 'file' ? (
+                <div className="h-16 w-28 rounded bg-trello-cardHover border border-trello-borderSubtle flex flex-col items-center justify-center gap-1">
+                  <FileText className="w-6 h-6 text-trello-textSubtle" />
+                  <span className="text-[10px] font-semibold text-trello-textSubtle">{extOf(att.name)}</span>
+                </div>
               ) : (
                 <div className="h-16 w-28 rounded bg-trello-cardHover border border-trello-borderSubtle flex items-center justify-center">
                   <Globe className="w-6 h-6 text-trello-textSubtle" />
@@ -109,7 +177,7 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
               <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-trello-text hover:underline line-clamp-1">
                 {att.name}
               </a>
-              <p className="text-xs text-trello-textSubtle mt-0.5 truncate">{hostnameOf(att.url)}</p>
+              <p className="text-xs text-trello-textSubtle mt-0.5 truncate">{att.url.startsWith('data:') ? extOf(att.name) : hostnameOf(att.url)}</p>
             </div>
 
             {/* Kebab menu */}

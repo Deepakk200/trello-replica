@@ -61,7 +61,7 @@ export interface Card {
     textColor?: 'light' | 'dark';
   };
 }
-export interface List { id: ID; boardId: ID; title: string; cardIds: ID[]; order: number; isArchived: boolean }
+export interface List { id: ID; boardId: ID; title: string; cardIds: ID[]; order: number; isArchived: boolean; collapsed?: boolean }
 export interface Board {
   id: ID; title: string; background: string; description: string;
   listIds: ID[]; createdAt: string; memberIds: ID[]; nextCardNumber: number;

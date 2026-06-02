@@ -3,14 +3,9 @@
 import { CalendarDays } from 'lucide-react';
 import { useMemo } from 'react';
 import { useBoardStore } from '@/store/use-board-store';
+import { formatDate } from '@/lib/time';
 
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(iso));
-}
+const PLANNER_DATE_OPTS: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
 
 export function PlannerPanel() {
   const boards = useBoardStore((s) => s.boards);
@@ -67,7 +62,7 @@ export function PlannerPanel() {
                       <p className="text-sm font-medium text-white">{card.title}</p>
                       <p className="mt-1 text-xs text-white/50">{boardTitle} {list ? `· ${list.title}` : ''}</p>
                     </div>
-                    <p className="text-xs font-medium text-sky-300">{formatDate(card.dueDate as string)}</p>
+                    <p className="text-xs font-medium text-sky-300">{formatDate(card.dueDate as string, PLANNER_DATE_OPTS)}</p>
                   </div>
                 </div>
               );

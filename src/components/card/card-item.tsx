@@ -7,17 +7,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
-import type { ID, LabelColor } from '@/types';
+import type { ID } from '@/types';
+import { LABEL_VAR } from '@/lib/colors';
 import { useLabelExpansion } from '@/lib/label-expansion';
 import { CardBadges } from './card-badges';
 import { QuickEditPopover } from './quick-edit-popover';
-
-const LABEL_VAR: Record<LabelColor, string> = {
-  green:  'var(--label-green)',  yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
-  red:    'var(--label-red)',    purple: 'var(--label-purple)', blue:   'var(--label-blue)',
-  sky:    'var(--label-sky)',    lime:   'var(--label-lime)',   pink:   'var(--label-pink)',
-  black:  'var(--label-black)',
-};
 
 export const CardItem = memo(
   function CardItem({ boardId, listId, cardId }: { boardId: ID; listId: ID; cardId: ID }) {
@@ -87,8 +81,21 @@ export const CardItem = memo(
             isSelected ? 'ring-2 ring-trello-accent ring-offset-2 ring-offset-trello-listBg' : '',
           ].join(' ')}
         >
-          {/* Cover band */}
-          {hasCover && (
+          {/* Cover band — real <img> for image covers, colour fill otherwise */}
+          {hasCover && cover.type === 'image' && cover.image ? (
+            <div className="relative w-full">
+              <img src={cover.image} alt="" className="w-full h-36 object-cover rounded-t-lg" />
+              {isFull && (
+                <p className={[
+                  'absolute bottom-2 left-3 right-10 text-sm font-medium leading-snug',
+                  '[text-shadow:0_1px_2px_rgba(0,0,0,0.5)]',
+                  cover.textColor === 'dark' ? 'text-slate-900' : 'text-white',
+                ].join(' ')}>
+                  {card.title}
+                </p>
+              )}
+            </div>
+          ) : hasCover && (
             <div
               className={`relative w-full ${isFull ? 'h-24' : 'h-8'}`}
               style={coverBg ? { background: coverBg } : undefined}
@@ -117,8 +124,8 @@ export const CardItem = memo(
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => { e.stopPropagation(); toggleLabels(); }}
                       aria-label={labelsExpanded ? `Collapse label: ${label.name}` : `Expand label: ${label.name}`}
-                      className={`transition-all duration-150 rounded-sm text-white text-[11px] font-medium leading-none ${
-                        labelsExpanded ? 'h-5 px-2 min-w-10' : 'h-2 w-10'
+                      className={`transition-all duration-150 text-white text-[11px] font-medium leading-none ${
+                        labelsExpanded ? 'h-5 px-2 min-w-10 rounded' : 'h-2 w-10 rounded-full'
                       }`}
                       style={{ background: LABEL_VAR[label.color] }}
                     >

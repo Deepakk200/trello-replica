@@ -2,6 +2,7 @@
 
 import { AlignLeft, CheckSquare, Clock, MessageSquare, Paperclip } from 'lucide-react';
 import type { Card } from '@/types';
+import { formatDate } from '@/lib/time';
 
 type DueStatus = 'overdue' | 'soon' | 'completed' | 'normal';
 
@@ -11,10 +12,6 @@ function getDueStatus(dueDate: string, completed: boolean): DueStatus {
   if (diff < 0) return 'overdue';
   if (diff <= 24 * 60 * 60 * 1000) return 'soon';
   return 'normal';
-}
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
 }
 
 const DUE_STYLES: Record<DueStatus, string> = {

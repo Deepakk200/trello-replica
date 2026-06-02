@@ -4,12 +4,7 @@ import { useMemo } from 'react';
 import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import type { ID, LabelColor } from '@/types';
-
-const LABEL_VAR: Record<LabelColor, string> = {
-  green: 'var(--label-green)', yellow: 'var(--label-yellow)', orange: 'var(--label-orange)',
-  red: 'var(--label-red)', purple: 'var(--label-purple)', blue: 'var(--label-blue)',
-  sky: 'var(--label-sky)', lime: 'var(--label-lime)', pink: 'var(--label-pink)', black: 'var(--label-black)',
-};
+import { LABEL_VAR } from '@/lib/colors';
 
 function Widget({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, Archive, Info, Palette, RotateCcw, X } from 'lucide-react';
+import { Activity, Archive, Check, Copy, Info, Palette, RotateCcw, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
+import { timeAgo } from '@/lib/time';
 
 const PRESET_BACKGROUNDS = [
   'linear-gradient(135deg,#0079bf,#5067c5)',
@@ -15,18 +16,6 @@ const PRESET_BACKGROUNDS = [
   '#4a235a',
 ];
 
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const s  = Math.floor(ms / 1000);
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return d < 30 ? `${d}d ago` : `${Math.floor(d / 30)}mo ago`;
-}
-
 export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => void }) {
   const { board, lists, cards } = useBoardStore(
     useShallow((s) => ({ board: s.boards[boardId], lists: s.lists, cards: s.cards })),
@@ -35,11 +24,30 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const updateBoardDescription = useBoardStore((s) => s.updateBoardDescription);
   const restoreCard            = useBoardStore((s) => s.restoreCard);
   const restoreList            = useBoardStore((s) => s.restoreList);
+  const copyBoard              = useBoardStore((s) => s.copyBoard);
 
   const [descDraft, setDescDraft]   = useState(board?.description ?? '');
   const [archiveTab, setArchiveTab] = useState<'cards' | 'lists'>('cards');
+  const [copyOpen, setCopyOpen]     = useState(false);
+  const [copyTitle, setCopyTitle]   = useState('');
+  const [copied, setCopied]         = useState(false);
 
   if (!board) return null;
+
+  function startCopy() {
+    setCopyTitle(`${board!.title} (Copy)`);
+    setCopied(false);
+    setCopyOpen(true);
+  }
+
+  function submitCopy() {
+    const t = copyTitle.trim();
+    if (!t) return;
+    copyBoard(boardId, t);
+    setCopyOpen(false);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2500);
+  }
 
   const boardListIds = new Set(
     Object.values(lists).filter((l) => l.boardId === boardId).map((l) => l.id),
@@ -88,6 +96,35 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
             >
               Save
             </button>
+          </MenuSection>
+
+          <Divider />
+
+          <MenuSection icon={<Copy className="w-4 h-4" />} label="Copy board">
+            {copied ? (
+              <p className="flex items-center gap-1.5 text-sm text-green-400">
+                <Check className="w-4 h-4" /> Board copied
+              </p>
+            ) : !copyOpen ? (
+              <button onClick={startCopy} className="btn-soft text-xs font-medium px-3 py-1.5">
+                Copy board
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <input
+                  autoFocus
+                  className="w-full bg-trello-cardBg border border-trello-border focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
+                  placeholder="New board title"
+                  value={copyTitle}
+                  onChange={(e) => setCopyTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitCopy(); if (e.key === 'Escape') setCopyOpen(false); }}
+                />
+                <div className="flex gap-2">
+                  <button onClick={submitCopy} disabled={!copyTitle.trim()} className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50">Create</button>
+                  <button onClick={() => setCopyOpen(false)} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
+                </div>
+              </div>
+            )}
           </MenuSection>
 
           <Divider />

@@ -4,19 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Archive, ArrowRight, Tag, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
-
-const LABEL_DOT: Record<string, string> = {
-  red: 'bg-red-500',
-  green: 'bg-emerald-500',
-  blue: 'bg-sky-500',
-  yellow: 'bg-amber-400',
-  purple: 'bg-violet-500',
-  orange: 'bg-orange-500',
-  sky: 'bg-sky-400',
-  lime: 'bg-lime-500',
-  pink: 'bg-pink-500',
-  black: 'bg-slate-800',
-};
+import { LABEL_BG } from '@/lib/colors';
+import type { LabelColor } from '@/types';
 
 export function BulkActionBar() {
   const { selectedCardIds, boards, lists, labels, activeBoardId } = useBoardStore(
@@ -95,7 +84,7 @@ export function BulkActionBar() {
                   onClick={() => { bulkAddLabelToCards(selectedCardIds, label.id); setOpen(null); }}
                   className="w-full px-3 py-2 rounded-lg text-left text-sm text-trello-text hover:bg-trello-cardHover transition-colors flex items-center gap-2"
                 >
-                  <span className={`h-2.5 w-2.5 rounded-full ${LABEL_DOT[label.color] ?? 'bg-slate-400'}`} />
+                  <span className={`h-2.5 w-2.5 rounded-full ${LABEL_BG[label.color as LabelColor] ?? 'bg-slate-400'}`} />
                   {label.name}
                 </button>
               ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CheckSquare, Trash2 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Checklist, ID } from '@/types';
@@ -21,10 +21,23 @@ export function ChecklistSection({ cardId, checklist }: { cardId: ID; checklist:
   const [editingItemText, setEditingItemText] = useState('');
   const addRef = useRef<HTMLTextAreaElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const [celebrate, setCelebrate] = useState(false);
+  const prevPctRef = useRef(0);
 
   const total = checklist.items.length;
   const done  = checklist.items.filter((i) => i.completed).length;
   const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  // Celebrate the moment the final item is checked.
+  useEffect(() => {
+    const prev = prevPctRef.current;
+    prevPctRef.current = pct;
+    if (prev < 100 && pct === 100 && total > 0) {
+      setCelebrate(true);
+      const t = setTimeout(() => setCelebrate(false), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [pct, total]);
 
   function commitTitle() {
     const t = titleDraft.trim();
@@ -93,16 +106,23 @@ export function ChecklistSection({ cardId, checklist }: { cardId: ID; checklist:
 
       {/* Progress bar */}
       <div className="flex items-center gap-2 pl-8">
-        <span className={`w-8 text-xs text-right shrink-0 tabular-nums ${pct === 100 ? 'text-emerald-400' : 'text-slate-300'}`}>
-          {pct}%
+        <span className={`text-xs text-right shrink-0 tabular-nums ${celebrate ? 'text-emerald-400 font-semibold' : `w-8 ${pct === 100 ? 'text-emerald-400' : 'text-slate-300'}`}`}>
+          {celebrate ? '✓ Complete!' : `${pct}%`}
         </span>
         <div className="h-2 bg-white/10 rounded-full flex-1 overflow-hidden">
           <div
             ref={progressRef}
-            className={`h-full rounded-full transition-all duration-300 ${pct === 100 ? 'bg-emerald-500' : 'bg-sky-500'}`}
+            className={`h-full rounded-full transition-all duration-300 ${pct === 100 ? 'bg-emerald-500' : 'bg-sky-500'} ${celebrate ? 'animate-pulse' : ''}`}
           />
         </div>
       </div>
+
+      {/* Celebration toast */}
+      {celebrate && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[80] bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-2xl pointer-events-none anim-menu-enter">
+          Checklist complete! 🎉
+        </div>
+      )}
 
       {/* Items */}
       {total > 0 && (

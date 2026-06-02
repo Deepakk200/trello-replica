@@ -17,6 +17,13 @@
 - **Phase 12 (2026-06-01):** Micro-polish — modal-enter animation, drag overlay scale-105, btn active:scale, narrow card scrollbar, icon active:scale-90
 - **Phase 13 (2026-06-01):** Final deployment — build clean, README written
 
+## Polish + completion pass (2026-06-02)
+- **Structural:** bottom view-navigation pill (keys 1–4); list collapse/expand to vertical bar (`toggleListCollapse`); sidebar collapses to desktop icon strip
+- **List/card features:** full Trello list-actions menu w/ submenus (`list-actions.tsx`); move card with position picker; board copy (`copyBoard`); file (base64) attachments; card image covers; click-to-expand labels; card-count in list headers
+- **Polish:** checklist completion celebration (green flash + "✓ Complete!" + toast); mobile list carousel dot indicator
+- **Cleanup:** extracted `src/lib/colors.ts` + `src/lib/time.ts` (zero duplicated utilities); WCAG `--text-subtle` → `#9AABB8`; removed `@base-ui/react`, moved `shadcn` to devDeps; removed `DEPLOY TEST 999` debug heading from activity-section
+- **Verify:** `npx tsc --noEmit` clean · `npx next build` clean
+
 ## Current
 **PRODUCTION READY** — build passes clean, all checklist items verified
 

@@ -269,10 +269,12 @@ type Transient = {
   filterState: FilterState;
   notificationsOpen: boolean;
   activeCardModalId: ID | null;
+  watchedListIds: ID[];
 };
 
 type Actions = {
   createBoard(title: string, background: string): ID;
+  copyBoard(boardId: ID, newTitle: string): ID;
   renameBoard(id: ID, title: string): void;
   deleteBoard(id: ID): void;
   setActiveBoard(id: ID): void;
@@ -281,6 +283,7 @@ type Actions = {
   renameList(id: ID, title: string): void;
   deleteList(id: ID): void;
   reorderLists(boardId: ID, orderedIds: ID[]): void;
+  toggleListCollapse(listId: ID): void;
   createCard(listId: ID, title: string): ID;
   updateCard(id: ID, patch: Partial<Pick<Card, 'title'|'description'|'dueDate'|'completed'|'labelIds'>>): void;
   deleteCard(id: ID): void;
@@ -325,6 +328,9 @@ type Actions = {
   sortList(listId: ID, by: 'created-asc' | 'created-desc' | 'name' | 'due'): void;
   copyList(listId: ID): ID;
   moveAllCards(fromListId: ID, toListId: ID): void;
+  archiveAllCardsInList(listId: ID): void;
+  toggleWatchList(listId: ID): void;
+  reorderListToPosition(listId: ID, position: number): void;
   updateBoardBackground(boardId: ID, background: string): void;
   updateBoardDescription(boardId: ID, description: string): void;
   pushNotification(n: Omit<Notification, 'id' | 'createdAt' | 'read'>): void;
@@ -367,7 +373,7 @@ export const boardStore = create<Store>()(
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
       activeBoardId: null, activePanel: 'board', starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [],
-      notificationsOpen: false, activeCardModalId: null,
+      notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
 
       // ── Boards ──────────────────────────────────────────────────
       createBoard(title, background) {
@@ -379,6 +385,53 @@ export const boardStore = create<Store>()(
           s.recentBoardIds = [id, ...(s.recentBoardIds ?? []).filter((r) => r !== id)].slice(0, 5);
         });
         return id;
+      },
+      copyBoard(boardId, newTitle) {
+        const orig = boardStore.getState().boards[boardId];
+        if (!orig) return '' as ID;
+        const newBoardId = newId(); const ts = now();
+        set((s) => {
+          const origBoard = s.boards[boardId]; if (!origBoard) return;
+          const newListIds: ID[] = [];
+          let nextNum = 1;
+          for (const listId of origBoard.listIds) {
+            const origList = s.lists[listId];
+            if (!origList || origList.isArchived) continue;
+            const newListId = newId();
+            const newCardIds: ID[] = [];
+            for (const cardId of origList.cardIds) {
+              const card = s.cards[cardId];
+              if (!card || card.isArchived) continue;
+              const newCardId = newId();
+              s.cards[newCardId] = {
+                ...card,
+                id: newCardId, listId: newListId, number: nextNum++,
+                attachments: card.attachments.map((a) => ({ ...a, id: newId() })),
+                checklists: card.checklists.map((cl) => ({
+                  ...cl, id: newId(),
+                  items: cl.items.map((it) => ({ ...it, id: newId() })),
+                })),
+                linkedCardIds: [],
+                activity: [makeActivity({ type: 'created', text: `Card "${card.title}" copied` })],
+                createdAt: ts, updatedAt: ts,
+              };
+              newCardIds.push(newCardId);
+            }
+            s.lists[newListId] = {
+              id: newListId, boardId: newBoardId, title: origList.title,
+              cardIds: newCardIds, order: newListIds.length, isArchived: false,
+            };
+            newListIds.push(newListId);
+          }
+          s.boards[newBoardId] = {
+            ...origBoard,
+            id: newBoardId, title: newTitle, listIds: newListIds,
+            createdAt: ts, nextCardNumber: nextNum,
+          };
+          s.activeBoardId = newBoardId;
+          s.recentBoardIds = [newBoardId, ...(s.recentBoardIds ?? []).filter((r) => r !== newBoardId)].slice(0, 5);
+        });
+        return newBoardId;
       },
       renameBoard(id, title) { set((s) => { if (s.boards[id]) s.boards[id].title = title; }); },
       deleteBoard(id) {
@@ -415,6 +468,7 @@ export const boardStore = create<Store>()(
         return id;
       },
       renameList(id, title) { set((s) => { if (s.lists[id]) s.lists[id].title = title; }); },
+      toggleListCollapse(listId) { set((s) => { if (s.lists[listId]) s.lists[listId].collapsed = !s.lists[listId].collapsed; }); },
       deleteList(id) {
         set((s) => {
           const list = s.lists[id]; if (!list) return;
@@ -947,6 +1001,32 @@ export const boardStore = create<Store>()(
             if (s.cards[cardId]) { s.cards[cardId].listId = toListId; to.cardIds.push(cardId); }
           }
           from.cardIds = from.cardIds.filter((id) => !active.includes(id));
+        });
+      },
+      archiveAllCardsInList(listId) {
+        set((s) => {
+          const list = s.lists[listId]; if (!list) return;
+          for (const cardId of list.cardIds) {
+            if (s.cards[cardId]) s.cards[cardId].isArchived = true;
+          }
+        });
+      },
+      toggleWatchList(listId) {
+        set((s) => {
+          const watched = new Set(s.watchedListIds ?? []);
+          if (watched.has(listId)) watched.delete(listId); else watched.add(listId);
+          s.watchedListIds = [...watched];
+        });
+      },
+      reorderListToPosition(listId, position) {
+        set((s) => {
+          const list = s.lists[listId]; if (!list) return;
+          const board = s.boards[list.boardId]; if (!board) return;
+          const ids = board.listIds.filter((id) => id !== listId);
+          const clamped = Math.max(0, Math.min(position, ids.length));
+          ids.splice(clamped, 0, listId);
+          board.listIds = ids;
+          ids.forEach((id, i) => { if (s.lists[id]) s.lists[id].order = i; });
         });
       },
       updateBoardBackground(boardId, background) {
