@@ -78,6 +78,7 @@ export interface BoardState {
   boardTemplates: Record<ID, BoardTemplate>;
   cardTemplates: Record<ID, CardTemplate>;
   activeBoardId: ID | null;
+  activePanel: 'board' | 'inbox' | 'planner';
   starredBoardIds: ID[];
   recentBoardIds: ID[];
   sidebarCollapsed: boolean;

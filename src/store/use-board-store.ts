@@ -249,6 +249,7 @@ function buildSeed(): BoardState {
     boards, lists, cards, labels, members,
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
+    activePanel: 'board',
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
     notifications: [
@@ -275,6 +276,7 @@ type Actions = {
   renameBoard(id: ID, title: string): void;
   deleteBoard(id: ID): void;
   setActiveBoard(id: ID): void;
+  setActivePanel(panel: 'board' | 'inbox' | 'planner'): void;
   createList(boardId: ID, title: string): ID;
   renameList(id: ID, title: string): void;
   deleteList(id: ID): void;
@@ -363,7 +365,7 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
-      activeBoardId: null, starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
+      activeBoardId: null, activePanel: 'board', starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [],
       notificationsOpen: false, activeCardModalId: null,
 
@@ -400,6 +402,7 @@ export const boardStore = create<Store>()(
           s.selectedCardIds = [];
         });
       },
+      setActivePanel(panel) { set((s) => { s.activePanel = panel; }); },
 
       // ── Lists ───────────────────────────────────────────────────
       createList(boardId, title) {
@@ -964,6 +967,7 @@ export const boardStore = create<Store>()(
           s.boardTemplates = seed.boardTemplates; s.cardTemplates = seed.cardTemplates;
           s.activeViewByBoard = {};
           s.activeBoardId = seed.activeBoardId;
+          s.activePanel = seed.activePanel;
           s.starredBoardIds = []; s.recentBoardIds = seed.recentBoardIds;
           s.sidebarCollapsed = false; s.notifications = seed.notifications; s.selectedCardIds = [];
           s.notificationsOpen = false; s.activeCardModalId = null; s._hasHydrated = true;
@@ -972,7 +976,7 @@ export const boardStore = create<Store>()(
     })),
     {
       name: 'trello-clone-v1',
-      version: 8,
+      version: 9,
       storage: safeStorage,
       partialize: (state) => ({
         boards: state.boards, lists: state.lists, cards: state.cards,
@@ -981,6 +985,7 @@ export const boardStore = create<Store>()(
         boardTemplates: state.boardTemplates, cardTemplates: state.cardTemplates,
         activeViewByBoard: state.activeViewByBoard,
         activeBoardId: state.activeBoardId,
+        activePanel: state.activePanel,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
@@ -996,6 +1001,7 @@ export const boardStore = create<Store>()(
             cardTemplates?: Record<string, unknown>;
             starredBoardIds?: unknown; recentBoardIds?: unknown;
             sidebarCollapsed?: unknown; activeBoardId?: string | null;
+            activePanel?: unknown;
             activeWorkspaceId?: string | null;
             linkedCardIds?: unknown;
           };
@@ -1027,6 +1033,7 @@ export const boardStore = create<Store>()(
           if (!p.cardTemplates)        p.cardTemplates        = {};
           if (p.activeWorkspaceId === undefined) p.activeWorkspaceId = null;
           if (!p.activeViewByBoard) p.activeViewByBoard = {};
+          if (p.activePanel !== 'board' && p.activePanel !== 'inbox' && p.activePanel !== 'planner') p.activePanel = 'board';
         }
         return persisted;
       },
@@ -1042,6 +1049,7 @@ export const boardStore = create<Store>()(
           state.workspaces = seed.workspaces; state.activeWorkspaceId = seed.activeWorkspaceId;
           state.boardTemplates = seed.boardTemplates; state.cardTemplates = seed.cardTemplates;
           state.activeBoardId = seed.activeBoardId;
+          state.activePanel = seed.activePanel;
           state.notifications = seed.notifications;
           state.selectedCardIds = [];
         } else {
@@ -1106,6 +1114,7 @@ export const boardStore = create<Store>()(
         }
 
         if (!state.activeViewByBoard) state.activeViewByBoard = {};
+        if (state.activePanel !== 'board' && state.activePanel !== 'inbox' && state.activePanel !== 'planner') state.activePanel = 'board';
         if (!state.notifications) state.notifications = buildSeed().notifications;
         if (!state.selectedCardIds) state.selectedCardIds = [];
         if (state.notificationsOpen === undefined) state.notificationsOpen = false;

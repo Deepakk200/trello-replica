@@ -3,9 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { BoardHeader } from './board-header';
-import { FilterBar } from './filter-bar';
 import { ListsRow } from './lists-row';
-import { ViewSwitcher } from './view-switcher';
 import { CalendarView } from './calendar-view';
 import { TableView } from './table-view';
 import { DashboardView } from './dashboard-view';
@@ -13,6 +11,7 @@ import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
 import { CommandPalette } from '@/components/ui/command-palette';
 import { NotificationsDrawer } from '@/components/ui/notifications-drawer';
 import { BulkActionBar } from './bulk-action-bar';
+import { ViewNavigation } from '@/components/ui/view-navigation';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(
   () => import('@/components/card/card-modal').then((m) => m.CardModal),
@@ -79,49 +78,50 @@ export function BoardView() {
         className="h-full w-full flex flex-col"
         style={{ background: board.background }}
       >
-        {/* Unified header — title row + view/filter row in one z-10 stacking context */}
-        <div className="px-3 pt-3 pb-2 shrink-0 relative z-10 flex flex-col gap-1.5">
+        {/* Unified header — single row (title, view tabs, filters, members, share, menu) */}
+        <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
           <BoardHeader board={board} />
-          <div className="flex items-center gap-2">
-            <ViewSwitcher boardId={board.id} />
-            <div className="flex-1" />
-            {activeView === 'board' && <FilterBar boardId={board.id} />}
-          </div>
         </div>
 
-        {/* Board view */}
-        {activeView === 'board' && (
-          <>
-            {board.listIds.length === 0 && (
-              <div className="px-4 shrink-0 pb-2 flex items-center gap-2 text-white/60 text-sm">
-                <span>Add your first list to get started</span>
-                <ArrowRight className="w-4 h-4" />
+        {/* View content — switches with activeView; keyed to re-trigger the enter animation.
+            Extra bottom padding clears the floating view-navigation pill. */}
+        <div key={activeView} className="flex-1 min-h-0 flex flex-col animate-view-enter">
+          {activeView === 'board' && (
+            <>
+              {board.listIds.length === 0 && (
+                <div className="px-4 shrink-0 pb-2 flex items-center gap-2 text-white/60 text-sm">
+                  <span>Add your first list to get started</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              )}
+              <div
+                className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-3 pb-28 max-md:snap-x max-md:snap-mandatory overscroll-x-contain"
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                <ListsRow board={board} />
               </div>
-            )}
-            <div
-              className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-3 pb-3 max-md:snap-x max-md:snap-mandatory overscroll-x-contain"
-              style={{ scrollBehavior: 'smooth' }}
-            >
-              <ListsRow board={board} />
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {activeView === 'calendar' && (
-          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
-            <CalendarView boardId={board.id} />
-          </div>
-        )}
-        {activeView === 'table' && (
-          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
-            <TableView boardId={board.id} />
-          </div>
-        )}
-        {activeView === 'dashboard' && (
-          <div className="flex-1 min-h-0 overflow-hidden px-3 pb-3">
-            <DashboardView boardId={board.id} />
-          </div>
-        )}
+          {activeView === 'calendar' && (
+            <div className="flex-1 min-h-0 overflow-auto px-3 pb-28">
+              <CalendarView boardId={board.id} />
+            </div>
+          )}
+          {activeView === 'table' && (
+            <div className="flex-1 min-h-0 overflow-auto pb-28">
+              <TableView boardId={board.id} />
+            </div>
+          )}
+          {activeView === 'dashboard' && (
+            <div className="flex-1 min-h-0 overflow-auto px-3 pb-28">
+              <DashboardView boardId={board.id} />
+            </div>
+          )}
+        </div>
+
+        {/* Persistent bottom-center view switcher */}
+        <ViewNavigation boardId={board.id} />
       </div>
 
       {activeCardModalId && (
