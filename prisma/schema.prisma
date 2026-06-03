@@ -1,0 +1,383 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id          String    @id @default(uuid())
+  title       String
+  background  String    @default("#0052CC")
+  starred     Boolean   @default(false)
+  closed      Boolean   @default(false)
+  position    Float     @default(0)
+  workspaceId String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  workspace Workspace?    @relation(fields: [workspaceId], references: [id])
+  createdBy User?         @relation(fields: [createdById], references: [id])
+  lists      List[]
+  labels     Label[]
+  members    BoardMember[]
+  activities Activity[]
+
+  @@index([deletedAt])
+  @@index([position])
+  @@index([workspaceId])
+}
+
+model List {
+  id        String    @id @default(uuid())
+  boardId   String
+  title     String
+  position  Float
+  archived  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([boardId])
+  @@index([boardId, position])
+}
+
+model Card {
+  id          String    @id @default(uuid())
+  listId      String
+  title       String
+  description String?
+  position    Float
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  coverColor  String?
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  labels      CardLabel[]
+  checklists  Checklist[]
+  comments    Comment[]
+  attachments Attachment[]
+  activities  Activity[]
+
+  @@index([listId])
+  @@index([listId, position])
+  @@index([dueDate])
+}
+
+model Label {
+  id      String      @id @default(uuid())
+  boardId String
+  name    String?
+  color   String
+
+  board Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards CardLabel[]
+
+  @@index([boardId])
+}
+
+model CardLabel {
+  cardId  String
+  labelId String
+
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+}
+
+model Checklist {
+  id       String          @id @default(uuid())
+  cardId   String
+  title    String
+  position Float
+  card     Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  items    ChecklistItem[]
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  checklistId String
+  title       String
+  checked     Boolean   @default(false)
+  position    Float
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  cardId    String
+  userId    String?
+  author    String    @default("Anonymous")
+  content   String
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([cardId])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  cardId    String
+  name      String
+  url       String
+  fileType  String
+  fileSize  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+}
+
+// ── Auth & multi-user (Phase 2) ──────────────────────────────────────────────
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  passwordHash  String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  sessions         Session[]
+  accounts         Account[]
+  workspaceMembers WorkspaceMember[]
+  boardMembers     BoardMember[]
+  comments         Comment[]
+  boards           Board[]
+  activities       Activity[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  apiKeys          ApiKey[]
+  // NOTE: User.cards / User.lists from the spec are omitted — Card/List have no
+  // createdBy relation in this phase, so declaring them would fail Prisma validation.
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  sessionToken String   @unique
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Workspace {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Stripe billing (Phase 8)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  planName             Plan      @default(FREE)
+  planStatus           String    @default("active")
+  planCurrentPeriodEnd DateTime?
+  planCanceledAt       DateTime?
+
+  members     WorkspaceMember[]
+  boards      Board[]
+  invitations Invitation[]
+  auditLogs   AuditLog[]
+  apiKeys     ApiKey[]
+  webhooks    Webhook[]
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model BoardMember {
+  id      String @id @default(uuid())
+  boardId String
+  userId  String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+}
+
+model Invitation {
+  id          String        @id @default(uuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  token       String        @unique @default(uuid())
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+// ─── Activity log + notifications (Phase 4) ──────────────────────────────────
+
+model Activity {
+  id        String   @id @default(uuid())
+  boardId   String?
+  cardId    String?
+  userId    String
+  type      String
+  data      Json
+  createdAt DateTime @default(now())
+
+  board Board? @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  card  Card?  @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  user  User   @relation(fields: [userId], references: [id])
+
+  @@index([boardId, createdAt])
+  @@index([cardId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  data      Json
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+// Full-text search indexes (Prisma can't express tsvector GIN indexes).
+// Applied as raw SQL after `db push` — see prisma/seed-fts or the Phase 4 script:
+//   CREATE INDEX IF NOT EXISTS card_fts ON "Card"
+//     USING GIN (to_tsvector('english', title || ' ' || coalesce(description, '')));
+//   CREATE INDEX IF NOT EXISTS board_fts ON "Board"
+//     USING GIN (to_tsvector('english', title));
+
+// ─── Enterprise: audit log, API keys, webhooks (Phase 5) ─────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String
+  userId      String
+  action      String
+  resource    String
+  resourceId  String
+  metadata    Json
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([workspaceId, createdAt])
+  @@index([userId])
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([workspaceId])
+  @@index([keyHash])
+}
+
+model Webhook {
+  id          String    @id @default(uuid())
+  workspaceId String
+  url         String
+  secret      String
+  events      String[]
+  active      Boolean   @default(true)
+  lastFiredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
