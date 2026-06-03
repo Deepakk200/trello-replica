@@ -1,10 +1,12 @@
 'use client';
 
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode, type ErrorInfo } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  label?: string;
 }
 
 interface State {
@@ -22,11 +24,12 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: { componentStack: string }) {
-    // Surface errors in development; swap for a reporting service in production
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[ErrorBoundary]', error, info.componentStack);
-    }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    Sentry.withScope((scope) => {
+      if (this.props.label) scope.setTag('boundary', this.props.label);
+      scope.setExtra('componentStack', info.componentStack);
+      Sentry.captureException(error);
+    });
   }
 
   render() {

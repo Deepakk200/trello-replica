@@ -1,22 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, HelpCircle, LayoutGrid, Menu, Moon, Plus, Search, Sun } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
+import { HelpCircle, LayoutGrid, Menu, Moon, Plus, Search, Settings, Sun } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
 import { boardStore } from '@/store/use-board-store';
 import { useThemeStore } from '@/store/use-theme-store';
 import { BoardSwitcher } from './board-switcher';
+import { NotificationBell } from './notification-bell';
+import { SearchPalette } from './search-palette';
 
 export function TopBar() {
   const theme       = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
-  const { unreadCount } = boardStore(
-    useShallow((s) => ({ unreadCount: s.notifications.filter((n) => !n.read).length })),
-  );
   const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? session?.user?.email ?? null;
+  const userImage = session?.user?.image ?? null;
+  const initials = userName
+    ? userName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
 
   function handleCreateBoard() {
     boardStore.getState().createBoard('New Board', 'linear-gradient(135deg,#0079bf,#5067c5)');
@@ -39,6 +45,7 @@ export function TopBar() {
 
   return (
     <header className="relative z-30 h-11 flex items-center px-3 gap-3 bg-trello-bg/90 backdrop-blur-md border-b border-white/[0.08] shrink-0">
+      <SearchPalette />
 
       {/* Left: burger + logo + board switcher */}
       <div className="flex items-center gap-2 shrink-0">
@@ -124,16 +131,7 @@ export function TopBar() {
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        <button
-          onClick={() => boardStore.getState().toggleNotificationsDrawer()}
-          className="relative p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90"
-          aria-label="Open notifications"
-        >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-trello-bg" />
-          )}
-        </button>
+        <NotificationBell />
 
         <button
           className="hidden md:flex p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90 text-trello-textSubtle hover:text-trello-text"
@@ -143,26 +141,52 @@ export function TopBar() {
           <HelpCircle className="w-4 h-4" />
         </button>
 
+        <a
+          href="/settings"
+          className="hidden md:flex p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90 text-trello-textSubtle hover:text-trello-text"
+          aria-label="Workspace settings"
+          title="Workspace settings"
+        >
+          <Settings className="w-4 h-4" />
+        </a>
+
         {/* Avatar + dropdown */}
         <div className="relative ml-1">
           <button
             onClick={() => { setAvatarOpen((v) => !v); setCreateOpen(false); }}
-            className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white select-none transition-transform active:scale-90"
+            className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white select-none transition-transform active:scale-90 overflow-hidden"
             aria-label="Account menu"
           >
-            U
+            {userImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={userImage} alt={userName ?? 'User'} className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
           </button>
           {avatarOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 top-full mt-1 w-48 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
-                <button className={dropdownRow}>Profile</button>
+              <div className="absolute right-0 top-full mt-1 w-56 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
+                {userName && (
+                  <div className="px-3 py-2 border-b border-trello-border">
+                    <p className="text-sm font-medium text-trello-text truncate">{session?.user?.name ?? 'Account'}</p>
+                    {session?.user?.email && (
+                      <p className="text-xs text-trello-textSubtle truncate">{session.user.email}</p>
+                    )}
+                  </div>
+                )}
                 <button onClick={toggleTheme} className={`${dropdownRow} justify-between`}>
                   <span>Theme</span>
                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
                 <div className="border-t border-trello-border my-1" />
-                <button className={`${dropdownRow} text-trello-danger`}>Log out</button>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/sign-in' })}
+                  className={`${dropdownRow} text-trello-danger`}
+                >
+                  Sign out
+                </button>
               </div>
             </>
           )}

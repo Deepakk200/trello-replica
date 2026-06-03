@@ -1,59 +1,93 @@
 # Trello Clone
 
-A production-quality Trello replica built with Next.js 16, React 19, and TypeScript.
+A production-grade Trello replica built with Next.js 16, Prisma, and Liveblocks.
+
+[Live Demo](https://trello-replica-one.vercel.app) · demo login: `demo@example.com` / `password123`
 
 ## Features
 
-- **Boards** — multiple boards with custom gradient/solid-color backgrounds; deep **copy board**
-- **Lists** — full CRUD, drag-and-drop reorder, **collapse to a vertical bar**, full Trello-style actions menu (copy, move-to-position, move all cards, sort, watch, archive), per-header active-card count
-- **Cards** — full CRUD, drag-and-drop with drop indicator, **move with explicit position picker**, copy, quick-edit (right-click), label strips that **click-to-expand board-wide**
-- **Card detail** — description, labels, due dates, checklists (with completion celebration), URL **+ file (base64) attachments**, members, **image covers**, activity feed
-- **Views** — Board, Calendar, Table, Dashboard, switched from a floating **bottom navigation pill** (keys `1`–`4`)
-- **Sidebar** — workspace switcher, starred/recent boards; collapses to an **icon strip** on desktop / overlay drawer on mobile
-- **Filter bar** — filter cards by search, label, or due-date window
-- **Bulk actions** — shift-click to select multiple cards, then move/label/archive
-- **Notifications drawer** — activity feed with unread badge
-- **Command palette** — `Cmd+K` / `Ctrl+K` fuzzy search across boards and cards
-- **Mobile** — full-width snap lists with a **carousel dot indicator**, bottom-sheet popovers, fullscreen card modal
-- **Keyboard shortcuts** — `?` opens the shortcuts overlay; full Tab/Enter/Esc keyboard flow
-- **Themes** — dark (default) and light mode toggle, WCAG AA contrast
-- **Persistence** — localStorage via Zustand persist; survives page refresh
+- **Boards, Lists, Cards** — drag-and-drop with fractional position ordering
+- **Real-time collaboration** — live cursors, presence avatars, instant updates (Liveblocks)
+- **Authentication** — email/password + Google OAuth (Auth.js v5)
+- **Workspaces** — OWNER / ADMIN / MEMBER / GUEST roles, email invites
+- **Checklists** — per-card with progress tracking
+- **File attachments + covers** — images/docs via UploadThing; color or image covers
+- **Board templates** — Kanban, Sprint, Bug Tracker, Project Roadmap
+- **Activity log + notifications** — per-card/board audit + @mention bell
+- **Cmd+K search** — full-text across boards/cards (Postgres tsvector)
+- **AI features** — board summary, task generation, standup, board chat (Claude)
+- **Enterprise** — CSV export, API keys, webhooks (HMAC), admin audit log
+- **Production hardening** — Sentry, security headers, rate limiting, XSS sanitisation
 
-## Stack
+## Tech Stack
 
-| Layer | Library |
+| Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (App Router, all `use client`) |
-| UI | React 19, Tailwind CSS v4, shadcn |
-| State | Zustand 5 + Immer 11 |
-| Drag-and-drop | @dnd-kit/core + /sortable |
-| Icons | lucide-react |
+| Frontend | Next.js 16.2, React 19.2, Tailwind CSS v4 |
+| State | Zustand 5 (UI only) + Server Actions |
+| Database | PostgreSQL (Neon) via Prisma 6 |
+| Auth | Auth.js v5 — Google + Credentials |
+| Realtime | Liveblocks |
+| Files | UploadThing |
+| Cache / Rate limit | Upstash Redis |
+| AI | Anthropic Claude API |
+| Email | Resend |
+| Monitoring | Sentry |
+| Deployment | Vercel |
 
-## Getting started
+## Architecture note (important for new engineers)
+
+This project was built incrementally. The **interactive, DB-backed product lives in
+`src/components/db-board/*`, served at `/board/[boardId]` and `/boards`**, plus `/settings`.
+The original `src/components/{board,card,list}/*` + `/` are a **legacy localStorage prototype**
+kept alongside; new work targets the `db-board` tree. All data mutations go through
+`src/features/**/actions.ts` (`"use server"`), each gated by `requireAuth()`.
+
+## Local Setup
 
 ```bash
+git clone https://github.com/Deepakk200/trello-replica
+cd trello-replica
 npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build
-npm run start      # serve production build
+cp .env.local.example .env.local   # fill in the variables below
+npm run db:push
+npm run db:seed
+npm run dev
 ```
 
-## Architecture
+Open http://localhost:3000 (legacy app) or http://localhost:3000/boards (DB app).
 
-- **Single route** — `src/app/page.tsx` → `AppShell` → `BoardView`
-- **Flat normalized state** — `Record<ID, Entity>` maps; no nested objects
-- **Narrow selectors** — `useBoardStore(s => s.cards[id])` + `useShallow` for arrays prevent over-rendering
-- **Performance** — `React.memo` on `CardItem`/`ListColumn`; `next/dynamic` lazy-loads `CardModal`; CSS `contain: layout style` on list columns
-- **Error boundaries** — wrap `BoardView` and `CardModal` independently
-- **Shared utilities** — label colour maps in `src/lib/colors.ts`, date helpers in `src/lib/time.ts` (single source of truth, no duplication)
+## Environment Variables
 
-## Keyboard shortcuts
+```
+DATABASE_URL=                          # Neon (neon.tech)
+AUTH_SECRET=                           # openssl rand -base64 32
+NEXTAUTH_URL=                          # http://localhost:3000 (prod: your domain)
+GOOGLE_CLIENT_ID= / GOOGLE_CLIENT_SECRET=
+LIVEBLOCKS_SECRET_KEY= / NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY=
+UPLOADTHING_TOKEN=                     # uploadthing.com
+UPSTASH_REDIS_REST_URL= / UPSTASH_REDIS_REST_TOKEN=   # console.upstash.com (cache + rate limit)
+ANTHROPIC_API_KEY=                     # console.anthropic.com
+RESEND_API_KEY=                        # resend.com (workspace invites)
+NEXT_PUBLIC_SENTRY_DSN= / SENTRY_ORG= / SENTRY_PROJECT= / SENTRY_AUTH_TOKEN=
+```
 
-| Key | Action |
-|---|---|
-| `?` | Shortcuts overlay |
-| `Cmd/Ctrl K` | Command palette |
-| `1` / `2` / `3` / `4` | Switch Board / Calendar / Table / Dashboard view |
-| `Esc` | Close modal / popover |
-| `Enter` / `Space` | Open card (when focused) |
-| `Shift + click` | Multi-select cards |
+Every integration **degrades gracefully** when its key is absent (cache/rate-limit no-op,
+AI/upload/realtime/Sentry inert) — the core board app still runs.
+
+## Scripts
+
+```bash
+npm run dev        # dev server
+npm run build      # production build (Sentry-wrapped)
+npm run db:push    # apply schema (no migration history)
+npm run db:seed    # demo data
+npm run db:studio  # Prisma Studio
+npx tsc --noEmit   # typecheck
+npx eslint .       # lint
+```
+
+## Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md). CI (`.github/workflows/ci.yml`) runs
+typecheck → lint → build → Sentry release on every push.

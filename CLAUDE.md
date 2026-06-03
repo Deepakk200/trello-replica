@@ -1,5 +1,182 @@
 # Trello Clone — Handoff
 
+## Phase 8 — Completed (2026-06-03): Stripe billing (scope: billing core, green build)
+
+Scoped to **billing core** — PostHog analytics and the public landing page were deferred (context + missing keys).
+
+**New files:** `src/lib/plans.ts` (PLANS limits/features, `getPlanLimit`/`isAtLimit`) · `src/lib/stripe.ts` (**lazy/guarded** `getStripe()` — no top-level construction, build-safe without a key; `apiVersion` omitted to avoid v22 type drift) · `src/lib/enforce-plan.ts` (`PlanLimitError`, `enforceBoardLimit`/`enforceMemberLimit`) · `src/features/billing/actions.ts` (`createCheckoutSession`, `createBillingPortalSession`, `getBillingInfo`) · `src/app/api/webhooks/stripe/route.ts` (raw-body signature verify, always-200, syncs sub state) · `src/components/settings/billing-tab.tsx`.
+**Schema (db push, additive — NOT migrate dev):** `Workspace` += `stripeCustomerId?`/`stripeSubscriptionId?` (unique), `planName Plan @default(FREE)`, `planStatus`, `planCurrentPeriodEnd?`, `planCanceledAt?`; enum `Plan { FREE PRO BUSINESS }`.
+**Modified:** `boards/actions.createBoard` + `workspaces/actions.inviteMember` enforce plan limits (throw `PlanLimitError`). `proxy.ts` — `/api/webhooks` is public (Stripe can't auth). Settings page/tabs — new **Billing tab**. `next.config.ts` CSP (Report-Only) — added Stripe + PostHog domains + `frame-src` for Stripe.
+**Stack:** `stripe@22`, `@stripe/stripe-js`.
+
+**Deferred (flagged):** PostHog (init/analytics/tracking across components), public landing page (`/` → landing, `/dashboard`, `/pricing`), sign-up `?plan=` intent + auto-checkout, upgrade-prompt in board-switcher (legacy component). The Stripe webhook uses `as unknown as { current_period_end }` casts (Stripe v22 moved these types).
+**Cannot do here:** create Stripe products/keys, Stripe CLI, test checkout, webhook delivery, Vercel deploy, live smoke. `eslint --max-warnings 0` still not met (pre-existing legacy warnings from Phase 7).
+**Verified:** `tsc` clean · `next build` clean (13 routes incl. `/api/webhooks/stripe`). Billing degrades gracefully without Stripe keys (plans default FREE; checkout throws a friendly error only when clicked).
+
+## Phase 7 — Completed (2026-06-03): Production hardening (observability · security · perf · a11y)
+
+Final phase, scoped to **green-build hardening** (no live deploy / Sentry wizard / missing-secret steps).
+
+**New files:** `src/lib/{logger,sanitize,rate-limit,api-auth}.ts` · `src/instrumentation.ts` + `instrumentation-client.ts` + `sentry.{server,edge}.config.ts` · `src/app/error.tsx` + `src/app/board/[boardId]/error.tsx` + `loading.tsx` (board + boards) · `src/components/ui/loading-skeleton.tsx` · `src/app/api/boards/route.ts` (session + API-key dual auth) · `DEPLOYMENT.md`.
+**Modified:** `next.config.ts` — `withSentryConfig` wrap, `images.remotePatterns` (utfs.io/ufs.sh/googleusercontent), HSTS, **CSP as `Report-Only`** (won't break Liveblocks/UploadThing/Sentry). `src/lib/db.ts` — connection pooling (`connection_limit=3&pool_timeout=10`, auto-appended). `error-boundary.tsx` — Sentry `captureException`. `notification-bell.tsx` — ARIA live region. Sanitisation wired into `cards` (title/description/comment), `boards`/`lists` (titles). Rate-limit wired into `auth.signUpUser` + `search` (guarded: rethrows on exceeded, swallows infra errors). `webhooks` delivery failures → `logger.error`. README replaced. CI: typecheck → lint → build → Sentry release.
+
+**Stack:** `@sentry/nextjs@10`, `isomorphic-dompurify@3`, `@upstash/ratelimit@2`.
+
+**Deliberately deferred (flagged):** React Compiler (needs `babel-plugin-react-compiler`); enforced CSP w/ nonces (currently Report-Only); `next/image` migration (raw `<img>` kept with eslint-disable — domains are configured); `eslint --max-warnings 0` (CI runs `eslint .` non-failing on warnings); AI-action rate-limit wiring (lib ready, same one-line pattern as search). **Wrong-target fixes skipped:** Step-7 keyboard-sensor fix targeted the legacy `board/dnd-context.tsx` (the real `db-board` uses Pointer-only sensors — no conflict). Skip-link already existed.
+
+**Cannot be done here:** Vercel deploy to the live URL, live smoke tests, the interactive Sentry wizard, and verifying AI/upload/realtime (all need secrets/access I don't have).
+
+**Verified:** `tsc` clean · `next build` clean (Sentry-wrapped, 12 routes incl. `/api/boards`).
+
+> **7-phase handoff:**
+
+## Phase 6 — Completed (2026-06-03): Attachments · checklists · covers · templates · list ops · move · archive
+
+**New files:** `src/app/api/uploadthing/{core,route}.ts` (UploadThing v7 file router: card attachments + user avatar) · `src/lib/uploadthing.ts` (typed `UploadButton`) · `src/features/checklists/actions.ts` · `src/features/boards/template-defs.ts` (plain consts) + `templates.ts` (`createBoardFromTemplate`) · `src/features/lists/bulk-actions.ts` (`copyList`/`moveAllCards`/`sortCardsInList`) · `src/components/db-board/{archived-cards-drawer,templates-row}.tsx`.
+**`cards/actions.ts` additions:** `deleteAttachment` (UTApi best-effort + DB delete), `setCardCover` (image URLs stored as `img:<url>`), `getBoardsForMoveDialog`, `moveCardToList`, `getArchivedCards`, `restoreCard`.
+**Modified UI (the real `db-board` tree):** `db-card-modal.tsx` — cover bar + cover-colour picker + attachments (UploadButton/list/delete/"set as cover") + full checklists (progress/items/add/delete) + move-card popover. `db-board-view.tsx` — card **cover rendering** (`img:` + colour), per-list **Copy/Sort/Move-all/Delete menu**, **Archived** drawer in header. `boards/page.tsx` — **Templates** row. `settings-tabs.tsx` — avatar **UploadButton** in General.
+**Schema:** unchanged (Attachment/Checklist/ChecklistItem already existed) → **no migration**.
+**Stack:** `uploadthing@7.7`, `@uploadthing/react@7.3`.
+**Deviations:** all UI wired into the real `db-board`/`/boards`/`/settings` (the prompt's Steps 9–14 targeted the legacy `board/`,`card/`,`list/`,`board-switcher` components, which aren't in the DB app). `BOARD_TEMPLATES` moved out of the `"use server"` file (only async exports allowed) into `template-defs.ts`. Skipped `@uploadthing/react/styles.css` import (doesn't exist in v7; styled via `appearance`). `update where:{id,workspaceId}` patterns avoided.
+**Verified:** `tsc` clean · `next build` clean · authenticated `GET /boards` → 200 with Templates row. **NOT verified (needs `UPLOADTHING_TOKEN` + live clicks):** actual file uploads, set-image-cover round-trip, and the checklist/move/list-menu/archive UI interactions (all wired + typechecked).
+
+> **5-phase handoff:** Phase 1 = Postgres/Prisma + Server Actions + routing (incremental; legacy localStorage app still at `/`, DB app at `/board/[id]`). Phase 2 = Auth.js v5 + workspaces/RBAC + invites. Phase 3 = DB-backed interactive board (`src/components/db-board/*`) + Liveblocks realtime. Phase 4 = activity log + notifications + tsvector search + Redis cache. Phase 5 = enterprise (audit/API keys/webhooks/export/settings) + Anthropic AI. **The real interactive product lives in `src/components/db-board/*` + `/board/[id]` + `/settings`, NOT the legacy `src/components/board|card/*` (those are the original localStorage `/` app).**
+
+## Phase 5 — Completed (2026-06-03): Enterprise + AI
+
+**New files:**
+- `src/lib/ai.ts` — **lazy/guarded** Anthropic client (`getAI()` throws only when called without a key → build-safe) + `generateText` + `AI_MODEL`.
+- `src/features/enterprise/audit.ts` — `recordAuditLog` (best-effort, captures IP/UA via async `headers()`), `getAuditLogs` (admin-only).
+- `src/features/enterprise/api-keys.ts` — `createApiKey` (returns raw `tk_…` once; stores SHA-256 hash only), `listApiKeys`, `revokeApiKey`.
+- `src/features/enterprise/webhooks.ts` — `createWebhook`/`list`/`delete` + `deliverWebhook` (HMAC-signed, 5s timeout, fire-and-forget).
+- `src/features/enterprise/export.ts` — `exportBoardAsCSV`.
+- `src/features/ai/actions.ts` — 5 AI actions (card description, board summary, task generation, standup, board chat); **each wrapped in try/catch returning `{ok:false}`**.
+- `src/app/(workspace)/settings/page.tsx` + `settings-tabs.tsx` — 5-tab settings (General/Members/API Keys/Webhooks/Audit), built with existing tokens (no shadcn primitives exist).
+- `src/components/db-board/ai-panel.tsx` — slide-in AI panel (Summary/Tasks/Standup/Chat).
+
+**Schema (via `db push`, additive — not `migrate dev`, same data-safety reason as Phase 4):** `AuditLog`, `ApiKey`, `Webhook` + `Workspace`/`User` relations.
+
+**Modified:**
+- `workspaces/actions.ts` — `requireAdmin` + `removeMember` (audited).
+- `cards/actions.ts` — `deliverWebhook` on card.created/deleted + comment.added. `boards/actions.ts` — `recordAuditLog` on board.deleted.
+- `db-board/db-board-view.tsx` — header gets **Export CSV** button + **AI panel** (`firstListId = lists[0]?.id`).
+- `db-board/db-card-modal.tsx` — **"Write with AI"** on the description.
+- `top-bar.tsx` — **Settings** icon links to `/settings`.
+- `.env.local(.example)` — `ANTHROPIC_API_KEY`.
+
+**Stack:** `@anthropic-ai/sdk@0.100`, `uuid@14`.
+
+**Deviations (necessary):** UI wired into the **real `db-board` components** (the prompt's Steps 8–10 targeted the legacy `board-header`/`description-editor`, which render outside the DB app and would be broken). Settings built with tokens (no shadcn Tabs/Table/Dialog exist). `db push` instead of `migrate dev` (data-safety). `update where:{id,workspaceId}` → `updateMany` (non-unique scope).
+
+**Verified:** `tsc` clean · `next build` clean · enterprise tables live · authenticated `GET /settings` → 200 with all 5 tabs · CSV export action + audit/webhook wiring typecheck. **NOT verified (needs keys/live UI):** all AI features (no `ANTHROPIC_API_KEY` → actions return a graceful error), live webhook delivery, and the settings CRUD round-trips through the browser.
+
+## Phase 4 — Completed (2026-06-03): Activity log · Notifications · Search · Redis cache
+
+**New files:**
+- `src/lib/redis.ts` — Upstash client (lazy/guarded: **null when unconfigured**, so the whole cache layer is a no-op and reads fall through to Postgres) + `cacheGet/cacheSet/cacheDel` + `CacheKeys`.
+- `src/features/activity/actions.ts` — `recordActivity` (best-effort, never throws), `getCardActivity`, `getBoardActivity`.
+- `src/features/notifications/actions.ts` — `createMentionNotification`, `getUnreadNotificationCount` (30s Redis cache), `getNotifications`, `markNotificationRead`/`markAllNotificationsRead`.
+- `src/features/search/actions.ts` — `search()`: Postgres `tsquery` prefix search over Board.title + Card.title/description, workspace-scoped, `ts_rank` ordered.
+- `src/components/ui/notification-bell.tsx` — bell + unread badge (polls 30s) + dropdown (mark read / mark all / navigate).
+- `src/components/ui/search-palette.tsx` — Cmd/Ctrl+K palette, 250ms debounce, board+card results.
+
+**Schema (via `db push`, additive — NOT `migrate dev`, see note):** `Activity` + `Notification` models; `Board.activities`, `Card.activities`, `User.activities`/`User.notifications` relations. Raw GIN FTS indexes `card_fts` / `board_fts` applied via `$executeRawUnsafe`.
+
+**Modified:**
+- `cards/actions.ts` — `recordActivity` + `cacheDel(board)` on create/update(per-field)/delete/move/comment/label; **@mention parsing** in `createComment` (regex `@name` → `User.findFirst` insensitive → `createMentionNotification`), wrapped in try/catch.
+- `lists/actions.ts` — activity + cache bust on create/delete/reorder.
+- `boards/actions.ts` — `getBoard`/`getBoards` now cache via `fetchBoard`/`fetchBoards`; cache bust on board + label mutations.
+- `top-bar.tsx` — bell → `<NotificationBell/>`; mounts `<SearchPalette/>` (Cmd+K).
+- `db-board/db-card-modal.tsx` — **activity feed** (merged chronological comments + activities via `getCardActivity`, human-readable system messages).
+- `.env.local(.example)` — `UPSTASH_REDIS_REST_URL/TOKEN`.
+
+**Stack:** `@upstash/redis`, `@upstash/ratelimit`.
+
+**Deviations (necessary):** used **`db push`** not `prisma migrate dev` — the DB has no migration baseline (Phase 2 used push), so `migrate dev` would detect drift and risk **resetting real data**; push is additive. Activity feed wired into the **DB** card modal (`db-board/db-card-modal.tsx`), not the legacy `card/card-modal.tsx`/`activity-section.tsx` (those are the unused localStorage components). `createComment` mention code adapted to the real `{user, data.content}` shape (no `data.author`). NotificationBell/SearchPalette live in `top-bar` (the legacy `/` chrome); the DB board pages have a separate header — they don't show them yet.
+
+**Verified:** `tsc` clean · `next build` clean · FTS search returns correct board/card matches · Activity/Notification tables live. **NOT verified (needs Upstash keys / live UI):** Redis cache-hit speedup (cache is a no-op until `UPSTASH_*` set), and the activity/mention/bell flows that require authenticated UI interaction.
+
+## Phase 3 — Completed (2026-06-03): DB-backed interactive board + Liveblocks real-time
+
+**Prerequisite built first** (Phase 1/2 never wired the board UI to the DB): a new **self-contained interactive board** at `/board/[boardId]`, kept separate from the 45 store-coupled legacy components so the localStorage `/` app is untouched and the build stays green.
+
+**New files:**
+- `src/components/db-board/db-board-view.tsx` — client board: optimistic state (`useState(board)`), dnd-kit drag (cards across/within lists → `moveCard`), add/delete card + list (`createCard`/`deleteCard`/`createList`/`deleteList`), opens the card modal; hosts presence/cursor/broadcast hooks.
+- `src/components/db-board/db-card-modal.tsx` — fetches `getCardDetails`, edit description (`updateCard`), comments (`createComment`) with **live `COMMENT_ADDED` listener**.
+- `src/components/db-board/board-room.tsx` — `RoomProvider` wrapper (room id = board id).
+- `src/components/db-board/presence-avatars.tsx`, `live-cursors.tsx`.
+- `src/lib/liveblocks.config.ts` — `createClient({ authEndpoint })` + `createRoomContext` (Presence/Storage/UserMeta/RoomEvent); exports hooks.
+- `src/app/api/liveblocks-auth/route.ts` — auth endpoint; verifies the room (board) is in the user's workspace; mints a scoped session (lazy Liveblocks client → build-safe; returns 501 if no key).
+
+**Modified:**
+- `src/app/board/[boardId]/page.tsx` — now renders `<BoardRoom><DbBoardView board={board}/></BoardRoom>` (was read-only).
+- `src/features/cards/actions.ts`, `lists/actions.ts` — lazy, try/catch Liveblocks **node broadcast** on create/delete card, comment, create/delete list (`CARD_CREATED`/`CARD_DELETED`/`COMMENT_ADDED`/`LIST_CREATED`/`LIST_DELETED`). `moveCard` is broadcast from the client.
+- `.env.local(.example)` — `LIVEBLOCKS_SECRET_KEY`, `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY`.
+
+**Stack:** `@liveblocks/{client,react,node}@3.19.4`.
+
+**Deviations from the Phase-3 prompt (necessary):** the prompt's Steps 5/6/8/10/11 edit the legacy `board-view`/`board-header`/`card-item`/`card-modal`/`lists-row` — but those are localStorage components rendered **outside any RoomProvider** (would crash) and lack the referenced props/functions. Real-time was instead built into the new `db-board` tree (all inside the room). Also dropped the conflicting `publicApiKey` (use `authEndpoint` only); list **drag-reorder** is not yet implemented (add/delete list works; card drag works).
+
+**Verified:** `tsc` clean · `next build` clean · authenticated `GET /board/[id]` → 200 rendering seeded DB lists + interactive UI. **NOT verified (needs Liveblocks keys + 2 browsers):** presence avatars, live cursors, cross-tab card moves, live comments — these stay dormant (auth endpoint 501) until `LIVEBLOCKS_SECRET_KEY` is set; the board remains fully usable without it.
+
+## Phase 2 — Completed (2026-06-02): Auth.js v5 + multi-user workspaces (CODE COMPLETE, build green)
+
+Email/password + Google OAuth, per-user workspaces, board scoping, email invites, and auth-gated server actions. **Code written + `tsc`/`build` green; NOT yet run end-to-end** — `prisma migrate dev`, `prisma db seed`, and runtime auth need a real `DATABASE_URL` + the auth secrets (see deferred items).
+
+**Stack added:** `next-auth@5.0.0-beta.31`, `@auth/prisma-adapter`, `bcryptjs`, `resend`.
+
+**New files:**
+- `src/lib/auth.ts` — Auth.js v5 (`handlers`/`auth`/`signIn`/`signOut`), Prisma adapter, JWT sessions, Google + Credentials; jwt/session callbacks attach `user.id` + `workspaceId`.
+- `src/types/next-auth.d.ts` — Session + JWT augmentation (`id`, `workspaceId`).
+- `src/app/api/auth/[...nextauth]/route.ts` — exports `GET`/`POST`.
+- `src/proxy.ts` — Next 16 route guard (renamed middleware; **Node runtime**). Redirects unauthenticated → `/sign-in?callbackUrl=…`. Public: `/sign-in`, `/sign-up`, `/api/auth`.
+- `src/features/auth/actions.ts` — `signUpUser` (hash + create user + personal workspace).
+- `src/features/workspaces/actions.ts` — `getMyWorkspace`, `updateWorkspace`, `inviteMember` (Resend email; lazily constructed), `acceptInvitation`.
+- `src/app/(auth)/sign-in/{page,sign-in-form}.tsx` — server page (awaits `searchParams`) + client form (Google + credentials).
+- `src/app/(auth)/sign-up/page.tsx` — client form → `signUpUser` → `/sign-in?message=account-created`.
+- `src/app/invite/[token]/page.tsx` — awaits `params`, gates to auth, calls `acceptInvitation`.
+- `src/components/ui/session-provider.tsx` — client `SessionProvider` re-export.
+
+**Modified:**
+- `prisma/schema.prisma` — added `User`, `Session`, `Account`, `VerificationToken`, `Workspace`, `WorkspaceMember`, `BoardMember`, `Invitation`, enum `WorkspaceRole`. `Board` += `workspaceId?`/`createdById?` + relations + `members` + index. `Comment` `author` → `userId?` + `author @default("Anonymous")` + `user?` relation. **Deviation:** `User.cards`/`User.lists` from the spec were omitted (Card/List have no createdBy relation → would fail Prisma validation).
+- `src/features/{boards,lists,cards}/actions.ts` — every action calls `requireAuth()` first; all mutations verify workspace ownership via the board chain; `getBoards` filters by `workspaceId` (`[]` if none); `createBoard` sets `workspaceId`+`createdById`; `createComment` takes `{cardId,content}` and derives `author`/`userId` from the session.
+- `src/components/ui/top-bar.tsx` — avatar shows session user (image/initials), dropdown shows name/email, "Sign out" → `signOut()`.
+- `src/app/layout.tsx` — wrapped in `SessionProvider`.
+- `prisma/seed.ts` — creates demo user `demo@example.com` / `password123` + workspace (OWNER); boards scoped to it.
+- `.env.local.example` — `AUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID/SECRET`, `RESEND_API_KEY`.
+
+**Deviations from the prompt (for correctness):** `findFirst` instead of `findUnique` where `deletedAt` is combined (not a unique field); `auth.ts` not split for edge (proxy is Node runtime, so unnecessary); auth UI uses `SessionProvider`+client `signOut` rather than the stale Step-10 "TopBarUser server wrapper"; `board-switcher.tsx` left unchanged (it never had an `initialBoards` prop — Phase 1 was incremental); Resend client constructed lazily (build-safe).
+
+**Deferred (need secrets/DB):** `prisma migrate dev --name add-auth-and-workspaces` (no migration created — only `prisma generate` run), `prisma db seed`, real Google OAuth, and end-to-end auth verification. The localStorage `/` app is now auth-gated by proxy but still uses localStorage (not workspace-scoped) — wiring it to the DB is a later batch.
+
+## Phase 1 — Completed (2026-06-02): PostgreSQL + Prisma + Server Actions (INCREMENTAL)
+
+Persistence backend stood up **alongside** the existing localStorage/Zustand app (incremental migration — the legacy app at `/` is untouched and still works). Component rewiring to the DB is deferred to later batches.
+
+**ORM note:** Uses **Prisma 6.19.3** (pinned). `npm install prisma` pulls v7.8.0, whose schema format dropped `datasource.url` (requires `prisma.config.ts` + a driver adapter); v6 is pinned so the classic `schema.prisma` + `new PrismaClient()` setup in this phase works. Do not bump to v7 without migrating to the adapter API.
+
+**New files:**
+- `prisma/schema.prisma` — Board, List, Card, Label, CardLabel, Checklist, ChecklistItem, Comment, Attachment (UUID PKs, soft-delete via `deletedAt`, `Float` positions). **Labels are board-scoped here** (vs. the global label pool in the localStorage store — reconcile when wiring the modal).
+- `prisma/seed.ts` — demo data (run via `npm run db:seed`).
+- `src/lib/db.ts` — Prisma client singleton.
+- `src/lib/position.ts` — fractional indexing (`initialPosition`/`positionBetween`/`recomputePositions`); drag moves ONE row.
+- `src/features/boards/actions.ts` — `getBoards`, `getBoard`, `createBoard`, `updateBoard`, `deleteBoard`, `reorderBoards`, `upsertLabel`, `deleteLabel` (all `"use server"`).
+- `src/features/lists/actions.ts` — `createList`, `updateList`, `deleteList`, `reorderLists`.
+- `src/features/cards/actions.ts` — `createCard`, `updateCard`, `deleteCard`, `moveCard`, `reorderCardsInList`, `toggleCardLabel`, `createComment`, `deleteComment`, `getCardDetails`.
+- `src/app/boards/page.tsx` — DB-backed board grid (Server Component, `force-dynamic`).
+- `src/app/board/[boardId]/page.tsx` — DB-backed board view, **read-only for now** (awaits `params` per Next 16). Mutations come in a later batch.
+- `.github/workflows/ci.yml` — install → prisma generate → tsc → build.
+- `.env.local.example` — `DATABASE_URL` template.
+
+**Modified:**
+- `next.config.ts` — added top-level `turbopack: {}` and `experimental.serverActions.bodySizeLimit` (kept existing security headers).
+- `package.json` — new scripts `db:generate` / `db:push` / `db:studio` / `db:seed` (use `dotenv-cli -e .env.local`) and `prisma.seed`; added `@prisma/client`, `prisma`, `zod`, `dotenv`, `dotenv-cli`, `tsx`.
+
+**Not done (intentionally, per incremental plan):** Zustand store NOT replaced (still the full UI+data store; 45/48 components depend on it); the 12-component DB rewiring in the prompt's Step 9; replacing `/` with a server grid. These are follow-up batches.
+
+**New npm scripts:** `db:generate`, `db:push`, `db:seed`, `db:studio`.
+**Env needed:** `DATABASE_URL` (Neon Postgres) in `.env.local`.
+
 ## Stack
 Next.js 16.2.6 · React 19.2.4 · TypeScript 5.9.3 · Tailwind CSS 4.3.0 · Zustand 5.0.14 · Immer 11.1.8 · @dnd-kit/{core 6.3.1, sortable 10.0.0, utilities 3.2.2} · shadcn 4.8.3 · lucide-react 1.17.0
 

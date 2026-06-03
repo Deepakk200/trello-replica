@@ -24,8 +24,24 @@
 - **Cleanup:** extracted `src/lib/colors.ts` + `src/lib/time.ts` (zero duplicated utilities); WCAG `--text-subtle` → `#9AABB8`; removed `@base-ui/react`, moved `shadcn` to devDeps; removed `DEPLOY TEST 999` debug heading from activity-section
 - **Verify:** `npx tsc --noEmit` clean · `npx next build` clean
 
+## Phase 1 — Postgres/Prisma backend (2026-06-02, INCREMENTAL)
+- Chose incremental: DB layer added ALONGSIDE the localStorage app (legacy `/` untouched; build green).
+- ORM: **Prisma 6.19.3 pinned** (v7 dropped `datasource.url`; needs adapter — avoided). Switched from the Drizzle scaffold (removed `src/db/`, `drizzle.config.ts`, drizzle deps).
+- Added: `prisma/schema.prisma` + `seed.ts`; `src/lib/db.ts`; `src/lib/position.ts` (fractional); `src/features/{boards,lists,cards}/actions.ts` (Server Actions, `"use server"`); routes `/boards` + `/board/[boardId]` (read-only); `.github/workflows/ci.yml`; `.env.local.example`; `next.config.ts` (turbopack top-level + serverActions); package.json db scripts via dotenv-cli.
+- Verified: `npx tsc --noEmit` PASS · `npx next build` PASS (with dummy DATABASE_URL; routes are force-dynamic).
+- NOT done (deferred batches): store rewrite, Step-9 component rewiring, `/` → server grid, `db push`/`seed` + smoke tests (need real Neon `DATABASE_URL`).
+- Note: had to kill the user's running `npm run dev` to unwedge an EBUSY lock during the Prisma reinstall — user must restart it.
+
+## Phase 2 — Auth.js v5 + workspaces (2026-06-02, CODE COMPLETE)
+- next-auth@5 beta + Prisma adapter + bcrypt + resend. JWT sessions; `auth.ts`, `proxy.ts` (Node runtime), `[...nextauth]` route.
+- Schema += User/Session/Account/VerificationToken/Workspace/WorkspaceMember/BoardMember/Invitation + WorkspaceRole; Board += workspaceId/createdById; Comment author→userId+author.
+- All board/list/card actions gated with `requireAuth()` + workspace-ownership checks. Auth/workspace/invite server actions + sign-in/sign-up/invite pages. Top-bar shows session user + sign out.
+- Verified: `tsc` PASS · `next build` PASS (dummy DATABASE_URL+AUTH_SECRET; proxy built as middleware).
+- DEFERRED (need real secrets/DB): `prisma migrate dev --name add-auth-and-workspaces`, `db seed`, Google OAuth, runtime verification.
+- KNOWN GAP: Google-first sign-ins create a User but NO workspace → `workspaceId` null → empty boards. Needs a create-workspace-on-first-OAuth hook. Legacy `/` app is auth-gated but still localStorage (board-switcher createBoard hits the store, not the server action).
+
 ## Current
-**PRODUCTION READY** — build passes clean, all checklist items verified
+**Phase 2 code-complete (build green)** — pending DB migrate/seed + auth secrets to run live
 
 ## Blocked
 None
