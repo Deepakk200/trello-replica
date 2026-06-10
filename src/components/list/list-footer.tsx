@@ -14,8 +14,11 @@ export function ListFooter({ listId, open, onOpen, onClose }: Props) {
   const wrapperRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 0);
-    else setTitle('');
+    const timer = setTimeout(() => {
+      if (open) textareaRef.current?.focus();
+      else setTitle('');
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open]);
 
   // Close when clicking outside the footer area

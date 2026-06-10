@@ -34,7 +34,10 @@ export function DbBoardView({ board }: { board: BoardData }) {
   const router = useRouter();
 
   // Server-refreshed prop wins (re-fetched after mutations / broadcasts).
-  useEffect(() => setB(board), [board]);
+  useEffect(() => {
+    const timer = setTimeout(() => setB(board), 0);
+    return () => clearTimeout(timer);
+  }, [board]);
 
   const labelColor = new Map(b.labels.map((l) => [l.id, l.color]));
 
