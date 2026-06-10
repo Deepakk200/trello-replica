@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HelpCircle, LayoutGrid, Menu, Moon, Plus, Search, Settings, Sun } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { boardStore } from '@/store/use-board-store';
@@ -8,6 +8,7 @@ import { useThemeStore } from '@/store/use-theme-store';
 import { BoardSwitcher } from './board-switcher';
 import { NotificationBell } from './notification-bell';
 import { SearchPalette } from './search-palette';
+import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
 
 export function TopBar() {
   const theme       = useThemeStore((s) => s.theme);
@@ -16,6 +17,18 @@ export function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // Global "?" toggles the keyboard shortcut overlay (ignored while typing).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === '?') setShortcutsOpen((v) => !v);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const { data: session } = useSession();
   const userName = session?.user?.name ?? session?.user?.email ?? null;
@@ -134,12 +147,14 @@ export function TopBar() {
         <NotificationBell />
 
         <button
+          onClick={() => setShortcutsOpen(true)}
           className="hidden md:flex p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90 text-trello-textSubtle hover:text-trello-text"
-          aria-label="Help"
-          title="Help"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
         >
           <HelpCircle className="w-4 h-4" />
         </button>
+        <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
         <a
           href="/settings"

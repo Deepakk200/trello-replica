@@ -2,15 +2,10 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Resend } from "resend";
 import { z } from "zod";
 import { recordAuditLog } from "@/features/enterprise/audit";
-
-// Constructed lazily — Resend's constructor throws when the key is missing, which
-// would otherwise break `next build` when this module is imported by the invite page.
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
-}
+import { sendEmail } from "@/lib/email";
+import { InvitationEmail } from "@/../emails/invitation";
 
 async function requireAuth() {
   const session = await auth();
@@ -63,7 +58,7 @@ const InviteSchema = z.object({
 });
 
 export async function inviteMember(raw: unknown) {
-  await requireAuth();
+  const user = await requireAuth();
   const data = InviteSchema.parse(raw);
   const workspace = await getMyWorkspace();
   if (!workspace) throw new Error("No workspace");
@@ -80,17 +75,18 @@ export async function inviteMember(raw: unknown) {
     },
   });
 
-  const inviteUrl = `${process.env.NEXTAUTH_URL ?? ""}/invite/${invitation.token}`;
-
-  await getResend().emails.send({
-    from: "Trello Clone <onboarding@resend.dev>",
+  await sendEmail({
     to: data.email,
     subject: `You've been invited to ${workspace.name}`,
-    html: `
-      <p>You have been invited to join <strong>${workspace.name}</strong>.</p>
-      <p><a href="${inviteUrl}">Accept invitation</a></p>
-      <p>This link expires in 7 days.</p>
-    `,
+    react: InvitationEmail({
+      inviterName: user.name ?? "A teammate",
+      workspaceName: workspace.name,
+      role: data.role,
+      inviteUrl: `${process.env.NEXTAUTH_URL ?? ""}/invite/${invitation.token}`,
+      expiresAt: expiresAt.toLocaleDateString("en-US", {
+        month: "long", day: "numeric", year: "numeric",
+      }),
+    }),
   });
 
   return { ok: true as const, token: invitation.token };

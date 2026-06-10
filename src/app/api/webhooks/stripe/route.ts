@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { getStripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { sendEmail } from "@/lib/email";
+import { PaymentReceiptEmail } from "@/../emails/payment-receipt";
 import type Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
@@ -94,12 +96,35 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       const subId = (invoice as unknown as { subscription?: string }).subscription;
       if (!subId) break;
       const subscription = await getStripe().subscriptions.retrieve(subId);
-      const ws = await db.workspace.findFirst({ where: { stripeSubscriptionId: subId }, select: { id: true } });
+      const ws = await db.workspace.findFirst({ where: { stripeSubscriptionId: subId }, select: { id: true, planName: true } });
       if (ws) {
         await db.workspace.update({
           where: { id: ws.id },
           data: { planStatus: "active", planCurrentPeriodEnd: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000) },
         });
+
+        // Email the workspace owner a payment receipt (best-effort).
+        const owner = await db.workspaceMember.findFirst({
+          where: { workspaceId: ws.id, role: "OWNER" },
+          include: { user: { select: { email: true, name: true } } },
+        });
+        if (owner?.user.email) {
+          const baseUrl = process.env.NEXTAUTH_URL ?? "https://trello-replica-one.vercel.app";
+          await sendEmail({
+            to: owner.user.email,
+            subject: "Payment confirmed — Trello Clone",
+            react: PaymentReceiptEmail({
+              userName: owner.user.name ?? "there",
+              planName: ws.planName,
+              amount: `$${ws.planName === "PRO" ? "9.00" : "19.00"}`,
+              periodEnd: new Date(
+                (subscription as unknown as { current_period_end: number }).current_period_end * 1000
+              ).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+              invoiceUrl: invoice.hosted_invoice_url ?? baseUrl,
+              portalUrl: `${baseUrl}/settings?tab=billing`,
+            }),
+          });
+        }
       }
       break;
     }

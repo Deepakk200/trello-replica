@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import { WelcomeEmail } from "@/../emails/welcome";
 
 const SignUpSchema = z.object({
   name: z.string().min(2).max(100),
@@ -44,6 +46,17 @@ export async function signUpUser(raw: unknown) {
       slug,
       members: { create: { userId: user.id, role: "OWNER" } },
     },
+  });
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  await sendEmail({
+    to: data.email,
+    subject: `Welcome to Trello Clone, ${data.name}!`,
+    react: WelcomeEmail({
+      userName: data.name,
+      workspaceName: workspace.name,
+      dashboardUrl: `${baseUrl}/boards`,
+    }),
   });
 
   return { ok: true as const, userId: user.id, workspaceId: workspace.id };

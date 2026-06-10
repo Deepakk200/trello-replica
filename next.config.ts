@@ -1,5 +1,26 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import withSerwistInit from "@serwist/next";
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+
+// Cache-busting revision for the precached offline page — derived from the
+// current git commit, falling back to a random UUID when git is unavailable.
+const revision =
+  spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout?.trim() ||
+  randomUUID();
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  // Precache the offline page so it's available without network.
+  additionalPrecacheEntries: [{ url: "/~offline", revision }],
+  // Serwist requires Webpack; disable everywhere except production builds
+  // (dev uses Turbopack, which Serwist does not support).
+  disable: process.env.NODE_ENV !== "production",
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
+});
 
 // Content-Security-Policy is shipped as Report-Only for now so it cannot break
 // Liveblocks (WSS), UploadThing, Sentry, or Next inline scripts. Tighten to an
@@ -46,9 +67,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-});
+// Wrap order: Serwist outermost, Sentry inner.
+export default withSerwist(
+  withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+  })
+);
