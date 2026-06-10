@@ -112,7 +112,7 @@ export const ListColumn = memo(
               <p className="text-xs text-trello-textSubtle italic px-3 py-2">Drop cards here</p>
             )}
             {cardIds.map((cardId) => (
-              <div key={cardId} role="listitem" className={hiddenSet.has(cardId) ? 'hidden' : ''}>
+              <div key={cardId} role="listitem" className={hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}>
                 <CardItem boardId={boardId} listId={listId} cardId={cardId} />
               </div>
             ))}

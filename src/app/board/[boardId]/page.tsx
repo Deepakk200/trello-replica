@@ -16,7 +16,13 @@ interface Props {
 export async function generateMetadata({ params }: Props) {
   const { boardId } = await params;
   const board = await getBoard(boardId);
-  return { title: board ? `${board.title} — Trello Clone` : "Board not found" };
+  if (!board) return { title: "Board not found" };
+  const cardCount = board.lists.reduce((sum, l) => sum + l.cards.length, 0);
+  return {
+    title: board.title,
+    description: `${board.lists.length} lists · ${cardCount} cards`,
+    openGraph: { title: board.title, type: "website" },
+  };
 }
 
 export default async function BoardPage({ params }: Props) {

@@ -2,8 +2,24 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { AlignLeft } from 'lucide-react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
+
+// Dark-themed renderers for Markdown in card descriptions (Tailwind v4 — no
+// typography plugin, so styles are applied per element).
+const MD_COMPONENTS: Components = {
+  h1: ({ node, ...props }) => <h2 className="text-white font-semibold text-base mb-1" {...props} />,
+  h2: ({ node, ...props }) => <h3 className="text-white font-semibold text-sm mb-1" {...props} />,
+  h3: ({ node, ...props }) => <h4 className="text-white font-semibold text-sm mb-1" {...props} />,
+  p:  ({ node, ...props }) => <p className="text-white/80 mb-2 leading-relaxed text-sm" {...props} />,
+  ul: ({ node, ...props }) => <ul className="text-white/80 pl-4 list-disc mb-2 text-sm" {...props} />,
+  ol: ({ node, ...props }) => <ol className="text-white/80 pl-4 list-decimal mb-2 text-sm" {...props} />,
+  code: ({ node, ...props }) => <code className="bg-white/10 px-1 rounded font-mono text-xs" {...props} />,
+  pre: ({ node, ...props }) => <pre className="bg-white/10 p-3 rounded font-mono text-xs overflow-x-auto mb-2" {...props} />,
+  a:  ({ node, ...props }) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+  blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-white/30 pl-3 text-white/60 italic text-sm mb-2" {...props} />,
+};
 
 export function DescriptionEditor({ cardId }: { cardId: ID }) {
   const card        = useBoardStore((s) => s.cards[cardId]);
@@ -21,10 +37,8 @@ export function DescriptionEditor({ cardId }: { cardId: ID }) {
   } | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  if (!card) return null;
-
   const mentionResults = useMemo(() => {
-    if (!mentionState) return [];
+    if (!card || !mentionState) return [];
     const query = mentionState.query.toLowerCase();
     return Object.values(cards)
       .filter((c) => c.id !== cardId && !card.linkedCardIds?.includes(c.id))
@@ -40,12 +54,15 @@ export function DescriptionEditor({ cardId }: { cardId: ID }) {
         const board = list ? boards[list.boardId] : null;
         return { card: c, boardName: board?.title ?? 'Board' };
       });
-  }, [boards, card.linkedCardIds, cardId, cards, lists, mentionState]);
+  }, [boards, card?.linkedCardIds, cardId, cards, lists, mentionState]);
 
   const activeMention =
     mentionState && mentionResults.length > 0
       ? mentionResults[Math.min(mentionState.index, mentionResults.length - 1)]
       : null;
+
+  // Early return AFTER all hooks (preserves a stable hook order).
+  if (!card) return null;
 
   function startEdit() {
     setDraft(card!.description);
@@ -166,6 +183,9 @@ export function DescriptionEditor({ cardId }: { cardId: ID }) {
                 </div>
               )}
             </div>
+            <p className="text-xs text-white/30">
+              **bold** _italic_ `code` - list ## heading [link](url)
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={save}
@@ -182,14 +202,19 @@ export function DescriptionEditor({ cardId }: { cardId: ID }) {
             </div>
           </div>
         ) : (
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={startEdit}
-            className="w-full text-left text-sm bg-trello-cardBg hover:bg-trello-cardHover text-trello-text rounded-lg px-3 py-2 min-h-14 transition-colors"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(); } }}
+            className="w-full text-left text-sm bg-trello-cardBg hover:bg-trello-cardHover text-trello-text rounded-lg px-3 py-2 min-h-14 transition-colors cursor-pointer"
           >
-            {card.description || (
+            {card.description ? (
+              <ReactMarkdown components={MD_COMPONENTS}>{card.description}</ReactMarkdown>
+            ) : (
               <span className="text-trello-textSubtle">Add a more detailed description…</span>
             )}
-          </button>
+          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,15 @@ export type DueFilter = ''|'none'|'overdue'|'next24h'|'nextweek'|'complete';
 export type BoardVisibility = 'private' | 'workspace' | 'public';
 export interface FilterState { search: string; labelIds: ID[]; dueFilter: DueFilter }
 
+export type PanelKey = 'inbox' | 'planner' | 'board';
+export interface PanelLayout {
+  inboxWidth: number;       // px when expanded
+  plannerWidth: number;     // px when expanded
+  inboxCollapsed: boolean;
+  plannerCollapsed: boolean;
+  boardCollapsed: boolean;
+}
+
 export interface Member {
   id: ID; name: string; initials: string;
   color: string;
@@ -79,6 +88,12 @@ export interface BoardState {
   cardTemplates: Record<ID, CardTemplate>;
   activeBoardId: ID | null;
   activePanel: 'board' | 'inbox' | 'planner';
+  /** Inbox slide-in overlay (left). Transient — not persisted. */
+  inboxOpen: boolean;
+  /** Switch-boards slide-in overlay (right). Transient — not persisted. */
+  switchBoardsOpen: boolean;
+  /** Resizable workspace panels (Inbox | Planner | Board). Persisted. */
+  panelLayout: PanelLayout;
   starredBoardIds: ID[];
   recentBoardIds: ID[];
   sidebarCollapsed: boolean;

@@ -5,7 +5,20 @@ import { NextResponse } from "next/server";
 // on the Node.js runtime — so importing the full Auth.js config (Prisma/bcrypt) is fine.
 
 // /api/webhooks is public — Stripe cannot authenticate through the auth guard.
-const PUBLIC_PREFIXES = ["/sign-in", "/sign-up", "/api/auth", "/api/webhooks"];
+// /api/cron is public — Vercel Cron calls it directly (it self-checks CRON_SECRET).
+// The PWA/SEO assets must be reachable without a session (crawlers, the SW, manifest).
+const PUBLIC_PREFIXES = [
+  "/sign-in",
+  "/sign-up",
+  "/api/auth",
+  "/api/webhooks",
+  "/api/cron",
+  "/sw.js",
+  "/~offline",
+  "/manifest.webmanifest",
+  "/sitemap.xml",
+  "/robots.txt",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

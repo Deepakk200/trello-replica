@@ -250,6 +250,8 @@ function buildSeed(): BoardState {
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
     activePanel: 'board',
+    inboxOpen: false, switchBoardsOpen: false,
+    panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
     notifications: [
@@ -279,6 +281,11 @@ type Actions = {
   deleteBoard(id: ID): void;
   setActiveBoard(id: ID): void;
   setActivePanel(panel: 'board' | 'inbox' | 'planner'): void;
+  setInboxOpen(v: boolean): void;
+  setSwitchBoardsOpen(v: boolean): void;
+  setPanelWidth(panel: 'inbox' | 'planner', width: number): void;
+  togglePanelCollapse(panel: 'inbox' | 'planner' | 'board'): void;
+  expandPanel(panel: 'inbox' | 'planner' | 'board'): void;
   createList(boardId: ID, title: string): ID;
   renameList(id: ID, title: string): void;
   deleteList(id: ID): void;
@@ -309,6 +316,8 @@ type Actions = {
   setBoardView(boardId: ID, view: 'board' | 'calendar' | 'table' | 'dashboard'): void;
   // activity / covers / checklists
   pushActivity(cardId: ID, entry: Omit<ActivityEntry, 'id'|'createdAt'>): void;
+  updateComment(cardId: ID, commentId: ID, newContent: string): void;
+  deleteComment(cardId: ID, commentId: ID): void;
   updateCardCover(cardId: ID, cover: Card['cover']): void;
   createChecklist(cardId: ID, title: string): ID;
   renameChecklist(cardId: ID, checklistId: ID, title: string): void;
@@ -371,7 +380,9 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
-      activeBoardId: null, activePanel: 'board', starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
+      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false,
+      panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
+      starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [],
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
 
@@ -456,6 +467,29 @@ export const boardStore = create<Store>()(
         });
       },
       setActivePanel(panel) { set((s) => { s.activePanel = panel; }); },
+      setInboxOpen(v) { set((s) => { s.inboxOpen = v; }); },
+      setSwitchBoardsOpen(v) { set((s) => { s.switchBoardsOpen = v; }); },
+      setPanelWidth(panel, width) {
+        set((s) => {
+          const w = Math.max(220, Math.min(640, Math.round(width)));
+          if (panel === 'inbox') s.panelLayout.inboxWidth = w;
+          else s.panelLayout.plannerWidth = w;
+        });
+      },
+      togglePanelCollapse(panel) {
+        set((s) => {
+          if (panel === 'inbox') s.panelLayout.inboxCollapsed = !s.panelLayout.inboxCollapsed;
+          else if (panel === 'planner') s.panelLayout.plannerCollapsed = !s.panelLayout.plannerCollapsed;
+          else s.panelLayout.boardCollapsed = !s.panelLayout.boardCollapsed;
+        });
+      },
+      expandPanel(panel) {
+        set((s) => {
+          if (panel === 'inbox') s.panelLayout.inboxCollapsed = false;
+          else if (panel === 'planner') s.panelLayout.plannerCollapsed = false;
+          else s.panelLayout.boardCollapsed = false;
+        });
+      },
 
       // ── Lists ───────────────────────────────────────────────────
       createList(boardId, title) {
@@ -837,6 +871,22 @@ export const boardStore = create<Store>()(
           card.activity.push(makeActivity(entry)); card.updatedAt = now();
         });
       },
+      updateComment(cardId, commentId, newContent) {
+        set((s) => {
+          const card = s.cards[cardId]; if (!card) return;
+          const entry = card.activity.find((a) => a.id === commentId && a.type === 'commented');
+          if (!entry) return;
+          entry.text = newContent;
+          card.updatedAt = now();
+        });
+      },
+      deleteComment(cardId, commentId) {
+        set((s) => {
+          const card = s.cards[cardId]; if (!card) return;
+          card.activity = card.activity.filter((a) => !(a.id === commentId && a.type === 'commented'));
+          card.updatedAt = now();
+        });
+      },
       updateCardCover(cardId, cover) {
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
@@ -1048,6 +1098,7 @@ export const boardStore = create<Store>()(
           s.activeViewByBoard = {};
           s.activeBoardId = seed.activeBoardId;
           s.activePanel = seed.activePanel;
+          s.panelLayout = seed.panelLayout;
           s.starredBoardIds = []; s.recentBoardIds = seed.recentBoardIds;
           s.sidebarCollapsed = false; s.notifications = seed.notifications; s.selectedCardIds = [];
           s.notificationsOpen = false; s.activeCardModalId = null; s._hasHydrated = true;
@@ -1066,6 +1117,7 @@ export const boardStore = create<Store>()(
         activeViewByBoard: state.activeViewByBoard,
         activeBoardId: state.activeBoardId,
         activePanel: state.activePanel,
+        panelLayout: state.panelLayout,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
@@ -1209,3 +1261,5 @@ export const boardStore = create<Store>()(
 
 export function useBoardStore<T>(selector: (state: Store) => T): T { return useStore(boardStore, selector); }
 export function useHasHydrated(): boolean { return useStore(boardStore, (s) => s._hasHydrated); }
+export const useInboxOpen = () => useStore(boardStore, (s) => s.inboxOpen);
+export const useSwitchBoardsOpen = () => useStore(boardStore, (s) => s.switchBoardsOpen);

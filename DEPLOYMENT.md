@@ -64,6 +64,19 @@ Complete these in order before going live.
 ## 13. PostHog (deferred — not yet wired)
 - [ ] PostHog analytics was scoped out of this billing pass; wire it in a follow-up
 
+## 14. Phase 9 — PWA + Email + SEO
+- [ ] Replace SVG icons with production PNG icons (`public/icons/icon-192.png`, `icon-512.png`, 192×192 + 512×512). Update `src/app/manifest.ts` to point at the PNGs.
+- [ ] Add `public/screenshots/board.png` (1280×720) for the PWA install screenshot.
+- [ ] Create `public/og-image.png` (1200×630) — the static social-share fallback referenced in `layout.tsx`.
+- [ ] Verify a custom "from" domain in Resend (domain verification) and update `FROM` in `src/lib/email.ts` (currently `onboarding@resend.dev`).
+- [ ] Test Vercel Cron: call `/api/cron/due-reminders` manually first with `Authorization: Bearer $CRON_SECRET`.
+- [ ] Add `CRON_SECRET` to Vercel environment variables (must match `.env.local`).
+- [ ] Run a **production** build (`npm run build` — uses `--webpack`, required for Serwist) and confirm `public/sw.js` is generated. The service worker is disabled in dev (Turbopack).
+- [ ] Run Lighthouse PWA audit → score ≥ 90 (installable + SW registered).
+- [ ] Submit `sitemap.xml` to Google Search Console.
+- [ ] Verify JSON-LD with Google's Rich Results Test (note: a public landing page was deferred in Phase 8, so site-wide JSON-LD is not yet wired — add it when the landing page lands).
+- [ ] Note: board OG images (`/board/[id]/opengraph-image`) render with default text for unauthenticated crawlers, since board content is workspace-private.
+
 ## Security notes
 - CSP ships as **Report-Only** so it can't break Liveblocks/UploadThing/Sentry. Tighten to enforced + nonces after reviewing reports.
 - Rate limiting + cache require Upstash; both degrade to no-ops without it.

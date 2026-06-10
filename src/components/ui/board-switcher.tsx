@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LayoutGrid, Plus, X } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
+import { EmptyState } from './empty-state';
 
 const SWATCHES = [
   { value: 'linear-gradient(135deg,#0079bf,#5067c5)', label: 'Ocean' },
@@ -85,6 +86,21 @@ export function BoardSwitcher() {
                 )}
               </button>
             ))}
+
+            {Object.keys(boards).length === 0 && !creating && (
+              <EmptyState
+                title="No boards yet"
+                subtitle="Create a board to start organising your work with your team."
+                action={
+                  <button
+                    onClick={() => setCreating(true)}
+                    className="bg-primary text-primary-foreground text-sm px-4 py-2 rounded-lg"
+                  >
+                    Create your first board
+                  </button>
+                }
+              />
+            )}
           </div>
 
           {creating ? (
@@ -128,6 +144,7 @@ export function BoardSwitcher() {
             </div>
           ) : (
             <button
+              data-create-board
               onClick={() => setCreating(true)}
               className="w-full flex items-center gap-2 px-4 py-3 border-t border-white/10 hover:bg-white/10 transition-colors text-sm text-white/70 hover:text-white"
             >
