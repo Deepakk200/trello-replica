@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Globe, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react';
+import { FileText, Globe, MoreHorizontal, Paperclip, Plus } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
 

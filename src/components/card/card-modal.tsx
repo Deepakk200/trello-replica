@@ -7,7 +7,6 @@ import {
   Copy, CreditCard, Image, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
-import { useShallow } from 'zustand/shallow';
 import type { ID } from '@/types';
 import { LABEL_VAR } from '@/lib/colors';
 import { MemberAvatar } from '@/components/ui/member-avatar';
