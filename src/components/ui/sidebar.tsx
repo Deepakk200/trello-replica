@@ -27,7 +27,7 @@ function BoardRow({ board, isActive, isStarred, onNavigate, onStar }: {
       className={`h-9 px-3 rounded-lg hover:bg-white/[0.06] flex items-center gap-3 cursor-pointer group transition-colors ${isActive ? 'bg-white/[0.10] font-medium' : ''}`}
     >
       <div
-        className="h-5 w-6 rounded-sm shrink-0 bg-trello-cardHover"
+        className="w-4 h-3 rounded-sm shrink-0 bg-trello-cardHover"
         style={{ background: board.background }}
       />
       <span className="flex-1 truncate text-sm text-trello-text">{board.title}</span>
@@ -93,10 +93,10 @@ export function Sidebar() {
         className={[
           'fixed top-12 left-0 z-30',
           'md:static md:z-auto md:top-0',
-          'h-[calc(100vh-48px)] md:h-full bg-trello-bg border-r border-trello-border',
+          'h-[calc(100vh-48px)] md:h-full bg-trello-bg',
           'flex flex-col shrink-0 overflow-hidden',
           'transition-all duration-200 ease-in-out',
-          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-12' : 'translate-x-0 w-[280px] md:w-65',
+          sidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-12' : 'translate-x-0 w-[280px] md:w-[260px]',
         ].join(' ')}
       >
         {/* Collapse toggle — shown in the expanded state */}
