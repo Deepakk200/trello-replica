@@ -40,8 +40,8 @@ export function PlannerView() {
 
   return (
     <div
-      className="relative flex flex-col h-full"
-      style={{ background: '#1C2B41', width: 360, flexShrink: 0 }}
+      className="relative flex flex-col h-full w-full"
+      style={{ background: '#1C2B41' }}
     >
       {/* Calendar nav header */}
       <div className="flex items-center gap-1 h-11 px-3 border-b border-white/10 flex-shrink-0">
