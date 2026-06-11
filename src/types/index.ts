@@ -97,6 +97,8 @@ export interface BoardState {
   /** Resizable panel widths (px). Persisted. */
   inboxWidth: number;
   plannerWidth: number;
+  /** Personal Inbox capture cards (not yet on a board). Persisted. */
+  inboxCards: { id: ID; title: string; createdAt: string }[];
   /** Resizable workspace panels (Inbox | Planner | Board). Persisted. */
   panelLayout: PanelLayout;
   starredBoardIds: ID[];
