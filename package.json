@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "email:preview": "email dev --dir emails --port 3001",
     "db:generate": "prisma generate",
     "db:push": "dotenv -e .env.local -- prisma db push",
