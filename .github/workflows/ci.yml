@@ -10,6 +10,10 @@ jobs:
   quality:
     name: Type · Lint · Build
     runs-on: ubuntu-latest
+    # Opt the bundled JS actions onto the Node 24 runner ahead of the June 2026
+    # deprecation of Node 20 (per GitHub's deprecation notice).
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
