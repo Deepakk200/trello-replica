@@ -260,7 +260,7 @@ function buildSeed(): BoardState {
       makeNotification({ type: 'assigned', boardId, cardId: Object.keys(cards)[2], text: 'You were assigned to Build board view' }),
       makeNotification({ type: 'moved', boardId, text: 'Project kickoff was moved to Done' }),
     ],
-    selectedCardIds: [],
+    selectedCardIds: [], inboxCards: [],
   };
 }
 
@@ -286,6 +286,9 @@ type Actions = {
   setPlannerOpen(v: boolean): void;
   setInboxWidth(w: number): void;
   setPlannerWidth(w: number): void;
+  addInboxCard(title: string): void;
+  deleteInboxCard(id: ID): void;
+  moveInboxCardToList(inboxCardId: ID, listId: ID): void;
   setPanelWidth(panel: 'inbox' | 'planner', width: number): void;
   togglePanelCollapse(panel: 'inbox' | 'planner' | 'board'): void;
   expandPanel(panel: 'inbox' | 'planner' | 'board'): void;
@@ -386,7 +389,7 @@ export const boardStore = create<Store>()(
       activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
-      notifications: [], selectedCardIds: [],
+      notifications: [], selectedCardIds: [], inboxCards: [],
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
 
       // ── Boards ──────────────────────────────────────────────────
@@ -475,6 +478,19 @@ export const boardStore = create<Store>()(
       setPlannerOpen(v) { set((s) => { s.plannerOpen = v; }); },
       setInboxWidth(w) { set((s) => { s.inboxWidth = Math.max(280, Math.min(560, w)); }); },
       setPlannerWidth(w) { set((s) => { s.plannerWidth = Math.max(280, Math.min(640, w)); }); },
+      addInboxCard(title) {
+        const t = title.trim(); if (!t) return;
+        set((s) => { s.inboxCards.unshift({ id: newId(), title: t, createdAt: now() }); });
+      },
+      deleteInboxCard(id) {
+        set((s) => { s.inboxCards = s.inboxCards.filter((c) => c.id !== id); });
+      },
+      moveInboxCardToList(inboxCardId, listId) {
+        const card = boardStore.getState().inboxCards.find((c) => c.id === inboxCardId);
+        if (!card) return;
+        boardStore.getState().createCard(listId, card.title);
+        set((s) => { s.inboxCards = s.inboxCards.filter((c) => c.id !== inboxCardId); });
+      },
       setPanelWidth(panel, width) {
         set((s) => {
           const w = Math.max(220, Math.min(640, Math.round(width)));
@@ -1125,6 +1141,7 @@ export const boardStore = create<Store>()(
         activePanel: state.activePanel,
         panelLayout: state.panelLayout,
         inboxWidth: state.inboxWidth, plannerWidth: state.plannerWidth,
+        inboxCards: state.inboxCards,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
