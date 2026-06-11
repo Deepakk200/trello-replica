@@ -94,6 +94,9 @@ export interface BoardState {
   switchBoardsOpen: boolean;
   /** Planner side panel (can be open alongside Inbox). Transient. */
   plannerOpen: boolean;
+  /** Resizable panel widths (px). Persisted. */
+  inboxWidth: number;
+  plannerWidth: number;
   /** Resizable workspace panels (Inbox | Planner | Board). Persisted. */
   panelLayout: PanelLayout;
   starredBoardIds: ID[];

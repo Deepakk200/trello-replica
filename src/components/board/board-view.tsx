@@ -12,7 +12,6 @@ import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
 import { CommandPalette } from '@/components/ui/command-palette';
 import { NotificationsDrawer } from '@/components/ui/notifications-drawer';
 import { BulkActionBar } from './bulk-action-bar';
-import { ViewNavigation } from '@/components/ui/view-navigation';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(
   () => import('@/components/card/card-modal').then((m) => m.CardModal),
@@ -152,9 +151,6 @@ export function BoardView() {
             </div>
           )}
         </div>
-
-        {/* Persistent bottom-center view switcher */}
-        <ViewNavigation boardId={board.id} />
       </div>
 
       {activeCardModalId && (

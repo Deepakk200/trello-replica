@@ -250,7 +250,7 @@ function buildSeed(): BoardState {
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
     activePanel: 'board',
-    inboxOpen: false, switchBoardsOpen: false, plannerOpen: false,
+    inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
@@ -284,6 +284,8 @@ type Actions = {
   setInboxOpen(v: boolean): void;
   setSwitchBoardsOpen(v: boolean): void;
   setPlannerOpen(v: boolean): void;
+  setInboxWidth(w: number): void;
+  setPlannerWidth(w: number): void;
   setPanelWidth(panel: 'inbox' | 'planner', width: number): void;
   togglePanelCollapse(panel: 'inbox' | 'planner' | 'board'): void;
   expandPanel(panel: 'inbox' | 'planner' | 'board'): void;
@@ -381,7 +383,7 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
-      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false,
+      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [],
@@ -471,6 +473,8 @@ export const boardStore = create<Store>()(
       setInboxOpen(v) { set((s) => { s.inboxOpen = v; }); },
       setSwitchBoardsOpen(v) { set((s) => { s.switchBoardsOpen = v; }); },
       setPlannerOpen(v) { set((s) => { s.plannerOpen = v; }); },
+      setInboxWidth(w) { set((s) => { s.inboxWidth = Math.max(280, Math.min(560, w)); }); },
+      setPlannerWidth(w) { set((s) => { s.plannerWidth = Math.max(280, Math.min(640, w)); }); },
       setPanelWidth(panel, width) {
         set((s) => {
           const w = Math.max(220, Math.min(640, Math.round(width)));
@@ -1120,6 +1124,7 @@ export const boardStore = create<Store>()(
         activeBoardId: state.activeBoardId,
         activePanel: state.activePanel,
         panelLayout: state.panelLayout,
+        inboxWidth: state.inboxWidth, plannerWidth: state.plannerWidth,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
       }),

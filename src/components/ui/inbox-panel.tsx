@@ -23,8 +23,8 @@ export function InboxPanel() {
   return (
     <aside
       aria-label="Inbox"
-      className="flex flex-col h-full shrink-0"
-      style={{ background: '#1C2B41', width: 360 }}
+      className="flex flex-col h-full w-full"
+      style={{ background: '#1C2B41' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between h-11 px-4 border-b border-white/10">
