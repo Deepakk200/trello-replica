@@ -6,7 +6,7 @@ import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { CardModal } from '@/components/card/card-modal';
 import type { ID } from '@/types';
-import { LABEL_VAR, LABEL_CLASS } from '@/lib/colors';
+import { LABEL_CLASS } from '@/lib/colors';
 
 type SortCol = 'number' | 'title' | 'list' | 'due' | 'created';
 type SortDir = 'asc' | 'desc';

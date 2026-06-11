@@ -59,7 +59,7 @@ export function NotificationsDrawer() {
   const emptyState = (
     <div className="flex flex-col items-center justify-center text-center py-16 px-6">
       <CheckCircle2 className="h-10 w-10 text-emerald-400 mb-3" />
-      <p className="text-sm font-medium text-trello-text">You're all caught up</p>
+      <p className="text-sm font-medium text-trello-text">You&apos;re all caught up</p>
       <p className="text-xs text-trello-textSubtle mt-1">New activity will appear here.</p>
     </div>
   );
