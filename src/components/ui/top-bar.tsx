@@ -1,25 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HelpCircle, LayoutGrid, Menu, Moon, Plus, Search, Settings, Sun } from 'lucide-react';
+import Link from 'next/link';
+import { HelpCircle, Plus, Search } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { boardStore } from '@/store/use-board-store';
-import { useThemeStore } from '@/store/use-theme-store';
-import { BoardSwitcher } from './board-switcher';
 import { NotificationBell } from './notification-bell';
 import { SearchPalette } from './search-palette';
 import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
 
 export function TopBar() {
-  const theme       = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // Global "?" toggles the keyboard shortcut overlay (ignored while typing).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
@@ -32,16 +27,14 @@ export function TopBar() {
 
   const { data: session } = useSession();
   const userName = session?.user?.name ?? session?.user?.email ?? null;
-  const userImage = session?.user?.image ?? null;
   const initials = userName
     ? userName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'U';
+    : 'DC';
 
   function handleCreateBoard() {
     boardStore.getState().createBoard('New Board', 'linear-gradient(135deg,#0079bf,#5067c5)');
     setCreateOpen(false);
   }
-
   function handleCreateCard() {
     const s = boardStore.getState();
     const board = s.activeBoardId ? s.boards[s.activeBoardId] : null;
@@ -57,127 +50,101 @@ export function TopBar() {
     'w-full text-left px-3 py-2 text-sm text-trello-text hover:bg-trello-cardHover transition-colors flex items-center gap-2';
 
   return (
-    <header className="relative z-30 h-11 flex items-center px-3 gap-3 bg-trello-bg/90 backdrop-blur-md border-b border-white/[0.08] shrink-0">
+    <header
+      className="h-11 grid grid-cols-[auto_1fr_auto] items-center px-3 gap-3 border-b border-white/[0.08] shrink-0 relative z-30"
+      style={{ background: '#1D2125' }}
+    >
       <SearchPalette />
 
-      {/* Left: burger + logo + board switcher */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Left: waffle + logo */}
+      <div className="flex items-center gap-2">
         <button
-          className="md:hidden p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90"
           onClick={() => boardStore.getState().toggleSidebar()}
+          className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
           aria-label="Toggle sidebar"
         >
-          <Menu className="w-4 h-4" />
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <rect x="0" y="0" width="4" height="4" rx="0.5" /><rect x="6" y="0" width="4" height="4" rx="0.5" /><rect x="12" y="0" width="4" height="4" rx="0.5" />
+            <rect x="0" y="6" width="4" height="4" rx="0.5" /><rect x="6" y="6" width="4" height="4" rx="0.5" /><rect x="12" y="6" width="4" height="4" rx="0.5" />
+            <rect x="0" y="12" width="4" height="4" rx="0.5" /><rect x="6" y="12" width="4" height="4" rx="0.5" /><rect x="12" y="12" width="4" height="4" rx="0.5" />
+          </svg>
         </button>
-        <LayoutGrid className="w-5 h-5 shrink-0" />
-        <span className="font-bold text-base tracking-tight text-white hidden md:inline">Trello Clone</span>
-        <BoardSwitcher />
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect width="28" height="28" rx="6" fill="#0052CC" />
+            <rect x="5" y="5" width="8" height="18" rx="2" fill="white" />
+            <rect x="15" y="5" width="8" height="11" rx="2" fill="white" />
+          </svg>
+          <span className="text-white font-semibold text-base leading-none hidden sm:inline">Trello</span>
+        </Link>
       </div>
 
-      {/* Center: search — dominant element */}
-      <div className="flex-1 flex justify-center min-w-0">
-        <div className="hidden md:flex items-center gap-2">
+      {/* Center: search pill */}
+      <div className="flex justify-center min-w-0">
+        <div className="flex items-center gap-2 w-full max-w-[480px] rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
+          <Search size={14} className="text-white/50 flex-shrink-0" />
           <input
             type="text"
             placeholder="Search"
-            className="w-64 focus:w-96 max-w-[40vw] transition-[width] duration-200 bg-trello-surface/50 h-7 rounded px-2 text-sm outline-none placeholder:text-trello-textSubtle focus:bg-trello-surface"
+            className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none border-transparent"
           />
-          <kbd className="hidden lg:inline-flex h-6 items-center rounded-md bg-trello-cardHover px-2 text-[11px] font-medium text-trello-textSubtle opacity-60">
+          <kbd className="hidden sm:inline text-xs text-white/40 border border-white/20 rounded px-1 py-0.5 ml-auto">
             {isMac ? '⌘K' : 'Ctrl K'}
           </kbd>
         </div>
+      </div>
 
-        {/* Mobile: icon → expanded input */}
-        <div className="md:hidden">
-          {searchOpen ? (
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search…"
-              className="w-[min(280px,calc(100vw-180px))] bg-trello-surface/50 h-8 rounded px-3 text-sm outline-none focus:bg-trello-surface placeholder:text-trello-textSubtle"
-              onBlur={() => setSearchOpen(false)}
-            />
-          ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90"
-              aria-label="Search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
+      {/* Right: create · trial · bell · help · avatar */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="relative">
+          <button
+            onClick={() => { setCreateOpen((v) => !v); setAvatarOpen(false); }}
+            className="h-8 px-3 text-sm font-medium text-white rounded-sm flex-shrink-0"
+            style={{ background: '#0052CC' }}
+          >
+            Create
+          </button>
+          {createOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setCreateOpen(false)} aria-hidden="true" />
+              <div className="absolute right-0 top-full mt-1 w-44 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
+                <button onClick={handleCreateBoard} className={dropdownRow}>
+                  <Plus className="w-4 h-4 text-trello-textSubtle" />Create board
+                </button>
+                <button onClick={handleCreateCard} className={dropdownRow}>
+                  <Plus className="w-4 h-4 text-trello-textSubtle" />Create card
+                </button>
+              </div>
+            </>
           )}
         </div>
-      </div>
 
-      {/* Create button + dropdown */}
-      <div className="relative shrink-0">
-        <button
-          onClick={() => { setCreateOpen((v) => !v); setAvatarOpen(false); }}
-          className="bg-trello-primary hover:bg-trello-primaryHover text-white h-8 px-2.5 md:px-3 rounded text-sm font-medium flex items-center gap-1.5 transition-colors active:scale-95"
-          aria-label="Create"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden md:inline">Create</span>
-        </button>
-        {createOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setCreateOpen(false)} aria-hidden="true" />
-            <div className="absolute right-0 top-full mt-1 w-44 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
-              <button onClick={handleCreateBoard} className={dropdownRow}>
-                <LayoutGrid className="w-4 h-4 text-trello-textSubtle" />Create board
-              </button>
-              <button onClick={handleCreateCard} className={dropdownRow}>
-                <Plus className="w-4 h-4 text-trello-textSubtle" />Create card
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Right: theme + bell + help + avatar */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          onClick={toggleTheme}
-          className="p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90"
-          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+        {/* Trial badge */}
+        <div className="hidden md:flex items-center gap-1.5 bg-purple-600/80 text-white text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0">
+          <span>✦</span><span>3 days left</span>
+        </div>
 
         <NotificationBell />
 
         <button
           onClick={() => setShortcutsOpen(true)}
-          className="hidden md:flex p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90 text-trello-textSubtle hover:text-trello-text"
-          aria-label="Keyboard shortcuts"
+          className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+          aria-label="Help"
           title="Keyboard shortcuts (?)"
         >
-          <HelpCircle className="w-4 h-4" />
+          <HelpCircle size={16} />
         </button>
         <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
-        <a
-          href="/settings"
-          className="hidden md:flex p-1.5 rounded hover:bg-trello-cardHover transition-all active:scale-90 text-trello-textSubtle hover:text-trello-text"
-          aria-label="Workspace settings"
-          title="Workspace settings"
-        >
-          <Settings className="w-4 h-4" />
-        </a>
-
-        {/* Avatar + dropdown */}
+        {/* Avatar */}
         <div className="relative ml-1">
           <button
             onClick={() => { setAvatarOpen((v) => !v); setCreateOpen(false); }}
-            className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white select-none transition-transform active:scale-90 overflow-hidden"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 select-none"
+            style={{ background: '#00B8D9' }}
             aria-label="Account menu"
           >
-            {userImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={userImage} alt={userName ?? 'User'} className="w-full h-full object-cover" />
-            ) : (
-              initials
-            )}
+            {initials}
           </button>
           {avatarOpen && (
             <>
@@ -191,15 +158,7 @@ export function TopBar() {
                     )}
                   </div>
                 )}
-                <button onClick={toggleTheme} className={`${dropdownRow} justify-between`}>
-                  <span>Theme</span>
-                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </button>
-                <div className="border-t border-trello-border my-1" />
-                <button
-                  onClick={() => signOut({ callbackUrl: '/sign-in' })}
-                  className={`${dropdownRow} text-trello-danger`}
-                >
+                <button onClick={() => signOut({ callbackUrl: '/sign-in' })} className={`${dropdownRow} text-trello-danger`}>
                   Sign out
                 </button>
               </div>

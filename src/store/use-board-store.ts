@@ -250,7 +250,7 @@ function buildSeed(): BoardState {
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
     activePanel: 'board',
-    inboxOpen: false, switchBoardsOpen: false,
+    inboxOpen: false, switchBoardsOpen: false, plannerOpen: false,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
@@ -283,6 +283,7 @@ type Actions = {
   setActivePanel(panel: 'board' | 'inbox' | 'planner'): void;
   setInboxOpen(v: boolean): void;
   setSwitchBoardsOpen(v: boolean): void;
+  setPlannerOpen(v: boolean): void;
   setPanelWidth(panel: 'inbox' | 'planner', width: number): void;
   togglePanelCollapse(panel: 'inbox' | 'planner' | 'board'): void;
   expandPanel(panel: 'inbox' | 'planner' | 'board'): void;
@@ -380,7 +381,7 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
-      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false,
+      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [],
@@ -469,6 +470,7 @@ export const boardStore = create<Store>()(
       setActivePanel(panel) { set((s) => { s.activePanel = panel; }); },
       setInboxOpen(v) { set((s) => { s.inboxOpen = v; }); },
       setSwitchBoardsOpen(v) { set((s) => { s.switchBoardsOpen = v; }); },
+      setPlannerOpen(v) { set((s) => { s.plannerOpen = v; }); },
       setPanelWidth(panel, width) {
         set((s) => {
           const w = Math.max(220, Math.min(640, Math.round(width)));

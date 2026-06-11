@@ -92,6 +92,8 @@ export interface BoardState {
   inboxOpen: boolean;
   /** Switch-boards slide-in overlay (right). Transient — not persisted. */
   switchBoardsOpen: boolean;
+  /** Planner side panel (can be open alongside Inbox). Transient. */
+  plannerOpen: boolean;
   /** Resizable workspace panels (Inbox | Planner | Board). Persisted. */
   panelLayout: PanelLayout;
   starredBoardIds: ID[];
