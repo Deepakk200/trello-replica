@@ -1,73 +1,49 @@
 'use client';
 
-import { ArrowLeftRight, CalendarDays, Inbox, LayoutDashboard } from 'lucide-react';
+import { Inbox, CalendarDays, LayoutDashboard, ArrowLeftRight } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 
-type Action = 'inbox' | 'planner' | 'board' | 'switch';
-
-const TABS: { id: string; label: string; Icon: typeof Inbox; action: Action }[] = [
-  { id: 'inbox',   label: 'Inbox',         Icon: Inbox,           action: 'inbox' },
-  { id: 'planner', label: 'Planner',       Icon: CalendarDays,    action: 'planner' },
-  { id: 'board',   label: 'Board',         Icon: LayoutDashboard, action: 'board' },
-  { id: 'switch',  label: 'Switch boards', Icon: ArrowLeftRight,  action: 'switch' },
-];
-
 export function BottomNav() {
-  const { inboxOpen, plannerOpen, switchBoardsOpen } = useBoardStore(
-    useShallow((s) => ({
-      inboxOpen: s.inboxOpen,
-      plannerOpen: s.plannerOpen,
-      switchBoardsOpen: s.switchBoardsOpen,
-    })),
+  const { inboxOpen, plannerOpen } = useBoardStore(
+    useShallow((s) => ({ inboxOpen: s.inboxOpen, plannerOpen: s.plannerOpen })),
   );
   const setInboxOpen = useBoardStore((s) => s.setInboxOpen);
   const setPlannerOpen = useBoardStore((s) => s.setPlannerOpen);
-  const setSwitchBoardsOpen = useBoardStore((s) => s.setSwitchBoardsOpen);
+  const setSwitchOpen = useBoardStore((s) => s.setSwitchBoardsOpen);
 
-  function handleTabClick(action: Action) {
-    switch (action) {
-      case 'inbox':   setInboxOpen(!inboxOpen); break;
-      case 'planner': setPlannerOpen(!plannerOpen); break;
-      case 'board':   setInboxOpen(false); setPlannerOpen(false); break;
-      case 'switch':  setSwitchBoardsOpen(true); break;
-    }
-  }
+  const boardActive = !inboxOpen && !plannerOpen;
 
-  function isActive(action: Action): boolean {
-    switch (action) {
-      case 'inbox':   return inboxOpen;
-      case 'planner': return plannerOpen;
-      case 'board':   return !inboxOpen && !plannerOpen;
-      case 'switch':  return switchBoardsOpen;
-    }
-  }
+  const tabs = [
+    { id: 'inbox',   label: 'Inbox',         Icon: Inbox,           active: inboxOpen,   onClick: () => setInboxOpen(!inboxOpen) },
+    { id: 'planner', label: 'Planner',       Icon: CalendarDays,    active: plannerOpen, onClick: () => setPlannerOpen(!plannerOpen) },
+    { id: 'board',   label: 'Board',         Icon: LayoutDashboard, active: boardActive, onClick: () => { setInboxOpen(false); setPlannerOpen(false); } },
+    { id: 'switch',  label: 'Switch boards', Icon: ArrowLeftRight,  active: false,       onClick: () => setSwitchOpen(true) },
+  ];
 
   return (
-    <nav
-      aria-label="Workspace navigation"
-      className="flex items-center h-[52px] border-t border-white/10 shrink-0"
-      style={{ background: '#1D2125' }}
-    >
-      {TABS.map(({ id, label, Icon, action }) => {
-        const active = isActive(action);
-        return (
+    // Centered wrapper — does NOT stretch full width; lets clicks pass through the empty area.
+    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none max-sm:left-2 max-sm:right-2 max-sm:translate-x-0">
+      <nav
+        aria-label="App navigation"
+        className="pointer-events-auto flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-xl shadow-2xl border border-white/10 backdrop-blur-md max-sm:w-full"
+        style={{ background: 'rgba(31, 33, 37, 0.92)' }}
+      >
+        {tabs.map(({ id, label, Icon, active, onClick }) => (
           <button
             key={id}
-            onClick={() => handleTabClick(action)}
+            onClick={onClick}
             aria-current={active ? 'page' : undefined}
             style={{ touchAction: 'manipulation' }}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-xs transition-colors border-t-2 focus-visible:outline-none ${
-              active
-                ? 'text-white border-[#579DFF]'
-                : 'text-white/50 hover:text-white border-transparent'
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#579DFF] ${
+              active ? 'bg-[#1C3D5A] text-[#579DFF]' : 'text-white/70 hover:text-white hover:bg-white/10'
             }`}
           >
-            <Icon size={18} />
-            <span>{label}</span>
+            <Icon size={16} className="flex-shrink-0" />
+            <span className={id === 'switch' ? 'max-sm:hidden' : undefined}>{label}</span>
           </button>
-        );
-      })}
-    </nav>
+        ))}
+      </nav>
+    </div>
   );
 }

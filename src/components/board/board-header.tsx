@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, Calendar, ChevronDown, LayoutGrid, MoreHorizontal, SlidersHorizontal, Star, Table2, UserPlus } from 'lucide-react';
+import { MoreHorizontal, SlidersHorizontal, Star, UserPlus } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Board, DueFilter } from '@/types';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { BoardMenu } from './board-menu';
+import { ViewsDropdown } from './views-dropdown';
 import { LABEL_VAR } from '@/lib/colors';
 
 export function BoardHeader({ board }: { board: Board }) {
@@ -13,9 +14,6 @@ export function BoardHeader({ board }: { board: Board }) {
   const labels = useBoardStore((s) => s.labels);
   const filterState = useBoardStore((s) => s.filterState);
   const setFilter = useBoardStore((s) => s.setFilter);
-  const setBoardView = useBoardStore((s) => s.setBoardView);
-  const activeView = useBoardStore((s) => s.activeViewByBoard[board.id] ?? 'board');
-  const [viewOpen, setViewOpen] = useState(false);
   const boardLabels = Object.values(labels);
   const activeFilterCount = filterState.labelIds.length + (filterState.dueFilter ? 1 : 0);
 
@@ -87,48 +85,7 @@ export function BoardHeader({ board }: { board: Board }) {
         )}
 
         {/* Board view switcher dropdown */}
-        <div className="relative ml-1">
-          {(() => {
-            const VIEWS = [
-              { id: 'board' as const,     label: 'Board',     Icon: LayoutGrid },
-              { id: 'calendar' as const,  label: 'Calendar',  Icon: Calendar },
-              { id: 'table' as const,     label: 'Table',     Icon: Table2 },
-              { id: 'dashboard' as const, label: 'Dashboard', Icon: BarChart3 },
-            ];
-            const current = VIEWS.find((v) => v.id === activeView) ?? VIEWS[0];
-            const CurrentIcon = current.Icon;
-            return (
-              <>
-                <button
-                  onClick={() => setViewOpen((v) => !v)}
-                  className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-1 rounded text-white/80 hover:text-white"
-                  aria-label="Switch board view"
-                >
-                  <CurrentIcon size={16} />
-                  <ChevronDown size={12} />
-                </button>
-                {viewOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setViewOpen(false)} aria-hidden="true" />
-                    <div className="absolute left-0 top-full mt-1 z-50 w-44 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl py-1">
-                      {VIEWS.map(({ id, label, Icon }) => (
-                        <button
-                          key={id}
-                          onClick={() => { setBoardView(board.id, id); setViewOpen(false); }}
-                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm text-left hover:bg-white/10 transition-colors ${activeView === id ? 'text-white' : 'text-white/70'}`}
-                        >
-                          <Icon size={15} />
-                          {label}
-                          {activeView === id && <span className="ml-auto text-[#579DFF]">✓</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            );
-          })()}
-        </div>
+        <ViewsDropdown boardId={board.id} />
 
         {/* Right group */}
         <div className="flex items-center gap-1 ml-auto">

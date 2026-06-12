@@ -164,6 +164,14 @@ export function PlannerView() {
           </div>
         )}
 
+        {/* All-day row */}
+        <div className="flex items-stretch border-b border-white/10 flex-shrink-0 min-h-[34px]">
+          <div className="w-12 flex-shrink-0 text-right pr-3 pt-1.5">
+            <span className="text-[10px] text-white/30">all-day</span>
+          </div>
+          <div className="flex-1 border-l border-white/10" />
+        </div>
+
         {/* Time grid */}
         <div className="flex-1 overflow-y-auto relative">
           <div className="sticky top-0 left-0 z-10 text-xs text-white/30 px-3 py-1" style={{ background: '#1C2B41' }}>GMT+5:30</div>
@@ -174,11 +182,23 @@ export function PlannerView() {
               ))}
             </HourRow>
           ))}
+
+          {/* Current-time indicator (only when viewing today) */}
+          {isToday && (() => {
+            const lt = new Date();
+            const top = 22 + lt.getHours() * 52 + (lt.getMinutes() / 60) * 52;
+            return (
+              <div className="absolute left-12 right-0 z-20 pointer-events-none" style={{ top }}>
+                <div className="absolute -left-1.5 -top-[5px] w-2.5 h-2.5 rounded-full bg-red-500" />
+                <div className="h-[2px] bg-red-500" />
+              </div>
+            );
+          })()}
         </div>
 
         {/* Connect-calendar empty state — only when nothing is scheduled this day */}
         {scheduledCount === 0 && (
-          <div className="absolute inset-x-0 flex flex-col items-center justify-center gap-6 px-8 pointer-events-none" style={{ top: unscheduled.length > 0 ? '210px' : '110px', bottom: '60px' }}>
+          <div className="absolute inset-x-0 flex flex-col items-center justify-center gap-6 px-8 pointer-events-none" style={{ top: unscheduled.length > 0 ? '244px' : '144px', bottom: '60px' }}>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-[#0078D4] flex items-center justify-center text-white text-lg font-bold shadow-lg">O</div>
               <div className="flex flex-col gap-1"><div className="w-6 h-0.5 bg-white/30 rounded" /><div className="w-6 h-0.5 bg-white/30 rounded self-end" /></div>
