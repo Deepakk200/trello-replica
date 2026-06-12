@@ -260,7 +260,7 @@ function buildSeed(): BoardState {
       makeNotification({ type: 'assigned', boardId, cardId: Object.keys(cards)[2], text: 'You were assigned to Build board view' }),
       makeNotification({ type: 'moved', boardId, text: 'Project kickoff was moved to Done' }),
     ],
-    selectedCardIds: [], inboxCards: [],
+    selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
   };
 }
 
@@ -289,6 +289,8 @@ type Actions = {
   addInboxCard(title: string): void;
   deleteInboxCard(id: ID): void;
   moveInboxCardToList(inboxCardId: ID, listId: ID): void;
+  setCalendarViewDate(iso: string): void;
+  setCalendarGranularity(g: 'Month' | 'Week' | 'Day'): void;
   setPanelWidth(panel: 'inbox' | 'planner', width: number): void;
   togglePanelCollapse(panel: 'inbox' | 'planner' | 'board'): void;
   expandPanel(panel: 'inbox' | 'planner' | 'board'): void;
@@ -298,7 +300,7 @@ type Actions = {
   reorderLists(boardId: ID, orderedIds: ID[]): void;
   toggleListCollapse(listId: ID): void;
   createCard(listId: ID, title: string): ID;
-  updateCard(id: ID, patch: Partial<Pick<Card, 'title'|'description'|'dueDate'|'completed'|'labelIds'>>): void;
+  updateCard(id: ID, patch: Partial<Pick<Card, 'title'|'description'|'dueDate'|'startDate'|'completed'|'labelIds'>>): void;
   deleteCard(id: ID): void;
   moveCard(cardId: ID, toListId: ID, toIndex: number): void;
   reorderCardsInList(listId: ID, orderedIds: ID[]): void;
@@ -389,7 +391,7 @@ export const boardStore = create<Store>()(
       activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
-      notifications: [], selectedCardIds: [], inboxCards: [],
+      notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
 
       // ── Boards ──────────────────────────────────────────────────
@@ -491,6 +493,8 @@ export const boardStore = create<Store>()(
         boardStore.getState().createCard(listId, card.title);
         set((s) => { s.inboxCards = s.inboxCards.filter((c) => c.id !== inboxCardId); });
       },
+      setCalendarViewDate(iso) { set((s) => { s.calendarViewDate = iso; }); },
+      setCalendarGranularity(g) { set((s) => { s.calendarGranularity = g; }); },
       setPanelWidth(panel, width) {
         set((s) => {
           const w = Math.max(220, Math.min(640, Math.round(width)));
@@ -1142,6 +1146,7 @@ export const boardStore = create<Store>()(
         panelLayout: state.panelLayout,
         inboxWidth: state.inboxWidth, plannerWidth: state.plannerWidth,
         inboxCards: state.inboxCards,
+        calendarViewDate: state.calendarViewDate, calendarGranularity: state.calendarGranularity,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
       }),

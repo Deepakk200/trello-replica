@@ -58,7 +58,7 @@ export interface Checklist { id: ID; title: string; items: ChecklistItem[] }
 export interface Card {
   id: ID; listId: ID; title: string; description: string;
   number: number; memberIds: ID[]; attachments: Attachment[];
-  labelIds: ID[]; dueDate: string | null; completed: boolean; isArchived: boolean;
+  labelIds: ID[]; dueDate: string | null; startDate?: string | null; completed: boolean; isArchived: boolean;
   linkedCardIds: ID[];
   checklists: Checklist[];
   activity: ActivityEntry[]; createdAt: string; updatedAt: string;
@@ -99,6 +99,9 @@ export interface BoardState {
   plannerWidth: number;
   /** Personal Inbox capture cards (not yet on a board). Persisted. */
   inboxCards: { id: ID; title: string; createdAt: string }[];
+  /** Calendar view state. Persisted. */
+  calendarViewDate: string;
+  calendarGranularity: 'Month' | 'Week' | 'Day';
   /** Resizable workspace panels (Inbox | Planner | Board). Persisted. */
   panelLayout: PanelLayout;
   starredBoardIds: ID[];

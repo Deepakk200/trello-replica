@@ -1,25 +1,26 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, CalendarPlus } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable, closestCenter,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core';
+import {
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
+  addMonths, isSameMonth, isSameDay, format, parseISO,
+} from 'date-fns';
 import { useBoardStore } from '@/store/use-board-store';
 import { CardModal } from '@/components/card/card-modal';
+import { CalendarAddCardPopover } from './calendar-add-card-popover';
 import type { Card, ID } from '@/types';
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
-];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday-first
 
 function toDateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return format(d, 'yyyy-MM-dd');
 }
 
 function CardChip({ card, onOpen }: { card: Card; onOpen: () => void }) {
@@ -42,19 +43,26 @@ function CardChip({ card, onOpen }: { card: Card; onOpen: () => void }) {
 }
 
 function DayCell({
-  date, inMonth, isToday, dayCards, onOpen,
+  date, inMonth, isToday, dayCards, onOpen, onAdd,
 }: {
   date: Date; inMonth: boolean; isToday: boolean;
-  dayCards: Card[]; onOpen: (id: ID) => void;
+  dayCards: Card[]; onOpen: (id: ID) => void; onAdd: (date: Date) => void;
 }) {
   const dateKey = toDateKey(date);
   const { setNodeRef, isOver } = useDroppable({ id: dateKey });
   return (
     <div
       ref={setNodeRef}
-      className={`bg-trello-surface p-1.5 overflow-hidden flex flex-col transition-colors ${!inMonth ? 'opacity-40' : ''} ${isOver ? 'ring-2 ring-inset ring-trello-primary bg-trello-primary/10' : ''}`}
+      className={`group relative bg-trello-surface p-1.5 overflow-hidden flex flex-col transition-colors ${!inMonth ? 'opacity-40' : ''} ${isToday ? 'bg-trello-primary/10' : ''} ${isOver ? 'ring-2 ring-inset ring-trello-primary bg-trello-primary/10' : ''}`}
     >
-      <div className="flex justify-end mb-1 shrink-0">
+      <div className="flex justify-between items-center mb-1 shrink-0">
+        <button
+          onClick={() => onAdd(date)}
+          className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-white transition-opacity"
+          aria-label="Add card on this day"
+        >
+          <Plus size={13} />
+        </button>
         <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-trello-primary text-white' : 'text-trello-textSubtle'}`}>
           {date.getDate()}
         </span>
@@ -77,12 +85,18 @@ function DayCell({
 }
 
 export function CalendarView({ boardId }: { boardId: ID }) {
-  const now = new Date();
-  const [current, setCurrent] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const calendarViewDate = useBoardStore((s) => s.calendarViewDate);
+  const setCalendarViewDate = useBoardStore((s) => s.setCalendarViewDate);
+  const updateCard = useBoardStore((s) => s.updateCard);
+
+  const viewDate = useMemo(() => {
+    try { return parseISO(calendarViewDate); } catch { return new Date(); }
+  }, [calendarViewDate]);
+
   const [modalCardId, setModalCardId] = useState<ID | null>(null);
   const [activeId, setActiveId] = useState<ID | null>(null);
+  const [addDate, setAddDate] = useState<Date | null>(null);
 
-  const updateCard = useBoardStore((s) => s.updateCard);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const cards = useBoardStore(
@@ -112,30 +126,21 @@ export function CalendarView({ boardId }: { boardId: ID }) {
     return map;
   }, [cards]);
 
+  // Monday-first 6-week grid covering the visible month.
   const cells = useMemo(() => {
-    const { year, month } = current;
-    const firstDay = new Date(year, month, 1);
-    const offset = firstDay.getDay();
-    const start = new Date(year, month, 1 - offset);
-    return Array.from({ length: 42 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d;
-    });
-  }, [current]);
+    const gridStart = startOfWeek(startOfMonth(viewDate), { weekStartsOn: 1 });
+    const gridEnd = endOfWeek(endOfMonth(viewDate), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: gridStart, end: gridEnd });
+  }, [viewDate]);
 
-  const todayKey = toDateKey(now);
+  const now = new Date();
   const activeCard = activeId ? cards.find((c) => c.id === activeId) ?? null : null;
 
-  function prevMonth() {
-    setCurrent(({ year, month }) => (month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }));
-  }
-  function nextMonth() {
-    setCurrent(({ year, month }) => (month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }));
+  function shiftMonth(delta: number) {
+    setCalendarViewDate(addMonths(viewDate, delta).toISOString());
   }
   function goToday() {
-    const d = new Date();
-    setCurrent({ year: d.getFullYear(), month: d.getMonth() });
+    setCalendarViewDate(new Date().toISOString());
   }
 
   function handleDragStart(e: DragStartEvent) {
@@ -161,25 +166,37 @@ export function CalendarView({ boardId }: { boardId: ID }) {
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center gap-3 h-12 px-1 mb-1 shrink-0">
-          <h2 className="text-white font-semibold text-base min-w-[170px]">
-            {MONTH_NAMES[current.month]} {current.year}
-          </h2>
-          <button onClick={goToday} className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded transition-colors">
-            Today
+        <div className="flex items-center gap-2 h-12 px-1 mb-1 shrink-0">
+          <button className="flex items-center gap-1 text-white font-semibold text-base hover:bg-white/10 px-2 py-1 rounded transition-colors">
+            {format(viewDate, 'MMM yyyy')}
+            <ChevronDown size={14} className="text-white/60" />
           </button>
-          <button onClick={prevMonth} className="p-1 rounded hover:bg-white/10 text-white transition-colors" aria-label="Previous month">
-            <ChevronLeft className="w-4 h-4" />
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => shiftMonth(-1)} className="p-1 rounded hover:bg-white/10 text-white transition-colors" aria-label="Previous month">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={goToday} className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded transition-colors">
+              Today
+            </button>
+            <button onClick={() => shiftMonth(1)} className="p-1 rounded hover:bg-white/10 text-white transition-colors" aria-label="Next month">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button className="flex items-center gap-1 text-sm text-white/80 hover:bg-white/10 px-2 py-1 rounded transition-colors">
+            Month
+            <ChevronDown size={12} className="text-white/60" />
           </button>
-          <button onClick={nextMonth} className="p-1 rounded hover:bg-white/10 text-white transition-colors" aria-label="Next month">
-            <ChevronRight className="w-4 h-4" />
+
+          <button className="ml-auto flex items-center gap-1.5 text-sm text-white/80 hover:bg-white/10 px-2.5 py-1 rounded transition-colors">
+            <CalendarPlus size={14} />
+            <span className="hidden sm:inline">Sync to personal calendar</span>
           </button>
-          <span className="ml-auto text-white/40 text-xs hidden sm:inline">Drag a card to reschedule</span>
         </div>
 
-        {/* Day-of-week header */}
+        {/* Day-of-week header (Monday-first) */}
         <div className="grid grid-cols-7 gap-px bg-trello-borderSubtle shrink-0">
-          {DAY_NAMES.map((d) => (
+          {WEEKDAYS.map((d) => (
             <div key={d} className="bg-trello-surface py-1.5 text-center text-[11px] font-semibold text-trello-textSubtle uppercase tracking-wide">
               {d}
             </div>
@@ -187,23 +204,43 @@ export function CalendarView({ boardId }: { boardId: ID }) {
         </div>
 
         {/* Calendar grid */}
-        <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-px bg-trello-borderSubtle overflow-hidden">
+        <div className="flex-1 grid grid-cols-7 gap-px bg-trello-borderSubtle overflow-hidden" style={{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(0, 1fr))` }}>
           {cells.map((date) => {
             const dateKey = toDateKey(date);
             return (
               <DayCell
                 key={dateKey}
                 date={date}
-                inMonth={date.getMonth() === current.month}
-                isToday={dateKey === todayKey}
+                inMonth={isSameMonth(date, viewDate)}
+                isToday={isSameDay(date, now)}
                 dayCards={cardsByDate[dateKey] ?? []}
                 onOpen={setModalCardId}
+                onAdd={setAddDate}
               />
             );
           })}
         </div>
 
+        {/* Bottom-left "+ Add" — defaults to today */}
+        <div className="shrink-0 px-1 pt-1.5">
+          <button
+            onClick={() => setAddDate(new Date())}
+            className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white hover:bg-white/10 px-2.5 py-1.5 rounded transition-colors"
+          >
+            <Plus size={15} />
+            Add
+          </button>
+        </div>
+
         {modalCardId && <CardModal cardId={modalCardId} onClose={() => setModalCardId(null)} />}
+
+        {addDate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onMouseDown={() => setAddDate(null)}>
+            <div onMouseDown={(e) => e.stopPropagation()}>
+              <CalendarAddCardPopover boardId={boardId} defaultDate={addDate} onClose={() => setAddDate(null)} />
+            </div>
+          </div>
+        )}
       </div>
 
       <DragOverlay>
