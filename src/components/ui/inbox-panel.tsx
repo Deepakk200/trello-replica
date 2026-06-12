@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { AlignJustify, SlidersHorizontal, MoreHorizontal, Lock, X, ChevronRight,
          Mail, Globe, Smartphone, MessageSquare, Users } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 
 const INTEGRATIONS = [
@@ -24,17 +23,21 @@ export function InboxPanel() {
   const moveInboxCardToList = useBoardStore((s) => s.moveInboxCardToList);
 
   // Lists on the active board, for the "Move to board" dropdown.
-  const lists = useBoardStore(
-    useShallow((s) => {
-      const boardId = s.activeBoardId ?? Object.keys(s.boards)[0] ?? null;
-      const board = boardId ? s.boards[boardId] : null;
-      if (!board) return [] as { id: string; title: string }[];
-      return board.listIds
-        .map((lid) => s.lists[lid])
-        .filter((l) => l && !l.isArchived)
-        .map((l) => ({ id: l!.id, title: l!.title }));
-    }),
-  );
+  // Select STABLE store records, then derive the mapped array in useMemo —
+  // returning freshly-built objects through a selector breaks shallow caching
+  // and causes an infinite render loop.
+  const activeBoardId = useBoardStore((s) => s.activeBoardId);
+  const boards = useBoardStore((s) => s.boards);
+  const listsById = useBoardStore((s) => s.lists);
+  const lists = useMemo(() => {
+    const boardId = activeBoardId ?? Object.keys(boards)[0] ?? null;
+    const board = boardId ? boards[boardId] : null;
+    if (!board) return [] as { id: string; title: string }[];
+    return board.listIds
+      .map((lid) => listsById[lid])
+      .filter((l): l is NonNullable<typeof l> => !!l && !l.isArchived)
+      .map((l) => ({ id: l.id, title: l.title }));
+  }, [activeBoardId, boards, listsById]);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 150);

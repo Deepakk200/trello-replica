@@ -7,7 +7,6 @@ import {
   useDraggable, useDroppable, closestCenter,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core';
-import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -65,24 +64,28 @@ export function PlannerView() {
   const setActiveCardModal = useBoardStore((s) => s.setActiveCardModal);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  // All non-archived cards on the active board.
-  const cards = useBoardStore(
-    useShallow((s) => {
-      const id = s.activeBoardId ?? Object.keys(s.boards)[0] ?? null;
-      const board = id ? s.boards[id] : null;
-      if (!board) return [] as PlannerCard[];
-      const out: PlannerCard[] = [];
-      for (const lid of board.listIds) {
-        const list = s.lists[lid];
-        if (!list || list.isArchived) continue;
-        for (const cid of list.cardIds) {
-          const c = s.cards[cid];
-          if (c && !c.isArchived) out.push({ id: c.id, title: c.title, dueDate: c.dueDate });
-        }
+  // All non-archived cards on the active board. Select STABLE store records and
+  // derive in useMemo — selectors that build new objects break shallow caching
+  // and cause an infinite render loop.
+  const activeBoardId = useBoardStore((s) => s.activeBoardId);
+  const boards = useBoardStore((s) => s.boards);
+  const listsById = useBoardStore((s) => s.lists);
+  const cardsById = useBoardStore((s) => s.cards);
+  const cards = useMemo(() => {
+    const id = activeBoardId ?? Object.keys(boards)[0] ?? null;
+    const board = id ? boards[id] : null;
+    if (!board) return [] as PlannerCard[];
+    const out: PlannerCard[] = [];
+    for (const lid of board.listIds) {
+      const list = listsById[lid];
+      if (!list || list.isArchived) continue;
+      for (const cid of list.cardIds) {
+        const c = cardsById[cid];
+        if (c && !c.isArchived) out.push({ id: c.id, title: c.title, dueDate: c.dueDate });
       }
-      return out;
-    }),
-  );
+    }
+    return out;
+  }, [activeBoardId, boards, listsById, cardsById]);
 
   const unscheduled = useMemo(() => cards.filter((c) => !c.dueDate), [cards]);
 
