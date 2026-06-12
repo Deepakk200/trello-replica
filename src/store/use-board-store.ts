@@ -262,6 +262,7 @@ function buildSeed(): BoardState {
     ],
     selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
     jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
+    userName: 'deepak chandra', userEmail: 'nagireddydeepakchandra@gmail.com', labsEnabled: false,
   };
 }
 
@@ -368,6 +369,9 @@ type Actions = {
   clearActiveCardModal(): void;
   setJiraPromoDismissed(v: boolean): void;
   setWorkspaceName(name: string): void;
+  setUserName(name: string): void;
+  setUserEmail(email: string): void;
+  setLabsEnabled(v: boolean): void;
   clearAll(): void;
 };
 
@@ -397,6 +401,7 @@ export const boardStore = create<Store>()(
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
       jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
+      userName: 'deepak chandra', userEmail: 'nagireddydeepakchandra@gmail.com', labsEnabled: false,
 
       // ── Boards ──────────────────────────────────────────────────
       createBoard(title, background) {
@@ -713,6 +718,9 @@ export const boardStore = create<Store>()(
       clearActiveCardModal() { set((s) => { s.activeCardModalId = null; }); },
       setJiraPromoDismissed(v) { set((s) => { s.jiraPromoDismissed = v; }); },
       setWorkspaceName(name) { set((s) => { s.workspaceName = name.trim() || 'Trello Workspace'; }); },
+      setUserName(name) { set((s) => { s.userName = name.trim() || 'deepak chandra'; }); },
+      setUserEmail(email) { set((s) => { s.userEmail = email.trim(); }); },
+      setLabsEnabled(v) { set((s) => { s.labsEnabled = v; }); },
 
       // ── Labels ──────────────────────────────────────────────────
       upsertLabel(label) { set((s) => { s.labels[label.id] = label; }); },
@@ -1135,6 +1143,7 @@ export const boardStore = create<Store>()(
           s.sidebarCollapsed = false; s.notifications = seed.notifications; s.selectedCardIds = [];
           s.notificationsOpen = false; s.activeCardModalId = null;
           s.jiraPromoDismissed = false; s.workspaceName = 'Trello Workspace';
+          s.userName = 'deepak chandra'; s.userEmail = 'nagireddydeepakchandra@gmail.com'; s.labsEnabled = false;
           s._hasHydrated = true;
         });
       },
@@ -1158,6 +1167,7 @@ export const boardStore = create<Store>()(
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
         jiraPromoDismissed: state.jiraPromoDismissed, workspaceName: state.workspaceName,
+        userName: state.userName, userEmail: state.userEmail, labsEnabled: state.labsEnabled,
       }),
       migrate: (persisted, _version) => {
         if (typeof persisted === 'object' && persisted !== null) {
@@ -1291,6 +1301,9 @@ export const boardStore = create<Store>()(
         if (state.activeCardModalId === undefined) state.activeCardModalId = null;
         if (state.jiraPromoDismissed === undefined) state.jiraPromoDismissed = false;
         if (!state.workspaceName) state.workspaceName = 'Trello Workspace';
+        if (!state.userName) state.userName = 'deepak chandra';
+        if (state.userEmail === undefined) state.userEmail = 'nagireddydeepakchandra@gmail.com';
+        if (state.labsEnabled === undefined) state.labsEnabled = false;
         state._hasHydrated = true;
       },
     },

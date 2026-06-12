@@ -114,4 +114,9 @@ export interface BoardState {
   jiraPromoDismissed: boolean;
   /** Editable workspace display name shown on the workspace-home header. Persisted. */
   workspaceName: string;
+  /** Mock local account identity (single anonymous user). Persisted. */
+  userName: string;
+  userEmail: string;
+  /** Trello "Labs" experimental-features toggle. Persisted. */
+  labsEnabled: boolean;
 }

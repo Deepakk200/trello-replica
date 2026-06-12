@@ -5,20 +5,23 @@ import { useThemeStore } from '@/store/use-theme-store';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((s) => s.theme);
-  const setTheme = useThemeStore((s) => s.setTheme);
-
-  useEffect(() => {
-    // Honor system preference on first visit (before any stored preference exists)
-    const stored = localStorage.getItem('trello-theme');
-    if (!stored && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light');
-    }
-  }, [setTheme]);
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function apply() {
+      const effective = theme === 'system' ? (mq.matches ? 'dark' : 'light') : theme;
+      root.classList.remove('light', 'dark');
+      root.classList.add(effective);
+    }
+
+    apply();
+    // Only follow the OS when the user explicitly chose "Match browser".
+    if (theme === 'system') {
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
   }, [theme]);
 
   return <>{children}</>;

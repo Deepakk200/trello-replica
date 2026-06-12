@@ -2,38 +2,63 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { HelpCircle, Plus, Search } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
-import { boardStore } from '@/store/use-board-store';
-import { NotificationBell } from './notification-bell';
+import { Bell, HelpCircle, Megaphone, Plus, Search, Users, X } from 'lucide-react';
+import { useShallow } from 'zustand/shallow';
+import { boardStore, useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { SearchPalette } from './search-palette';
 import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
+import { AccountMenu } from './account-menu';
+import { CreateWorkspaceModal } from './create-workspace-modal';
+import { NotificationsDrawer } from './notifications-drawer';
+
+type Menu = 'create' | 'account' | 'announce' | 'help' | null;
 
 export function TopBar() {
   const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [menu, setMenu] = useState<Menu>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [createWsOpen, setCreateWsOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const hydrated = useHasHydrated();
 
+  const { userName, notifications, notificationsOpen } = useBoardStore(
+    useShallow((s) => ({
+      userName: s.userName,
+      notifications: s.notifications,
+      notificationsOpen: s.notificationsOpen,
+    })),
+  );
+  const toggleNotifications = useBoardStore((s) => s.toggleNotificationsDrawer);
+  const closeNotifications = useBoardStore((s) => s.closeNotificationsDrawer);
+
+  const unread = notifications.filter((n) => !n.read).length;
+  const initials = userName.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'DC';
+
+  // Global "?" opens the shortcuts modal (ignore while typing).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === '?') setShortcutsOpen((v) => !v);
+      if (e.key === 'Escape') { setMenu(null); setMobileSearchOpen(false); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const { data: session } = useSession();
-  const userName = session?.user?.name ?? session?.user?.email ?? null;
-  const initials = userName
-    ? userName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'DC';
+  // Open a top-bar popover, making sure everything else closes (one at a time).
+  function openMenu(name: Exclude<Menu, null>) {
+    setMenu((cur) => (cur === name ? null : name));
+    closeNotifications();
+  }
+  function openNotifications() {
+    setMenu(null);
+    toggleNotifications();
+  }
 
   function handleCreateBoard() {
     boardStore.getState().createBoard('New Board', 'linear-gradient(135deg,#0079bf,#5067c5)');
-    setCreateOpen(false);
+    setMenu(null);
   }
   function handleCreateCard() {
     const s = boardStore.getState();
@@ -43,11 +68,14 @@ export function TopBar() {
       const cardId = s.createCard(firstListId, 'New card');
       s.setActiveCardModal(cardId);
     }
-    setCreateOpen(false);
+    setMenu(null);
   }
 
+  const iconBtn = 'p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors';
   const dropdownRow =
     'w-full text-left px-3 py-2 text-sm text-trello-text hover:bg-trello-cardHover transition-colors flex items-center gap-2';
+  const popover =
+    'absolute right-0 top-full mt-1 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden max-w-[calc(100vw-1rem)]';
 
   return (
     <header
@@ -79,8 +107,8 @@ export function TopBar() {
         </Link>
       </div>
 
-      {/* Center: search pill */}
-      <div className="flex justify-center min-w-0">
+      {/* Center: search pill — hidden on mobile (collapses to an icon on the right) */}
+      <div className="hidden sm:flex justify-center min-w-0">
         <div className="flex items-center gap-2 w-full max-w-[480px] rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
           <Search size={14} className="text-white/50 flex-shrink-0" />
           <input
@@ -88,84 +116,159 @@ export function TopBar() {
             placeholder="Search"
             className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none border-transparent"
           />
-          <kbd className="hidden sm:inline text-xs text-white/40 border border-white/20 rounded px-1 py-0.5 ml-auto">
+          <kbd className="hidden md:inline text-xs text-white/40 border border-white/20 rounded px-1 py-0.5 ml-auto">
             {isMac ? '⌘K' : 'Ctrl K'}
           </kbd>
         </div>
       </div>
+      {/* Spacer to keep the 3-col grid balanced on mobile */}
+      <div className="sm:hidden" />
 
-      {/* Right: create · trial · bell · help · avatar */}
+      {/* Right cluster */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Mobile search icon */}
+        <button
+          onClick={() => setMobileSearchOpen(true)}
+          className={`sm:hidden ${iconBtn}`}
+          aria-label="Search"
+        >
+          <Search size={18} />
+        </button>
+
+        {/* Create */}
         <div className="relative">
           <button
-            onClick={() => { setCreateOpen((v) => !v); setAvatarOpen(false); }}
+            onClick={() => openMenu('create')}
             className="h-8 px-3 text-sm font-medium text-white rounded-sm flex-shrink-0"
             style={{ background: '#0052CC' }}
           >
-            Create
+            <span className="hidden sm:inline">Create</span>
+            <Plus className="w-4 h-4 sm:hidden" />
           </button>
-          {createOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setCreateOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 top-full mt-1 w-44 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
-                <button onClick={handleCreateBoard} className={dropdownRow}>
-                  <Plus className="w-4 h-4 text-trello-textSubtle" />Create board
-                </button>
-                <button onClick={handleCreateCard} className={dropdownRow}>
-                  <Plus className="w-4 h-4 text-trello-textSubtle" />Create card
-                </button>
-              </div>
-            </>
+          {menu === 'create' && (
+            <div className={`${popover} w-52`}>
+              <button onClick={handleCreateBoard} className={dropdownRow}>
+                <Plus className="w-4 h-4 text-trello-textSubtle" />Create board
+              </button>
+              <button onClick={handleCreateCard} className={dropdownRow}>
+                <Plus className="w-4 h-4 text-trello-textSubtle" />Create card
+              </button>
+              <button onClick={() => { setMenu(null); setCreateWsOpen(true); }} className={dropdownRow}>
+                <Users className="w-4 h-4 text-trello-textSubtle" />Create Workspace
+              </button>
+            </div>
           )}
         </div>
 
         {/* Trial badge */}
-        <div className="hidden md:flex items-center gap-1.5 bg-purple-600/80 text-white text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0">
-          <span>✦</span><span>3 days left</span>
+        <div
+          className="hidden md:flex items-center gap-1.5 text-white text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+          style={{ background: 'linear-gradient(90deg,#8B5CF6,#0C66E4)' }}
+        >
+          <span>✦</span><span>1 day left</span>
         </div>
 
-        <NotificationBell />
-
-        <button
-          onClick={() => setShortcutsOpen(true)}
-          className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-          aria-label="Help"
-          title="Keyboard shortcuts (?)"
-        >
-          <HelpCircle size={16} />
-        </button>
-        <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-
-        {/* Avatar */}
-        <div className="relative ml-1">
-          <button
-            onClick={() => { setAvatarOpen((v) => !v); setCreateOpen(false); }}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 select-none"
-            style={{ background: '#00B8D9' }}
-            aria-label="Account menu"
-          >
-            {initials}
+        {/* Announcements */}
+        <div className="relative hidden sm:block">
+          <button onClick={() => openMenu('announce')} className={iconBtn} aria-label="Announcements" title="What's new">
+            <Megaphone size={18} />
           </button>
-          {avatarOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 top-full mt-1 w-56 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 py-1">
-                {userName && (
-                  <div className="px-3 py-2 border-b border-trello-border">
-                    <p className="text-sm font-medium text-trello-text truncate">{session?.user?.name ?? 'Account'}</p>
-                    {session?.user?.email && (
-                      <p className="text-xs text-trello-textSubtle truncate">{session.user.email}</p>
-                    )}
-                  </div>
-                )}
-                <button onClick={() => signOut({ callbackUrl: '/sign-in' })} className={`${dropdownRow} text-trello-danger`}>
-                  Sign out
-                </button>
+          {menu === 'announce' && (
+            <div className={`${popover} w-72`}>
+              <div className="px-4 py-3 border-b border-white/[0.08]">
+                <p className="text-sm font-semibold text-white">What&apos;s new</p>
               </div>
-            </>
+              <div className="p-2">
+                {[
+                  { t: 'Workspace home', d: 'Your boards now live on a dedicated home page.' },
+                  { t: 'Account menu', d: 'Manage profile, theme and Labs from your avatar.' },
+                  { t: 'Calendar view', d: 'Drag cards to reschedule right on the calendar.' },
+                ].map((a) => (
+                  <div key={a.t} className="px-2 py-2 rounded hover:bg-white/5">
+                    <p className="text-sm text-white/90 font-medium">{a.t}</p>
+                    <p className="text-xs text-white/50 mt-0.5">{a.d}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
+
+        {/* Notifications */}
+        <button
+          onClick={openNotifications}
+          className={`relative ${iconBtn}`}
+          aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
+          aria-pressed={notificationsOpen}
+        >
+          <Bell size={18} />
+          {hydrated && unread > 0 && (
+            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#1D2125]" />
+          )}
+        </button>
+
+        {/* Help */}
+        <div className="relative hidden sm:block">
+          <button onClick={() => openMenu('help')} className={iconBtn} aria-label="Help" title="Help">
+            <HelpCircle size={18} />
+          </button>
+          {menu === 'help' && (
+            <div className={`${popover} w-56`}>
+              <button onClick={() => { setMenu(null); openMenu('announce'); }} className={dropdownRow}>What&apos;s new</button>
+              <button onClick={() => { setMenu(null); setShortcutsOpen(true); }} className={dropdownRow}>Keyboard shortcuts</button>
+              <a href="https://support.atlassian.com/trello/" target="_blank" rel="noreferrer" className={dropdownRow}>Get help</a>
+            </div>
+          )}
+        </div>
+
+        {/* Avatar */}
+        <button
+          onClick={() => openMenu('account')}
+          className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 select-none"
+          style={{ background: '#00B8D9' }}
+          aria-label="Account menu"
+          aria-haspopup="menu"
+        >
+          {initials}
+        </button>
       </div>
+
+      {/* Shared backdrop for the small top-bar popovers */}
+      {(menu === 'create' || menu === 'announce' || menu === 'help') && (
+        <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} aria-hidden="true" />
+      )}
+
+      {/* Account dropdown (own portal + backdrop, bottom-sheet on mobile) */}
+      {menu === 'account' && (
+        <AccountMenu
+          onClose={() => setMenu(null)}
+          onOpenShortcuts={() => setShortcutsOpen(true)}
+          onOpenHelp={() => openMenu('help')}
+          onCreateWorkspace={() => setCreateWsOpen(true)}
+        />
+      )}
+
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      {createWsOpen && <CreateWorkspaceModal onClose={() => setCreateWsOpen(false)} />}
+      <NotificationsDrawer />
+
+      {/* Mobile full-width search overlay */}
+      {mobileSearchOpen && (
+        <div className="absolute inset-0 z-50 flex items-center gap-2 px-3 sm:hidden" style={{ background: '#1D2125' }}>
+          <div className="flex items-center gap-2 flex-1 rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
+            <Search size={14} className="text-white/50 flex-shrink-0" />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search"
+              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none"
+            />
+          </div>
+          <button onClick={() => setMobileSearchOpen(false)} className={iconBtn} aria-label="Close search">
+            <X size={18} />
+          </button>
+        </div>
+      )}
     </header>
   );
 }
