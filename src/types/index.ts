@@ -52,7 +52,7 @@ export interface CardTemplate {
 }
 
 export interface Label { id: ID; name: string; color: LabelColor }
-export interface ActivityEntry { id: ID; type: 'created'|'moved'|'renamed'|'commented'|'labeled'|'due'|'described'; text: string; createdAt: string }
+export interface ActivityEntry { id: ID; type: 'created'|'moved'|'renamed'|'commented'|'labeled'|'due'|'described'; text: string; createdAt: string; author?: string; authorInitials?: string }
 export interface ChecklistItem { id: ID; text: string; completed: boolean; createdAt: string }
 export interface Checklist { id: ID; title: string; items: ChecklistItem[] }
 export interface Card {

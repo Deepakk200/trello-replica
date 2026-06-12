@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Bell, HelpCircle, Megaphone, Plus, Search, Users, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { boardStore, useBoardStore, useHasHydrated } from '@/store/use-board-store';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { SearchPalette } from './search-palette';
 import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
 import { AccountMenu } from './account-menu';
@@ -21,9 +22,8 @@ export function TopBar() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const hydrated = useHasHydrated();
 
-  const { userName, notifications, notificationsOpen } = useBoardStore(
+  const { notifications, notificationsOpen } = useBoardStore(
     useShallow((s) => ({
-      userName: s.userName,
       notifications: s.notifications,
       notificationsOpen: s.notificationsOpen,
     })),
@@ -31,8 +31,9 @@ export function TopBar() {
   const toggleNotifications = useBoardStore((s) => s.toggleNotificationsDrawer);
   const closeNotifications = useBoardStore((s) => s.closeNotificationsDrawer);
 
+  const currentUser = useCurrentUser();
   const unread = notifications.filter((n) => !n.read).length;
-  const initials = userName.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'DC';
+  const initials = currentUser.initials;
 
   // Global "?" opens the shortcuts modal (ignore while typing).
   useEffect(() => {
@@ -221,15 +222,16 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Avatar */}
+        {/* Avatar — real session user's photo or initials */}
         <button
           onClick={() => openMenu('account')}
-          className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 select-none"
-          style={{ background: '#00B8D9' }}
+          className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 select-none bg-cover bg-center"
+          style={currentUser.image ? { backgroundImage: `url(${currentUser.image})` } : { background: '#00B8D9' }}
           aria-label="Account menu"
           aria-haspopup="menu"
+          title={currentUser.name}
         >
-          {initials}
+          {currentUser.image ? '' : initials}
         </button>
       </div>
 

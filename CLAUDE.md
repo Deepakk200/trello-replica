@@ -1,5 +1,15 @@
 # Trello Clone — Handoff
 
+## Auth reconnect — Part 1 (2026-06-12): session-aware identity in the legacy app
+
+The full **Auth.js v5 + Prisma** stack already existed (Phase 2): `src/lib/auth.ts` (Google + Credentials/bcrypt, JWT, `pages.signIn:'/sign-in'`), `prisma/schema.prisma` (`User.passwordHash`/`name`/`email`/`avatarUrl`, Account/Session/VerificationToken + workspaces/RBAC), `src/proxy.ts` guard (unauth → `/sign-in`; public: `/sign-in`,`/sign-up`,`/api/auth`,webhooks,cron,PWA/SEO assets), `/(auth)/sign-in`+`sign-up`, `src/features/auth/actions.ts` `signUpUser` (creates user + personal `"{name}'s Workspace"`). **A prior task had disconnected the chrome from the session and hardcoded `userName:'deepak chandra'` in the Zustand store** — Part 1 reconnects it. No new auth stack, kept `/sign-in`+`/sign-up` (NOT `/login`/`/signup`), kept `passwordHash`/`name` (no `username` field), kept `GOOGLE_CLIENT_ID/SECRET` env.
+
+- **`src/hooks/use-current-user.ts`** — `useCurrentUser()` (client) reads `useSession()` → `{id,name,email,image,initials,isAuthenticated}` with graceful fallbacks (name → email local-part → 'User'). **Single source of truth for displayed identity.**
+- **Reconnected to the real session:** `top-bar.tsx` avatar (photo via `bg-image` or initials), `account-menu.tsx` header (name/email/photo) + **Log out → `signOut({callbackUrl:'/sign-in'})`**, `card/activity-section.tsx` comment **author** (new optional `ActivityEntry.author`/`authorInitials`; composer + feed avatars show the real user).
+- **Per-user local data:** `src/components/ui/store-namespacer.tsx` (mounted in `layout.tsx` inside `SessionProvider`) repoints the persist key to `trello-clone-v1:<userId>` and rehydrates once the session resolves (base key when signed out). `clearAll` now clears the active key. **One-time effect:** an existing logged-in user's old `trello-clone-v1` board data resets to a fresh seed under their namespaced key.
+- The store's now-unused `userName`/`userEmail` fields/setters remain (harmless; nothing displays them).
+- **Verify-on-Vercel:** real signup/login/refresh needs `DATABASE_URL`+`AUTH_SECRET`(+Google) — absent locally, so Part 1 was verified by tsc/eslint/build only; the live auth flow is tested on the deployment.
+
 ## UI pass — Completed (2026-06-10): Trello-authentic shell (legacy localStorage app at `/`)
 
 Scoped to the **legacy Zustand app** (`src/components/{board,card,list,ui}` + `use-board-store`), not the DB app. NOTE: this app's nav model is **string-based**, not the numeric `activeView` some prompts assume — `activePanel: 'board'|'inbox'|'planner'` (main area) + per-board `activeViewByBoard: 'board'|'calendar'|'table'|'dashboard'` (via `ViewNavigation`).

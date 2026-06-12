@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import type { ID } from '@/types';
 import { timeAgo } from '@/lib/time';
 
@@ -11,6 +12,7 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
   const pushActivity = useBoardStore((s) => s.pushActivity);
   const updateComment = useBoardStore((s) => s.updateComment);
   const deleteComment = useBoardStore((s) => s.deleteComment);
+  const currentUser  = useCurrentUser();
   const [comment, setComment]       = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [editingId, setEditingId]   = useState<ID | null>(null);
@@ -22,7 +24,12 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
   function submitComment() {
     const t = comment.trim();
     if (!t) return;
-    pushActivity(cardId, { type: 'commented', text: t });
+    pushActivity(cardId, {
+      type: 'commented',
+      text: t,
+      author: currentUser.name,
+      authorInitials: currentUser.initials,
+    });
     setComment('');
   }
 
@@ -61,8 +68,11 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
 
         {/* Comment composer */}
         <div className="flex gap-2 mb-4">
-          <div className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white shrink-0 select-none">
-            U
+          <div
+            className="w-7 h-7 rounded-full bg-cover bg-center bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white shrink-0 select-none"
+            style={currentUser.image ? { backgroundImage: `url(${currentUser.image})` } : undefined}
+          >
+            {currentUser.image ? '' : currentUser.initials}
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <textarea
@@ -91,7 +101,7 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
           {feed.map((entry) => (
             <div key={entry.id} className="flex gap-2 group">
               <div className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white shrink-0 select-none">
-                U
+                {entry.authorInitials ?? 'U'}
               </div>
               <div className="flex-1 min-w-0">
                 {entry.type === 'commented' ? (
@@ -115,6 +125,9 @@ export function ActivitySection({ cardId }: { cardId: ID }) {
                     </div>
                   ) : (
                     <>
+                      {entry.author && (
+                        <p className="text-sm font-semibold text-trello-text mb-1">{entry.author}</p>
+                      )}
                       <div className="bg-trello-cardBg rounded-lg px-3 py-2 text-sm text-trello-text break-words">
                         {entry.text}
                       </div>
