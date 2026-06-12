@@ -110,4 +110,8 @@ export interface BoardState {
   activeViewByBoard: Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>;
   notifications: Notification[];
   selectedCardIds: ID[];
+  /** Workspace-home Jira/templates promo banner dismissal. Persisted. */
+  jiraPromoDismissed: boolean;
+  /** Editable workspace display name shown on the workspace-home header. Persisted. */
+  workspaceName: string;
 }
