@@ -1128,7 +1128,11 @@ export const boardStore = create<Store>()(
 
       // ── Persistence ──────────────────────────────────────────────
       clearAll() {
-        if (typeof window !== 'undefined') localStorage.removeItem('trello-clone-v1');
+        if (typeof window !== 'undefined') {
+          // Clear the currently active (possibly per-user namespaced) persist key.
+          const opts = (boardStore.persist as unknown as { getOptions?: () => { name?: string } }).getOptions?.();
+          localStorage.removeItem(opts?.name ?? 'trello-clone-v1');
+        }
         const seed = buildSeed();
         set((s) => {
           s.boards = seed.boards; s.lists = seed.lists; s.cards = seed.cards;

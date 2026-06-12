@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { SessionProvider } from '@/components/ui/session-provider';
+import { StoreNamespacer } from '@/components/ui/store-namespacer';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { PwaInstallPrompt } from '@/components/ui/pwa-install-prompt';
 
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} bg-trello-bg text-trello-text antialiased min-h-screen`}>
         <OfflineBanner />
         <SessionProvider>
+          <StoreNamespacer />
           <ThemeProvider>{children}</ThemeProvider>
         </SessionProvider>
         <PwaInstallPrompt />

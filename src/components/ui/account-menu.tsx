@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import {
   Check, ChevronLeft, ChevronRight, ExternalLink, Monitor, Moon, Sun, Users,
 } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { useThemeStore, type Theme } from '@/store/use-theme-store';
+import { useCurrentUser } from '@/hooks/use-current-user';
 
 interface Props {
   onClose: () => void;
@@ -22,12 +23,6 @@ const row =
   'flex items-center gap-3 px-3 py-2 text-sm text-white/85 hover:bg-white/10 cursor-pointer transition-colors w-full text-left';
 const divider = 'border-t border-white/[0.08] my-1';
 
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'DC';
-  return parts.map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-}
-
 const THEME_OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', Icon: Sun },
   { value: 'dark', label: 'Dark', Icon: Moon },
@@ -39,9 +34,8 @@ export function AccountMenu({ onClose, onOpenShortcuts, onOpenHelp, onCreateWork
   const [view, setView] = useState<'main' | 'theme' | 'logout'>('main');
   const [notice, setNotice] = useState<string | null>(null);
 
-  const { userName, userEmail, labsEnabled } = useBoardStore(
-    useShallow((s) => ({ userName: s.userName, userEmail: s.userEmail, labsEnabled: s.labsEnabled })),
-  );
+  const currentUser = useCurrentUser();
+  const labsEnabled = useBoardStore((s) => s.labsEnabled);
   const setLabsEnabled = useBoardStore((s) => s.setLabsEnabled);
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
@@ -86,17 +80,17 @@ export function AccountMenu({ onClose, onOpenShortcuts, onOpenHelp, onCreateWork
       {view === 'main' && (
         <>
           <p className={sectionLabel}>Account</p>
-          {/* Account header */}
+          {/* Account header — real signed-in user */}
           <div className="flex items-start gap-3 px-3 py-2">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 select-none"
-              style={{ background: '#00B8D9' }}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 select-none bg-cover bg-center"
+              style={currentUser.image ? { backgroundImage: `url(${currentUser.image})` } : { background: '#00B8D9' }}
             >
-              {initialsOf(userName)}
+              {currentUser.image ? '' : currentUser.initials}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{userName}</p>
-              <p className="text-xs text-white/50 truncate">{userEmail}</p>
+              <p className="text-sm font-medium text-white truncate">{currentUser.name}</p>
+              <p className="text-xs text-white/50 truncate">{currentUser.email || 'Not signed in'}</p>
             </div>
           </div>
           <button className={row} onClick={() => toast('No other accounts')} role="menuitem">
@@ -175,10 +169,10 @@ export function AccountMenu({ onClose, onOpenShortcuts, onOpenHelp, onCreateWork
       {view === 'logout' && (
         <div className="p-4">
           <p className="text-sm font-medium text-white mb-1">Log out?</p>
-          <p className="text-xs text-white/50 mb-4">You&apos;ll be returned to the workspace home.</p>
+          <p className="text-xs text-white/50 mb-4">You&apos;ll be signed out and returned to the login page.</p>
           <div className="flex gap-2">
             <button
-              onClick={() => { onClose(); router.push('/'); }}
+              onClick={() => { onClose(); void signOut({ callbackUrl: '/sign-in' }); }}
               className="flex-1 py-1.5 rounded text-sm font-medium text-white"
               style={{ background: '#0C66E4' }}
             >
