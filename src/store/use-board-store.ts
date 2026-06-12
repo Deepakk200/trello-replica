@@ -261,6 +261,7 @@ function buildSeed(): BoardState {
       makeNotification({ type: 'moved', boardId, text: 'Project kickoff was moved to Done' }),
     ],
     selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
+    jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
   };
 }
 
@@ -365,6 +366,8 @@ type Actions = {
   closeNotificationsDrawer(): void;
   setActiveCardModal(cardId: ID | null): void;
   clearActiveCardModal(): void;
+  setJiraPromoDismissed(v: boolean): void;
+  setWorkspaceName(name: string): void;
   clearAll(): void;
 };
 
@@ -393,6 +396,7 @@ export const boardStore = create<Store>()(
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
+      jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
 
       // ── Boards ──────────────────────────────────────────────────
       createBoard(title, background) {
@@ -707,6 +711,8 @@ export const boardStore = create<Store>()(
       closeNotificationsDrawer() { set((s) => { s.notificationsOpen = false; }); },
       setActiveCardModal(cardId) { set((s) => { s.activeCardModalId = cardId; }); },
       clearActiveCardModal() { set((s) => { s.activeCardModalId = null; }); },
+      setJiraPromoDismissed(v) { set((s) => { s.jiraPromoDismissed = v; }); },
+      setWorkspaceName(name) { set((s) => { s.workspaceName = name.trim() || 'Trello Workspace'; }); },
 
       // ── Labels ──────────────────────────────────────────────────
       upsertLabel(label) { set((s) => { s.labels[label.id] = label; }); },
@@ -1127,7 +1133,9 @@ export const boardStore = create<Store>()(
           s.panelLayout = seed.panelLayout;
           s.starredBoardIds = []; s.recentBoardIds = seed.recentBoardIds;
           s.sidebarCollapsed = false; s.notifications = seed.notifications; s.selectedCardIds = [];
-          s.notificationsOpen = false; s.activeCardModalId = null; s._hasHydrated = true;
+          s.notificationsOpen = false; s.activeCardModalId = null;
+          s.jiraPromoDismissed = false; s.workspaceName = 'Trello Workspace';
+          s._hasHydrated = true;
         });
       },
     })),
@@ -1149,6 +1157,7 @@ export const boardStore = create<Store>()(
         calendarViewDate: state.calendarViewDate, calendarGranularity: state.calendarGranularity,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
+        jiraPromoDismissed: state.jiraPromoDismissed, workspaceName: state.workspaceName,
       }),
       migrate: (persisted, _version) => {
         if (typeof persisted === 'object' && persisted !== null) {
@@ -1280,6 +1289,8 @@ export const boardStore = create<Store>()(
         if (!state.selectedCardIds) state.selectedCardIds = [];
         if (state.notificationsOpen === undefined) state.notificationsOpen = false;
         if (state.activeCardModalId === undefined) state.activeCardModalId = null;
+        if (state.jiraPromoDismissed === undefined) state.jiraPromoDismissed = false;
+        if (!state.workspaceName) state.workspaceName = 'Trello Workspace';
         state._hasHydrated = true;
       },
     },
