@@ -10,7 +10,6 @@ import { TableView } from './table-view';
 import { DashboardView } from './dashboard-view';
 import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
 import { CommandPalette } from '@/components/ui/command-palette';
-import { NotificationsDrawer } from '@/components/ui/notifications-drawer';
 import { BulkActionBar } from './bulk-action-bar';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(
@@ -86,7 +85,6 @@ export function BoardView() {
     <>
       <ShortcutsOverlay />
       <CommandPalette />
-      <NotificationsDrawer />
       <BulkActionBar />
 
       {/* Board fills the remaining viewport height below the top-bar */}

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowRight, Bell, CheckCircle2, Clock, MessageSquare, UserPlus, X, AlertTriangle } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
-import { useBoardStore } from '@/store/use-board-store';
+import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import type { ID, Notification } from '@/types';
 import { timeAgo } from '@/lib/time';
 
@@ -22,6 +22,7 @@ function iconFor(notification: Notification) {
 }
 
 export function NotificationsDrawer() {
+  const hydrated = useHasHydrated();
   const [tab, setTab] = useState<'all' | 'unread'>('all');
   const { open, notifications, boards, cards, lists } = useBoardStore(
     useShallow((s) => ({
@@ -63,6 +64,10 @@ export function NotificationsDrawer() {
       <p className="text-xs text-trello-textSubtle mt-1">New activity will appear here.</p>
     </div>
   );
+
+  // SSR-safe: createPortal needs document; render nothing until the client
+  // store has hydrated (TopBar mounts this on every route, incl. prerendered ones).
+  if (!hydrated) return null;
 
   return createPortal(
     <div
