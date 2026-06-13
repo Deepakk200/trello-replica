@@ -8,20 +8,24 @@ datasource db {
 }
 
 model Board {
-  id          String    @id @default(uuid())
-  title       String
-  background  String    @default("#0052CC")
-  starred     Boolean   @default(false)
-  closed      Boolean   @default(false)
-  position    Float     @default(0)
-  workspaceId String?
-  createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id             String    @id @default(uuid())
+  title          String
+  background     String    @default("#0052CC")
+  description    String?
+  starred        Boolean   @default(false)
+  closed         Boolean   @default(false)
+  position       Float     @default(0)
+  // Legacy-store parity (additive): per-board card numbering + visibility.
+  nextCardNumber Int       @default(1)
+  visibility     String    @default("workspace")
+  workspaceId    String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  workspace Workspace?    @relation(fields: [workspaceId], references: [id])
-  createdBy User?         @relation(fields: [createdById], references: [id])
+  workspace  Workspace?    @relation(fields: [workspaceId], references: [id])
+  createdBy  User?         @relation(fields: [createdById], references: [id])
   lists      List[]
   labels     Label[]
   members    BoardMember[]
@@ -38,6 +42,7 @@ model List {
   title     String
   position  Float
   archived  Boolean   @default(false)
+  collapsed Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -50,25 +55,35 @@ model List {
 }
 
 model Card {
-  id          String    @id @default(uuid())
-  listId      String
-  title       String
-  description String?
-  position    Float
-  dueDate     DateTime?
-  completed   Boolean   @default(false)
-  coverColor  String?
-  archived    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id             String    @id @default(uuid())
+  listId         String
+  title          String
+  description    String?
+  position       Float
+  dueDate        DateTime?
+  startDate      DateTime?
+  completed      Boolean   @default(false)
+  // Cover: coverColor holds a hex/color for color covers; coverImage a URL for
+  // image covers. size/textColor mirror the legacy store's cover object.
+  coverColor     String?
+  coverImage     String?
+  coverSize      String    @default("half")
+  coverTextColor String?
+  // Per-board card number (legacy parity) + cross-card links (legacy linkedCardIds).
+  number         Int?
+  linkedCardIds  String[]  @default([])
+  archived       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list        List           @relation(fields: [listId], references: [id], onDelete: Cascade)
   labels      CardLabel[]
   checklists  Checklist[]
   comments    Comment[]
   attachments Attachment[]
   activities  Activity[]
+  assignees   CardAssignee[]
 
   @@index([listId])
   @@index([listId, position])
@@ -76,7 +91,7 @@ model Card {
 }
 
 model Label {
-  id      String      @id @default(uuid())
+  id      String  @id @default(uuid())
   boardId String
   name    String?
   color   String
@@ -95,6 +110,18 @@ model CardLabel {
   label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@id([cardId, labelId])
+}
+
+// Card ↔ User assignment (legacy card.memberIds, now backed by real users).
+model CardAssignee {
+  cardId String
+  userId String
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
 }
 
 model Checklist {
@@ -173,6 +200,7 @@ model User {
   accounts         Account[]
   workspaceMembers WorkspaceMember[]
   boardMembers     BoardMember[]
+  cardAssignees    CardAssignee[]
   comments         Comment[]
   boards           Board[]
   activities       Activity[]

@@ -1,5 +1,14 @@
 # Trello Clone — Handoff
 
+## Legacy→DB migration — sub-phase 1a (2026-06-13): additive schema for legacy parity
+
+Goal of the in-progress migration: make the **visible legacy localStorage app** (`/`, `/b`) persist through the **existing** Prisma + Auth.js + server-action stack (NOT a rebuild — the backend already exists; see below). The legacy Zustand model is richer than the DB had, so 1a adds columns/models **additively** (safe for the existing DB app):
+- **Board** += `description String?`, `nextCardNumber Int @default(1)`, `visibility String @default("workspace")`.
+- **List** += `collapsed Boolean @default(false)`.
+- **Card** += `startDate DateTime?`, `coverImage String?`, `coverSize String @default("half")`, `coverTextColor String?`, `number Int?`, `linkedCardIds String[] @default([])`, relation `assignees CardAssignee[]`.
+- **New `CardAssignee`** join (`@@id([cardId,userId])`) + `User.cardAssignees` back-relation — legacy `card.memberIds` backed by real users.
+Existing `Checklist`/`ChecklistItem` (`title`/`checked`) and `Comment` (`content`/`author`/`userId`) are reused as-is (mapping happens in the upcoming server-action layer). **Verify:** `prisma format` OK · `tsc` green · `build` green. **Deferred to deploy:** `prisma db push` (no local `DATABASE_URL`); the client regenerates on Vercel via `postinstall`. Local `prisma generate` is currently blocked by a Windows DLL lock from orphaned build workers — does not affect the schema commit. **Next:** 1b (confirm auth wiring), 1c (server actions mirroring legacy store mutations + store sync), 1d (identity — already largely done in the Auth-reconnect Part 1 below).
+
 ## Auth reconnect — Part 1 (2026-06-12): session-aware identity in the legacy app
 
 The full **Auth.js v5 + Prisma** stack already existed (Phase 2): `src/lib/auth.ts` (Google + Credentials/bcrypt, JWT, `pages.signIn:'/sign-in'`), `prisma/schema.prisma` (`User.passwordHash`/`name`/`email`/`avatarUrl`, Account/Session/VerificationToken + workspaces/RBAC), `src/proxy.ts` guard (unauth → `/sign-in`; public: `/sign-in`,`/sign-up`,`/api/auth`,webhooks,cron,PWA/SEO assets), `/(auth)/sign-in`+`sign-up`, `src/features/auth/actions.ts` `signUpUser` (creates user + personal `"{name}'s Workspace"`). **A prior task had disconnected the chrome from the session and hardcoded `userName:'deepak chandra'` in the Zustand store** — Part 1 reconnects it. No new auth stack, kept `/sign-in`+`/sign-up` (NOT `/login`/`/signup`), kept `passwordHash`/`name` (no `username` field), kept `GOOGLE_CLIENT_ID/SECRET` env.
