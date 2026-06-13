@@ -44,6 +44,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const [showChecklist, setShowChecklist] = useState(false);
   const [showMembers, setShowMembers]     = useState(false);
   const [showMove, setShowMove]           = useState(false);
+  const [addingAttachment, setAddingAttachment] = useState(false);
   const [clTitle, setClTitle]             = useState('Checklist');
   const [mounted, setMounted]             = useState(false);
   const dialogRef     = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   if (!card || !mounted) return null;
 
-  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); setShowMove(false); }
+  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); setShowMove(false); setAddingAttachment(false); }
 
   function commitTitle() {
     const t = titleDraft.trim();
@@ -230,10 +231,13 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
             <DescriptionEditor cardId={cardId} />
 
-            {/* Attachments (before checklists) */}
-            {(card.attachments ?? []).length > 0 && (
-              <AttachmentsSection cardId={cardId} />
-            )}
+            {/* Attachments (before checklists) — section self-hides when empty
+                and not adding; the sidebar "Attachment" button opens the add form. */}
+            <AttachmentsSection
+              cardId={cardId}
+              adding={addingAttachment}
+              onAddingChange={setAddingAttachment}
+            />
 
             <LinkedCardsSection cardId={cardId} />
 
@@ -318,7 +322,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
                   <SidebarBtn
                     icon={<Paperclip className="w-4 h-4" />}
                     label="Attachment"
-                    onClick={() => { closeAll(); }}
+                    onClick={() => { closeAll(); setAddingAttachment(true); }}
                   />
                 </div>
               </div>

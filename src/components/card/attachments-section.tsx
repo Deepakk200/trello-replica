@@ -13,13 +13,24 @@ function hostnameOf(url: string): string {
   try { return new URL(url).hostname || url; } catch { return url; }
 }
 
-export function AttachmentsSection({ cardId }: { cardId: ID }) {
+export function AttachmentsSection({
+  cardId,
+  adding: addingProp,
+  onAddingChange,
+}: {
+  cardId: ID;
+  /** Optional controlled open-state for the add form (e.g. the modal sidebar button). */
+  adding?: boolean;
+  onAddingChange?: (v: boolean) => void;
+}) {
   const card               = useBoardStore((s) => s.cards[cardId]);
   const addAttachment      = useBoardStore((s) => s.addAttachment);
   const removeAttachment   = useBoardStore((s) => s.removeAttachment);
   const setCardCoverFromAttachment = useBoardStore((s) => s.setCardCoverFromAttachment);
 
-  const [adding, setAdding]     = useState(false);
+  const [addingInternal, setAddingInternal] = useState(false);
+  const adding = addingProp ?? addingInternal;
+  const setAdding = (v: boolean) => { if (onAddingChange) onAddingChange(v); else setAddingInternal(v); };
   const [tab, setTab]           = useState<'url' | 'file'>('url');
   const [url, setUrl]           = useState('');
   const [name, setName]         = useState('');
@@ -28,15 +39,9 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
 
   if (!card) return null;
   const attachments = card.attachments ?? [];
-  if (attachments.length === 0 && !adding) {
-    return (
-      <button
-        onClick={() => setAdding(true)}
-        className="hidden"
-        aria-hidden="true"
-      />
-    );
-  }
+  // Stay hidden until there's something to show OR the add form is open
+  // (the modal sidebar's "Attachment" button opens it via the controlled prop).
+  if (attachments.length === 0 && !adding) return null;
 
   function submit() {
     const u = url.trim(); if (!u) return;
@@ -81,7 +86,7 @@ export function AttachmentsSection({ cardId }: { cardId: ID }) {
         <Paperclip className="w-5 h-5 text-trello-textSubtle shrink-0" />
         <span className="font-semibold text-sm text-trello-text flex-1">Attachments</span>
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => setAdding(!adding)}
           className="btn-soft text-xs px-2 py-0.5 flex items-center gap-1"
         >
           <Plus className="w-3 h-3" />Add
