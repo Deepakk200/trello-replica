@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { SessionProvider } from '@/components/ui/session-provider';
 import { StoreNamespacer } from '@/components/ui/store-namespacer';
+import { LegacyDbSync } from '@/components/ui/legacy-db-sync';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { PwaInstallPrompt } from '@/components/ui/pwa-install-prompt';
 
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <OfflineBanner />
         <SessionProvider>
           <StoreNamespacer />
+          <LegacyDbSync />
           <ThemeProvider>{children}</ThemeProvider>
         </SessionProvider>
         <PwaInstallPrompt />
