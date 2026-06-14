@@ -6,7 +6,6 @@ import { Bell, HelpCircle, Megaphone, Plus, Search, Users, X } from 'lucide-reac
 import { useShallow } from 'zustand/shallow';
 import { boardStore, useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { useCurrentUser } from '@/hooks/use-current-user';
-import { SearchPalette } from './search-palette';
 import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
 import { AccountMenu } from './account-menu';
 import { CreateWorkspaceModal } from './create-workspace-modal';
@@ -83,8 +82,6 @@ export function TopBar() {
       className="h-11 grid grid-cols-[auto_1fr_auto] items-center px-3 gap-3 border-b border-white/[0.08] shrink-0 relative z-30"
       style={{ background: '#1D2125' }}
     >
-      <SearchPalette />
-
       {/* Left: waffle + logo */}
       <div className="flex items-center gap-2">
         <button

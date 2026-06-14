@@ -7,6 +7,7 @@ import { StoreNamespacer } from '@/components/ui/store-namespacer';
 import { LegacyDbSync } from '@/components/ui/legacy-db-sync';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { PwaInstallPrompt } from '@/components/ui/pwa-install-prompt';
+import { SearchPalette } from '@/components/ui/search-palette';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -73,6 +74,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <StoreNamespacer />
           <LegacyDbSync />
           <ThemeProvider>{children}</ThemeProvider>
+          {/* Global Cmd/Ctrl+K palette — available on every page (legacy + DB app). */}
+          <SearchPalette />
         </SessionProvider>
         <PwaInstallPrompt />
       </body>

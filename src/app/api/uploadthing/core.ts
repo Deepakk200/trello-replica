@@ -3,6 +3,7 @@ import { UploadThingError } from "uploadthing/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getBoardAccess } from "@/lib/authz";
 
 const f = createUploadthing();
 
@@ -18,15 +19,16 @@ export const ourFileRouter = {
       const session = await auth();
       if (!session?.user?.id) throw new UploadThingError("Unauthorized");
 
+      // Resolve the card's board, then authorize via the central RBAC helper —
+      // workspace member, board member, or creator with EDIT rights (OBSERVER
+      // and non-members are rejected; no cross-user uploads).
       const card = await db.card.findFirst({
-        where: {
-          id: input.cardId,
-          list: { board: { workspaceId: session.user.workspaceId ?? "" } },
-          deletedAt: null,
-        },
-        select: { id: true },
+        where: { id: input.cardId, deletedAt: null },
+        select: { list: { select: { boardId: true } } },
       });
-      if (!card) throw new UploadThingError("Card not found or access denied");
+      if (!card) throw new UploadThingError("Card not found");
+      const access = await getBoardAccess(card.list.boardId);
+      if (!access || !access.canEdit) throw new UploadThingError("Access denied");
 
       return { userId: session.user.id, cardId: input.cardId };
     })
@@ -38,6 +40,7 @@ export const ourFileRouter = {
           url: file.ufsUrl,
           fileType: file.type,
           fileSize: file.size,
+          uploadedById: metadata.userId,
         },
       });
       return { uploadedBy: metadata.userId, url: file.ufsUrl };

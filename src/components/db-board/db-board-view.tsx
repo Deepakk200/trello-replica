@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
@@ -34,6 +34,13 @@ export function DbBoardView({ board }: { board: BoardData }) {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Deep-link: /board/[id]?card=<id> (e.g. from Cmd+K search) opens that card.
+  useEffect(() => {
+    const cardId = searchParams.get("card");
+    if (cardId) setOpenCardId(cardId);
+  }, [searchParams]);
 
   // Effective access for the current user (read-only for OBSERVER/GUEST).
   const canEdit = b._access?.canEdit ?? true;

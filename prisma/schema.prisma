@@ -163,15 +163,19 @@ model Comment {
 }
 
 model Attachment {
-  id        String   @id @default(uuid())
-  cardId    String
-  name      String
-  url       String
-  fileType  String
-  fileSize  Int      @default(0)
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  cardId       String
+  name         String
+  url          String
+  fileType     String
+  fileSize     Int      @default(0)
+  // Who uploaded it (Phase 5). Kept fileType/fileSize names (Phase 6) rather than
+  // renaming to type/size, which would break existing UI + need a data migration.
+  uploadedById String?
+  createdAt    DateTime @default(now())
 
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card       Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploadedBy User? @relation(fields: [uploadedById], references: [id])
 
   @@index([cardId])
 }
@@ -211,6 +215,7 @@ model User {
   notifications    Notification[]
   auditLogs        AuditLog[]
   apiKeys          ApiKey[]
+  attachments      Attachment[]
   // NOTE: User.cards / User.lists from the spec are omitted — Card/List have no
   // createdBy relation in this phase, so declaring them would fail Prisma validation.
 }
