@@ -22,10 +22,12 @@ const withSerwist = withSerwistInit({
   reloadOnOnline: true,
 });
 
-// Content-Security-Policy is shipped as Report-Only for now so it cannot break
-// Liveblocks (WSS), UploadThing, Sentry, or Next inline scripts. Tighten to an
-// enforced policy with nonces in a future production-hardening pass.
-// TODO(prod-hardening): move to enforced CSP + drop 'unsafe-inline'/'unsafe-eval' via nonces.
+// Enforced Content-Security-Policy (Phase 6). 'unsafe-inline'/'unsafe-eval' are
+// retained in script-src because Next.js injects inline bootstrap scripts and
+// some deps eval at runtime — removing them needs a nonce/hash pipeline (future
+// pass). Every external origin the app talks to is explicitly allowlisted so the
+// enforced policy does NOT break Liveblocks (WSS), UploadThing, Sentry (incl.
+// replay web-worker via blob:), Stripe, Google fonts/avatars, or the PWA SW.
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
@@ -34,17 +36,23 @@ const csp = [
   "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://lh3.googleusercontent.com https://*.googleusercontent.com",
   "connect-src 'self' wss://*.liveblocks.io https://*.liveblocks.io https://*.ingest.sentry.io https://*.uploadthing.com https://*.ufs.sh https://utfs.io https://api.stripe.com https://*.posthog.com https://us.i.posthog.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
   "frame-ancestors 'self'",
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const securityHeaders = [
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-  { key: "Content-Security-Policy-Report-Only", value: csp },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "Content-Security-Policy", value: csp },
 ];
 
 const nextConfig: NextConfig = {

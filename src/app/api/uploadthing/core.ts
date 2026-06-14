@@ -19,6 +19,14 @@ export const ourFileRouter = {
       const session = await auth();
       if (!session?.user?.id) throw new UploadThingError("Unauthorized");
 
+      // Per-user upload rate limit (no-op without Upstash).
+      try {
+        const { rateLimits, checkRateLimit } = await import("@/lib/rate-limit");
+        await checkRateLimit(rateLimits.api, `upload:${session.user.id}`);
+      } catch (e) {
+        throw new UploadThingError(e instanceof Error ? e.message : "Rate limit exceeded");
+      }
+
       // Resolve the card's board, then authorize via the central RBAC helper —
       // workspace member, board member, or creator with EDIT rights (OBSERVER
       // and non-members are rejected; no cross-user uploads).

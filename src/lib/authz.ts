@@ -15,6 +15,7 @@
 // back to their oldest membership. Server-render reads it; switching writes it.
 
 import { cookies } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { WorkspaceRole } from "@prisma/client";
@@ -74,6 +75,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 export async function requireUser(): Promise<SessionUser> {
   const u = await getSessionUser();
   if (!u) throw new Error("Unauthorized");
+  // Attach the actor to the Sentry scope so any error thrown downstream in this
+  // request carries userId context (no-op when Sentry isn't configured).
+  Sentry.setUser({ id: u.id, email: u.email ?? undefined });
   return u;
 }
 
@@ -204,6 +208,8 @@ export async function canAccessBoard(boardId: string): Promise<boolean> {
 export async function requireBoardAccess(boardId: string): Promise<BoardAccess> {
   const a = await getBoardAccess(boardId);
   if (!a) throw new Error("Not authorized");
+  // Tag the Sentry scope so downstream errors carry boardId context.
+  Sentry.setTag("boardId", boardId);
   return a;
 }
 

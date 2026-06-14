@@ -24,3 +24,19 @@ export const logger = {
   warn: (msg: string, ctx?: Record<string, unknown>) => log("warn", msg, ctx),
   error: (msg: string, ctx?: Record<string, unknown>) => log("error", msg, ctx),
 };
+
+/**
+ * Log an exception AND forward it to Sentry with structured context (userId,
+ * boardId, action, …). Use in server-action catch blocks. Sentry is a no-op
+ * when no DSN is configured, so this is safe everywhere.
+ */
+export async function captureError(error: unknown, context?: Record<string, unknown>) {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error(message, context);
+  try {
+    const Sentry = await import("@sentry/nextjs");
+    Sentry.captureException(error, context ? { extra: context } : undefined);
+  } catch {
+    // Sentry optional — never let reporting throw.
+  }
+}

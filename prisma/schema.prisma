@@ -4,7 +4,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // App queries use the POOLED DATABASE_URL (db.ts appends connection_limit for
+  // serverless). For Neon, set up direct-vs-pooled migrations by adding
+  //   directUrl = env("DIRECT_URL")
+  // here AND setting DIRECT_URL in the environment. Left off by default because
+  // referencing env("DIRECT_URL") makes `prisma generate` (Vercel postinstall)
+  // fail when the var is unset — enable both together.
+  url = env("DATABASE_URL")
 }
 
 model Board {
