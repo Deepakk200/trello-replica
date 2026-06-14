@@ -79,20 +79,26 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    const onCard = activeCardModalId ? cards[activeCardModalId] : null;
-    if (activeBoardId) setRecentItems((items) => dedupeRecent(items, { kind: 'board', id: activeBoardId }));
-    if (onCard) setRecentItems((items) => dedupeRecent(items, { kind: 'card', id: onCard.id }));
+    const timer = setTimeout(() => {
+      const onCard = activeCardModalId ? cards[activeCardModalId] : null;
+      if (activeBoardId) setRecentItems((items) => dedupeRecent(items, { kind: 'board', id: activeBoardId }));
+      if (onCard) setRecentItems((items) => dedupeRecent(items, { kind: 'card', id: onCard.id }));
+    }, 0);
+    return () => clearTimeout(timer);
   }, [activeBoardId, activeCardModalId, cards]);
 
   useEffect(() => {
     if (!open) return;
-    setSelectedIndex(0);
+    const resetTimer = setTimeout(() => setSelectedIndex(0), 0);
     const timer = setTimeout(() => {
       const input = document.getElementById('command-palette-input') as HTMLInputElement | null;
       input?.focus();
       input?.select();
     }, 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(resetTimer);
+      clearTimeout(timer);
+    };
   }, [open]);
 
   const visibleItems = useMemo(() => {
@@ -244,9 +250,7 @@ export function CommandPalette() {
     return [{ title: 'Recently viewed', items: visibleItems }];
   }, [query, visibleItems]);
 
-  useEffect(() => {
-    setSelectedIndex((index) => Math.min(index, Math.max(visibleItems.length - 1, 0)));
-  }, [visibleItems.length]);
+  const boundedSelectedIndex = Math.min(selectedIndex, Math.max(visibleItems.length - 1, 0));
 
   function activate(index: number) {
     const item = visibleItems[index];
@@ -267,7 +271,7 @@ export function CommandPalette() {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      activate(selectedIndex);
+      activate(boundedSelectedIndex);
       return;
     }
     if (e.key === 'Escape') {
@@ -305,7 +309,7 @@ export function CommandPalette() {
                 <div>
                   {group.items.map((item) => {
                     const index = visibleItems.findIndex((candidate) => candidate.id === item.id);
-                    const selected = index === selectedIndex;
+                    const selected = index === boundedSelectedIndex;
                     return (
                       <button
                         key={item.id}

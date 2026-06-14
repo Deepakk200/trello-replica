@@ -47,8 +47,11 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
   }
 
   useEffect(() => {
-    setLoading(true);
-    refetch();
+    const timer = setTimeout(() => {
+      setLoading(true);
+      void refetch();
+    }, 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId]);
 

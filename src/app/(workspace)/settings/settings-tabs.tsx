@@ -186,7 +186,10 @@ function KeysTab() {
   const [loading, setLoading] = useState(true);
 
   async function load() { setKeys(await listApiKeys()); setLoading(false); }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function create() {
     if (!name.trim()) return;
@@ -241,7 +244,10 @@ function WebhooksTab() {
   const [err, setErr] = useState("");
 
   async function load() { setHooks(await listWebhooks()); setLoading(false); }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   function toggleEvent(e: string) {
     setEvents((prev) => prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]);
@@ -303,7 +309,10 @@ function AuditTab() {
     if (rows.length < 50) setDone(true);
     setLoading(false);
   }
-  useEffect(() => { loadPage(0); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadPage(0); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="flex flex-col gap-2">

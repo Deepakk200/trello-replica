@@ -14,14 +14,26 @@ export function SearchPalette() {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+  const closePalette = () => {
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+  };
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen((v) => !v);
+        setOpen((v) => {
+          const next = !v;
+          if (!next) {
+            setQuery("");
+            setResults(null);
+          }
+          return next;
+        });
       }
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePalette();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -29,11 +41,10 @@ export function SearchPalette() {
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
-    else { setQuery(""); setResults(null); }
   }, [open]);
 
   useEffect(() => {
-    if (!query.trim()) { setResults(null); return; }
+    if (!query.trim()) return;
     const id = setTimeout(() => {
       startTransition(async () => {
         try {
@@ -54,7 +65,7 @@ export function SearchPalette() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget) closePalette(); }}
       role="dialog"
       aria-modal="true"
       aria-label="Search"
@@ -92,7 +103,7 @@ export function SearchPalette() {
               {results.boards.map((board) => (
                 <button
                   key={board.id}
-                  onClick={() => { router.push(`/board/${board.id}`); setOpen(false); }}
+                  onClick={() => { router.push(`/board/${board.id}`); closePalette(); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent text-sm text-left"
                 >
                   <div className="w-6 h-6 rounded flex-shrink-0" style={{ background: board.background }} />
@@ -108,7 +119,7 @@ export function SearchPalette() {
               {results.cards.map((card) => (
                 <button
                   key={card.id}
-                  onClick={() => { router.push(`/board/${card.boardId}`); setOpen(false); }}
+                  onClick={() => { router.push(`/board/${card.boardId}`); closePalette(); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent text-sm text-left"
                 >
                   <LayoutList size={14} className="text-muted-foreground flex-shrink-0" />

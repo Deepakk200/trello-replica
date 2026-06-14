@@ -54,8 +54,11 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   useEffect(() => {
     prevFocusRef.current = document.activeElement as HTMLElement;
-    setMounted(true);
-    return () => { prevFocusRef.current?.focus(); };
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => {
+      clearTimeout(timer);
+      prevFocusRef.current?.focus();
+    };
   }, []);
 
   useEffect(() => {
