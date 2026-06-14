@@ -19,40 +19,12 @@ import * as Sentry from "@sentry/nextjs";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { WorkspaceRole } from "@prisma/client";
+import { roleCanEdit, roleCanAdmin, pickHigherRole } from "@/lib/roles";
 
 export const ACTIVE_WORKSPACE_COOKIE = "tc_active_workspace";
 
-const READ_ONLY_ROLES: WorkspaceRole[] = [WorkspaceRole.GUEST, WorkspaceRole.OBSERVER];
-const ADMIN_ROLES: WorkspaceRole[] = [WorkspaceRole.OWNER, WorkspaceRole.ADMIN];
-
-export function roleCanEdit(role: WorkspaceRole | null | undefined): boolean {
-  return !!role && !READ_ONLY_ROLES.includes(role);
-}
-export function roleCanAdmin(role: WorkspaceRole | null | undefined): boolean {
-  return !!role && ADMIN_ROLES.includes(role);
-}
-
-function roleRank(r: WorkspaceRole): number {
-  switch (r) {
-    case WorkspaceRole.OWNER: return 4;
-    case WorkspaceRole.ADMIN: return 3;
-    case WorkspaceRole.MEMBER: return 2;
-    case WorkspaceRole.GUEST:
-    case WorkspaceRole.OBSERVER: return 1;
-    default: return 0;
-  }
-}
-/** Pick the strongest of several (possibly null) roles. Defaults to OBSERVER. */
-function pickHigherRole(...roles: (WorkspaceRole | null)[]): WorkspaceRole {
-  let best: WorkspaceRole = WorkspaceRole.OBSERVER;
-  let bestRank = 0;
-  for (const r of roles) {
-    if (!r) continue;
-    const rank = roleRank(r);
-    if (rank > bestRank) { best = r; bestRank = rank; }
-  }
-  return best;
-}
+// Re-exported for callers that import these from authz (pure logic lives in roles.ts).
+export { roleCanEdit, roleCanAdmin };
 
 export type SessionUser = {
   id: string;
