@@ -2,6 +2,7 @@ import { Liveblocks } from "@liveblocks/node";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { canAccessBoard } from "@/lib/authz";
 
 // Consistent color per user (hash of userId → one of 8 colors).
 const CURSOR_COLORS = [
@@ -33,12 +34,10 @@ export async function POST(req: Request) {
 
   const { room } = await req.json();
 
-  // Only allow rooms (boards) inside the user's workspace.
-  const board = await db.board.findFirst({
-    where: { id: room, workspaceId: session.user.workspaceId ?? undefined, deletedAt: null },
-    select: { id: true },
-  });
-  if (!board) {
+  // Authorize via the central RBAC helper: workspace member, board member,
+  // board creator, or a public board all grant room access (no eavesdropping
+  // on boards the user can't see).
+  if (!(await canAccessBoard(room))) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 

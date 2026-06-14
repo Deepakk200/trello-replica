@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Sparkles, Loader2, Paperclip, FileText, Plus, Trash2 } from "lucide-react";
-import { getCardDetails, updateCard, createComment, deleteAttachment, setCardCover, getBoardsForMoveDialog, moveCardToList } from "@/features/cards/actions";
+import { X, Sparkles, Loader2, Paperclip, FileText, Plus, Trash2, Users, Check } from "lucide-react";
+import { getCardDetails, updateCard, createComment, deleteAttachment, setCardCover, getBoardsForMoveDialog, moveCardToList, listAssignableMembers, assignCardMember, unassignCardMember } from "@/features/cards/actions";
 import { createChecklist, deleteChecklist, createChecklistItem, updateChecklistItem, deleteChecklistItem } from "@/features/checklists/actions";
 import { getCardActivity } from "@/features/activity/actions";
 import { generateCardDescription } from "@/features/ai/actions";
@@ -90,6 +90,8 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
 
   // ── Cover / attachments / checklists / move ────────────────────────────────
   const [itemDraft, setItemDraft] = useState<Record<string, string>>({});
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [assignable, setAssignable] = useState<Awaited<ReturnType<typeof listAssignableMembers>>>([]);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveBoards, setMoveBoards] = useState<Awaited<ReturnType<typeof getBoardsForMoveDialog>>>([]);
   const [moveBoardId, setMoveBoardId] = useState("");
@@ -112,6 +114,13 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
   async function delItem(itemId: string) { await deleteChecklistItem(itemId); refetch(); }
   async function openMove() { setMoveOpen((v) => !v); if (moveBoards.length === 0) setMoveBoards(await getBoardsForMoveDialog()); }
   async function doMove() { if (!moveListId) return; await moveCardToList(cardId, moveListId); onClose(); }
+  async function openMembers() { setMembersOpen((v) => !v); if (assignable.length === 0) setAssignable(await listAssignableMembers(cardId)); }
+  async function toggleMember(userId: string, assigned: boolean) {
+    if (assigned) await unassignCardMember(cardId, userId); else await assignCardMember(cardId, userId);
+    refetch();
+  }
+
+  const canEdit = card?._access?.canEdit ?? true;
 
   const cover = card?.coverColor ?? null;
   const coverStyle = cover
@@ -137,7 +146,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
           <div className="p-4 flex flex-col gap-5">
             {cover && <div className="h-24 -mt-4 -mx-4 mb-1 rounded-t-xl" style={coverStyle} />}
 
-            <div className="flex flex-wrap items-center gap-2">
+            {canEdit && <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-trello-textSubtle">Cover</span>
               {COVER_COLORS.map((c) => (
                 <button key={c} onClick={() => pickColorCover(c)} style={{ background: c }} className="w-6 h-6 rounded hover:ring-2 ring-white" title="Set cover colour" />
@@ -161,21 +170,68 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
+
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2 flex items-center gap-1.5"><Users size={13} /> Members</h3>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {card.assignees.map((a) => (
+                  a.user.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={a.userId} src={a.user.avatarUrl} alt={a.user.name ?? ""} title={a.user.name ?? a.user.email ?? ""} className="w-7 h-7 rounded-full object-cover" />
+                  ) : (
+                    <div key={a.userId} title={a.user.name ?? a.user.email ?? ""} className="w-7 h-7 rounded-full bg-linear-to-br from-pink-400 to-orange-400 text-white text-[11px] font-bold flex items-center justify-center">
+                      {(a.user.name?.[0] ?? a.user.email?.[0] ?? "?").toUpperCase()}
+                    </div>
+                  )
+                ))}
+                {card.assignees.length === 0 && <span className="text-xs text-trello-textSubtle italic">No members assigned.</span>}
+                {canEdit && (
+                  <div className="relative">
+                    <button onClick={openMembers} className="w-7 h-7 rounded-full bg-trello-cardHover text-trello-textSubtle hover:text-trello-text flex items-center justify-center" title="Assign members">
+                      <Plus size={14} />
+                    </button>
+                    {membersOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setMembersOpen(false)} />
+                        <div className="absolute left-0 top-full mt-1 z-20 w-60 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl p-1.5 max-h-64 overflow-y-auto">
+                          {assignable.length === 0 && <p className="text-xs text-trello-textSubtle italic px-2 py-1.5">No workspace members.</p>}
+                          {assignable.map((u) => {
+                            const assigned = card.assignees.some((a) => a.userId === u.id);
+                            return (
+                              <button key={u.id} onClick={() => toggleMember(u.id, assigned)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-trello-cardHover text-left">
+                                <div className="w-6 h-6 rounded-full bg-linear-to-br from-pink-400 to-orange-400 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                  {(u.name?.[0] ?? u.email?.[0] ?? "?").toUpperCase()}
+                                </div>
+                                <span className="flex-1 min-w-0 text-sm text-trello-text truncate">{u.name ?? u.email}</span>
+                                {assigned && <Check size={14} className="text-emerald-400 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
 
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">Description</h3>
               <textarea
                 rows={3} value={desc} onChange={(e) => setDesc(e.target.value)}
-                placeholder="Add a description…"
+                readOnly={!canEdit}
+                placeholder={canEdit ? "Add a description…" : "No description."}
                 className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-3 py-2 text-sm text-trello-text outline-none resize-none"
               />
-              <div className="flex items-center gap-2 mt-1.5">
-                <button onClick={saveDesc} className="btn-primary text-xs px-3 py-1.5">Save</button>
-                <button onClick={writeWithAI} disabled={aiLoading} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-muted/60 text-foreground hover:bg-muted disabled:opacity-50">
-                  {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Write with AI
-                </button>
-              </div>
+              {canEdit && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <button onClick={saveDesc} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                  <button onClick={writeWithAI} disabled={aiLoading} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-muted/60 text-foreground hover:bg-muted disabled:opacity-50">
+                    {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Write with AI
+                  </button>
+                </div>
+              )}
             </section>
 
             {card.attachments.length > 0 && (
@@ -256,17 +312,19 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
               <h3 className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">
                 Activity
               </h3>
-              <div className="flex flex-col gap-2 mb-3">
-                <textarea
-                  rows={2} value={comment} onChange={(e) => setComment(e.target.value)}
-                  placeholder="Write a comment… (use @name to mention)"
-                  className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-3 py-2 text-sm text-trello-text outline-none resize-none"
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
-                />
-                {comment.trim() && (
-                  <button onClick={submitComment} className="btn-primary text-xs px-3 py-1.5 self-start">Comment</button>
-                )}
-              </div>
+              {canEdit && (
+                <div className="flex flex-col gap-2 mb-3">
+                  <textarea
+                    rows={2} value={comment} onChange={(e) => setComment(e.target.value)}
+                    placeholder="Write a comment… (use @name to mention)"
+                    className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-3 py-2 text-sm text-trello-text outline-none resize-none"
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
+                  />
+                  {comment.trim() && (
+                    <button onClick={submitComment} className="btn-primary text-xs px-3 py-1.5 self-start">Comment</button>
+                  )}
+                </div>
+              )}
               <div className="flex flex-col gap-2.5">
                 {[
                   ...card.comments.map((c) => ({ kind: "comment" as const, id: c.id, createdAt: c.createdAt, author: c.author, content: c.content })),

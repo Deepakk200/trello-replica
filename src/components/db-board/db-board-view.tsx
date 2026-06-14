@@ -21,6 +21,8 @@ import { LiveCursors } from "./live-cursors";
 import { DbCardModal } from "./db-card-modal";
 import { AIPanel } from "./ai-panel";
 import { ArchivedCardsDrawer } from "./archived-cards-drawer";
+import { BoardActivityDrawer } from "./board-activity-drawer";
+import { BoardShareBar } from "./board-share-bar";
 import { exportBoardAsCSV } from "@/features/enterprise/export";
 
 type BoardData = NonNullable<Awaited<ReturnType<typeof getBoard>>>;
@@ -32,6 +34,10 @@ export function DbBoardView({ board }: { board: BoardData }) {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+
+  // Effective access for the current user (read-only for OBSERVER/GUEST).
+  const canEdit = b._access?.canEdit ?? true;
+  const canAdmin = b._access?.canAdmin ?? false;
 
   // Server-refreshed prop wins (re-fetched after mutations / broadcasts).
   useEffect(() => setB(board), [board]);
@@ -160,6 +166,9 @@ export function DbBoardView({ board }: { board: BoardData }) {
       <header className="px-4 py-3 shrink-0 flex items-center gap-3">
         <a href="/boards" className="text-white/80 hover:text-white text-sm">← Boards</a>
         <h1 className="text-white font-bold text-base">{b.title}</h1>
+        {!canEdit && (
+          <span className="text-[10px] uppercase font-semibold tracking-wide bg-white/20 text-white px-1.5 py-0.5 rounded">View only</span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={handleExport}
@@ -169,7 +178,14 @@ export function DbBoardView({ board }: { board: BoardData }) {
             <Download size={14} /><span className="hidden sm:inline">Export</span>
           </button>
           <ArchivedCardsDrawer boardId={b.id} />
+          <BoardActivityDrawer boardId={b.id} />
           <AIPanel boardId={b.id} boardTitle={b.title} firstListId={b.lists[0]?.id ?? null} />
+          <BoardShareBar
+            boardId={b.id}
+            members={b.members.map((m) => ({ userId: m.userId, role: m.role, user: m.user }))}
+            visibility={b.visibility}
+            canAdmin={canAdmin}
+          />
           <PresenceAvatars />
         </div>
       </header>
@@ -183,6 +199,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
                 list={list}
                 boardLists={b.lists.map((l) => ({ id: l.id, title: l.title }))}
                 labelColor={labelColor}
+                canEdit={canEdit}
                 viewersFor={(cid) => others.filter((o) => o.presence?.selectedCardId === cid)}
                 onOpenCard={openCard}
                 onDeleteCard={(cid) => startTransition(async () => { await deleteCard(cid); router.refresh(); })}
@@ -190,7 +207,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
                 onDeleteList={() => startTransition(async () => { await deleteList(list.id); router.refresh(); })}
               />
             ))}
-            <AddListForm onAdd={(title) => startTransition(async () => { await createList({ boardId: b.id, title }); router.refresh(); })} />
+            {canEdit && <AddListForm onAdd={(title) => startTransition(async () => { await createList({ boardId: b.id, title }); router.refresh(); })} />}
           </div>
         </div>
       </DndContext>
@@ -204,11 +221,12 @@ export function DbBoardView({ board }: { board: BoardData }) {
 
 // ── List column ──────────────────────────────────────────────────────────────
 function ListColumn({
-  list, boardLists, labelColor, viewersFor, onOpenCard, onDeleteCard, onAddCard, onDeleteList,
+  list, boardLists, labelColor, canEdit, viewersFor, onOpenCard, onDeleteCard, onAddCard, onDeleteList,
 }: {
   list: ListData;
   boardLists: { id: string; title: string }[];
   labelColor: Map<string, string>;
+  canEdit: boolean;
   viewersFor: (cardId: string) => { connectionId: number; info?: { color: string; name: string } }[];
   onOpenCard: (id: string) => void;
   onDeleteCard: (id: string) => void;
@@ -232,7 +250,7 @@ function ListColumn({
         <h2 className="text-sm font-semibold text-white">{list.title}</h2>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-trello-textSubtle">{list.cards.length}</span>
-          <div className="relative">
+          {canEdit && <div className="relative">
             <button onClick={() => setMenuOpen((v) => !v)} title="List actions" className="text-trello-textSubtle hover:text-white text-sm px-1 leading-none">⋯</button>
             {menuOpen && (
               <>
@@ -253,7 +271,7 @@ function ListColumn({
                 </div>
               </>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -263,6 +281,7 @@ function ListColumn({
             key={card.id}
             card={card}
             labelColor={labelColor}
+            canEdit={canEdit}
             viewers={viewersFor(card.id)}
             onOpen={() => onOpenCard(card.id)}
             onDelete={() => onDeleteCard(card.id)}
@@ -271,7 +290,7 @@ function ListColumn({
       </div>
 
       <div className="px-1.5 pb-2">
-        {adding ? (
+        {!canEdit ? null : adding ? (
           <div className="flex flex-col gap-1.5">
             <textarea
               autoFocus rows={2} value={title} onChange={(e) => setTitle(e.target.value)}
@@ -299,15 +318,16 @@ function ListColumn({
 
 // ── Draggable + droppable card ───────────────────────────────────────────────
 function DraggableCard({
-  card, labelColor, viewers, onOpen, onDelete,
+  card, labelColor, canEdit, viewers, onOpen, onDelete,
 }: {
   card: CardData;
   labelColor: Map<string, string>;
+  canEdit: boolean;
   viewers: { connectionId: number; info?: { color: string; name: string } }[];
   onOpen: () => void;
   onDelete: () => void;
 }) {
-  const drag = useDraggable({ id: card.id, data: { type: "card", listId: card.listId, position: card.position } });
+  const drag = useDraggable({ id: card.id, data: { type: "card", listId: card.listId, position: card.position }, disabled: !canEdit });
   const drop = useDroppable({ id: `card:${card.id}`, data: { type: "card", listId: card.listId, position: card.position } });
   const ref = (el: HTMLElement | null) => { drag.setNodeRef(el); drop.setNodeRef(el); };
   const style = drag.transform
@@ -318,8 +338,8 @@ function DraggableCard({
     <div
       ref={ref}
       style={style}
-      {...drag.attributes}
-      {...drag.listeners}
+      {...(canEdit ? drag.attributes : {})}
+      {...(canEdit ? drag.listeners : {})}
       onClick={onOpen}
       className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] ${drag.isDragging ? "opacity-40" : ""}`}
     >
@@ -340,15 +360,31 @@ function DraggableCard({
       )}
       <div className="flex items-start gap-1">
         <p className="flex-1 text-sm text-[var(--text-primary)] leading-snug break-words">{card.title}</p>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-trello-danger text-xs shrink-0" title="Delete card">
-          <X className="w-3.5 h-3.5" />
-        </button>
+        {canEdit && (
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-trello-danger text-xs shrink-0" title="Delete card">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
-      {(card._count.comments > 0 || card.dueDate || card.completed) && (
+      {(card._count.comments > 0 || card.dueDate || card.completed || card.assignees.length > 0) && (
         <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-subtle)]">
           {card.completed && <span className="text-emerald-400">✓</span>}
           {card.dueDate && <span>{new Date(card.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
           {card._count.comments > 0 && <span>💬 {card._count.comments}</span>}
+          {card.assignees.length > 0 && (
+            <div className="ml-auto flex -space-x-1.5">
+              {card.assignees.slice(0, 3).map((a) =>
+                a.user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={a.userId} src={a.user.avatarUrl} alt={a.user.name ?? ""} title={a.user.name ?? ""} className="w-5 h-5 rounded-full object-cover ring-1 ring-black/20" />
+                ) : (
+                  <div key={a.userId} title={a.user.name ?? ""} className="w-5 h-5 rounded-full bg-linear-to-br from-pink-400 to-orange-400 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-black/20">
+                    {(a.user.name?.[0] ?? "?").toUpperCase()}
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
       )}
       {viewers.length > 0 && (

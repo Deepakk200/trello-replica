@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { updateWorkspace, inviteMember, removeMember } from "@/features/workspaces/actions";
+import { updateWorkspace, inviteMember, removeMember, changeRole, deleteWorkspace } from "@/features/workspaces/actions";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/features/enterprise/api-keys";
 import { createWebhook, listWebhooks, deleteWebhook } from "@/features/enterprise/webhooks";
 import { getAuditLogs } from "@/features/enterprise/audit";
@@ -50,7 +50,7 @@ export function SettingsTabs({
         ))}
       </div>
 
-      {tab === "general" && <GeneralTab workspace={workspace} me={initialMembers.find((m) => m.id === myUserId) ?? null} />}
+      {tab === "general" && <GeneralTab workspace={workspace} me={initialMembers.find((m) => m.id === myUserId) ?? null} isOwner={myRole === "OWNER"} />}
       {tab === "members" && <MembersTab initialMembers={initialMembers} myUserId={myUserId} isAdmin={isAdmin} />}
       {tab === "billing" && <BillingTab {...billing} />}
       {tab === "keys" && <KeysTab />}
@@ -60,13 +60,25 @@ export function SettingsTabs({
   );
 }
 
-function GeneralTab({ workspace, me }: { workspace: { name: string; slug: string }; me: Member | null }) {
+function GeneralTab({ workspace, me, isOwner }: { workspace: { id: string; name: string; slug: string }; me: Member | null; isOwner: boolean }) {
+  const router = useRouter();
   const [name, setName] = useState(workspace.name);
   const [saved, setSaved] = useState(false);
+  const [delErr, setDelErr] = useState("");
   async function save() {
     await updateWorkspace({ name });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
+  }
+  async function doDelete() {
+    if (!confirm("Delete this workspace? Its boards will be hidden. This cannot be undone here.")) return;
+    try {
+      await deleteWorkspace(workspace.id);
+      router.push("/boards");
+      router.refresh();
+    } catch (e) {
+      setDelErr((e as Error).message);
+    }
   }
   const [avatarMsg, setAvatarMsg] = useState("");
   return (
@@ -107,9 +119,15 @@ function GeneralTab({ workspace, me }: { workspace: { name: string; slug: string
       </div>
       <div className="border-t border-trello-border pt-4 mt-2">
         <p className="text-xs font-semibold text-trello-danger uppercase tracking-wide mb-2">Danger zone</p>
-        <button disabled className="text-sm px-4 py-2 rounded border border-trello-danger/40 text-trello-danger opacity-50 cursor-not-allowed">
-          Delete workspace (Coming in Phase 6)
+        <button
+          onClick={doDelete}
+          disabled={!isOwner}
+          title={isOwner ? "Delete this workspace" : "Only the workspace owner can delete it"}
+          className="text-sm px-4 py-2 rounded border border-trello-danger/40 text-trello-danger hover:bg-trello-danger/10 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Delete workspace
         </button>
+        {delErr && <p className="text-xs text-trello-danger mt-2">{delErr}</p>}
       </div>
     </div>
   );
@@ -119,50 +137,76 @@ function RoleBadge({ role }: { role: string }) {
   return <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-trello-cardHover text-trello-textSecondary">{role}</span>;
 }
 
+const ASSIGNABLE_ROLES = ["ADMIN", "MEMBER", "OBSERVER"] as const;
+
 function MembersTab({ initialMembers, myUserId, isAdmin }: { initialMembers: Member[]; myUserId: string; isAdmin: boolean }) {
   const [members, setMembers] = useState(initialMembers);
   const [email, setEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<(typeof ASSIGNABLE_ROLES)[number]>("MEMBER");
   const [msg, setMsg] = useState("");
+
+  function flash(m: string) { setMsg(m); setTimeout(() => setMsg(""), 2500); }
 
   async function invite() {
     if (!email.trim()) return;
     try {
-      await inviteMember({ email: email.trim(), role: "MEMBER" });
-      setMsg(`Invitation sent to ${email}`);
+      await inviteMember({ email: email.trim(), role: inviteRole });
+      flash(`Invitation sent to ${email}`);
       setEmail("");
     } catch (e) {
-      setMsg((e as Error).message);
+      flash((e as Error).message);
     }
-    setTimeout(() => setMsg(""), 2500);
   }
   async function remove(id: string) {
     try {
       await removeMember(id);
       setMembers((prev) => prev.filter((m) => m.id !== id));
     } catch (e) {
-      setMsg((e as Error).message);
-      setTimeout(() => setMsg(""), 2500);
+      flash((e as Error).message);
+    }
+  }
+  async function setRole(id: string, role: string) {
+    const prev = members;
+    setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, role } : m)));
+    try {
+      await changeRole(id, role);
+    } catch (e) {
+      setMembers(prev);
+      flash((e as Error).message);
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        {members.map((m) => (
-          <div key={m.id} className="flex items-center gap-3 py-2 border-b border-trello-borderSubtle">
-            <div className="w-8 h-8 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white">
-              {(m.name?.[0] ?? m.email[0] ?? "?").toUpperCase()}
+        {members.map((m) => {
+          const editable = isAdmin && m.role !== "OWNER" && m.id !== myUserId;
+          return (
+            <div key={m.id} className="flex items-center gap-3 py-2 border-b border-trello-borderSubtle">
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-pink-400 to-orange-400 flex items-center justify-center text-xs font-bold text-white">
+                {(m.name?.[0] ?? m.email[0] ?? "?").toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-trello-text truncate">{m.name ?? m.email}</p>
+                <p className="text-xs text-trello-textSubtle truncate">{m.email}</p>
+              </div>
+              {editable ? (
+                <select
+                  value={ASSIGNABLE_ROLES.includes(m.role as (typeof ASSIGNABLE_ROLES)[number]) ? m.role : "MEMBER"}
+                  onChange={(e) => setRole(m.id, e.target.value)}
+                  className="bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1 text-xs text-trello-text"
+                >
+                  {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>)}
+                </select>
+              ) : (
+                <RoleBadge role={m.role} />
+              )}
+              {editable && (
+                <button onClick={() => remove(m.id)} className="text-xs text-trello-danger hover:underline">Remove</button>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-trello-text truncate">{m.name ?? m.email}</p>
-              <p className="text-xs text-trello-textSubtle truncate">{m.email}</p>
-            </div>
-            <RoleBadge role={m.role} />
-            {isAdmin && m.role !== "OWNER" && m.id !== myUserId && (
-              <button onClick={() => remove(m.id)} className="text-xs text-trello-danger hover:underline">Remove</button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {isAdmin && (
@@ -170,6 +214,9 @@ function MembersTab({ initialMembers, myUserId, isAdmin }: { initialMembers: Mem
           <label className="text-xs text-trello-textSubtle">Invite by email</label>
           <div className="flex gap-2">
             <input className={field} placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)} className="bg-trello-cardBg border border-trello-borderSubtle rounded px-2 text-sm text-trello-text">
+              {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>)}
+            </select>
             <button onClick={invite} className="btn-primary text-sm px-4 py-2 shrink-0">Invite</button>
           </div>
         </div>

@@ -182,7 +182,11 @@ enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+  // GUEST and OBSERVER are both read-only (cannot mutate boards/cards). OBSERVER
+  // was added in Phase 3 (RBAC) to match the canonical role set; GUEST is kept
+  // for backward compatibility and treated identically by authz.
   GUEST
+  OBSERVER
 }
 
 model User {
@@ -291,13 +295,17 @@ model WorkspaceMember {
 }
 
 model BoardMember {
-  id      String @id @default(uuid())
+  id      String        @id @default(uuid())
   boardId String
   userId  String
-  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Per-board role for finer-grain sharing (Phase 3). When a user is shared onto
+  // a board without workspace membership, this governs their access level.
+  role    WorkspaceRole @default(MEMBER)
+  board   Board         @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([boardId, userId])
+  @@index([userId])
 }
 
 model Invitation {

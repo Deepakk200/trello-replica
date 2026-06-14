@@ -44,7 +44,8 @@ export async function getCardActivity(cardId: string) {
 }
 
 export async function getBoardActivity(boardId: string) {
-  await requireAuth();
+  const { requireBoardAccess } = await import("@/lib/authz");
+  await requireBoardAccess(boardId);
   return db.activity.findMany({
     where: { boardId },
     orderBy: { createdAt: "desc" },

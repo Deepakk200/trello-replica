@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { initialPosition, positionBetween, recomputePositions } from "@/lib/position";
 import { revalidatePath } from "next/cache";
@@ -12,17 +11,13 @@ import { sanitizeHtml, sanitizeText } from "@/lib/sanitize";
 import { createMentionNotification } from "@/features/notifications/actions";
 import { cacheDel, CacheKeys } from "@/lib/redis";
 import { deliverWebhook } from "@/features/enterprise/webhooks";
-
-async function requireAuth() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user;
-}
-
-async function getBoardIdForCard(cardId: string): Promise<string | null> {
-  const r = await db.card.findUnique({ where: { id: cardId }, select: { list: { select: { boardId: true } } } });
-  return r?.list.boardId ?? null;
-}
+import {
+  requireUser,
+  requireBoardAccess,
+  requireListEdit,
+  requireCardEdit,
+  requireCardAccess,
+} from "@/lib/authz";
 
 // Lazily constructed so a missing key never throws at import/build time.
 let _lb: Liveblocks | null = null;
@@ -41,35 +36,12 @@ async function broadcastToBoard(boardId: string, event: Json) {
   }
 }
 
-/** Throws unless the list's board is in the user's workspace. Returns the boardId. */
-async function assertListAccess(listId: string, workspaceId: string | null): Promise<string> {
-  if (!workspaceId) throw new Error("Not found");
-  const r = await db.list.findUnique({
-    where: { id: listId },
-    select: { boardId: true, board: { select: { workspaceId: true } } },
-  });
-  if (!r || r.board.workspaceId !== workspaceId) throw new Error("Not found");
-  return r.boardId;
-}
-
-/** Throws unless the card's board is in the user's workspace. Returns the boardId. */
-async function assertCardAccess(cardId: string, workspaceId: string | null): Promise<string> {
-  if (!workspaceId) throw new Error("Not found");
-  const r = await db.card.findUnique({
-    where: { id: cardId },
-    select: { list: { select: { boardId: true, board: { select: { workspaceId: true } } } } },
-  });
-  if (!r || r.list.board.workspaceId !== workspaceId) throw new Error("Not found");
-  return r.list.boardId;
-}
-
 export async function createCard(raw: unknown) {
-  const user = await requireAuth();
   const data = z.object({
     listId: z.string().uuid(),
     title: z.string().min(1).max(500),
   }).parse(raw);
-  const boardId = await assertListAccess(data.listId, user.workspaceId);
+  const { boardId } = await requireListEdit(data.listId);
   data.title = sanitizeText(data.title);
   const last = await db.card.findFirst({
     where: { listId: data.listId, deletedAt: null },
@@ -95,8 +67,7 @@ export async function createCard(raw: unknown) {
 }
 
 export async function updateCard(cardId: string, raw: unknown) {
-  const user = await requireAuth();
-  const boardId = await assertCardAccess(cardId, user.workspaceId);
+  const { boardId } = await requireCardEdit(cardId);
   const data = z.object({
     title: z.string().min(1).max(500).optional(),
     description: z.string().nullable().optional(),
@@ -122,8 +93,7 @@ export async function updateCard(cardId: string, raw: unknown) {
 }
 
 export async function deleteCard(cardId: string) {
-  const user = await requireAuth();
-  const boardId = await assertCardAccess(cardId, user.workspaceId);
+  const { boardId } = await requireCardEdit(cardId);
   await db.card.update({ where: { id: cardId }, data: { deletedAt: new Date() } });
   revalidatePath(`/board/${boardId}`);
   await broadcastToBoard(boardId, { type: "CARD_DELETED", cardId });
@@ -137,15 +107,14 @@ export async function deleteCard(cardId: string) {
 }
 
 export async function moveCard(raw: unknown) {
-  const user = await requireAuth();
   const data = z.object({
     cardId: z.string().uuid(),
     toListId: z.string().uuid(),
     beforePosition: z.number().nullable(),
     afterPosition: z.number().nullable(),
   }).parse(raw);
-  await assertCardAccess(data.cardId, user.workspaceId);
-  const boardId = await assertListAccess(data.toListId, user.workspaceId);
+  await requireCardEdit(data.cardId);
+  const { boardId } = await requireListEdit(data.toListId);
   const position = positionBetween(data.beforePosition, data.afterPosition);
   const card = await db.card.update({
     where: { id: data.cardId },
@@ -158,8 +127,7 @@ export async function moveCard(raw: unknown) {
 }
 
 export async function reorderCardsInList(listId: string, orderedIds: string[]) {
-  const user = await requireAuth();
-  const boardId = await assertListAccess(listId, user.workspaceId);
+  const { boardId } = await requireListEdit(listId);
   const positions = recomputePositions(orderedIds.length);
   await Promise.all(
     orderedIds.map((id, i) =>
@@ -171,8 +139,7 @@ export async function reorderCardsInList(listId: string, orderedIds: string[]) {
 }
 
 export async function toggleCardLabel(cardId: string, labelId: string) {
-  const user = await requireAuth();
-  const boardId = await assertCardAccess(cardId, user.workspaceId);
+  const { boardId } = await requireCardEdit(cardId);
   const existing = await db.cardLabel.findUnique({
     where: { cardId_labelId: { cardId, labelId } },
   });
@@ -188,13 +155,13 @@ export async function toggleCardLabel(cardId: string, labelId: string) {
 }
 
 export async function createComment(raw: unknown) {
-  const user = await requireAuth();
+  const user = await requireUser();
   const data = z.object({
     cardId: z.string().uuid(),
     content: z.string().min(1).max(5000),
   }).parse(raw);
   data.content = sanitizeText(data.content);
-  const boardId = await assertCardAccess(data.cardId, user.workspaceId);
+  const { boardId } = await requireCardEdit(data.cardId);
   const comment = await db.comment.create({
     data: {
       cardId: data.cardId,
@@ -248,20 +215,19 @@ export async function createComment(raw: unknown) {
 }
 
 export async function deleteComment(commentId: string, cardId: string) {
-  const user = await requireAuth();
-  const boardId = await assertCardAccess(cardId, user.workspaceId);
+  const { boardId } = await requireCardEdit(cardId);
   await db.comment.update({ where: { id: commentId }, data: { deletedAt: new Date() } });
   revalidatePath(`/board/${boardId}`);
   return { ok: true };
 }
 
 export async function getCardDetails(cardId: string) {
-  const user = await requireAuth();
-  await assertCardAccess(cardId, user.workspaceId);
-  return db.card.findFirst({
+  const { access } = await requireCardAccess(cardId);
+  const card = await db.card.findFirst({
     where: { id: cardId, deletedAt: null },
     include: {
       labels: { include: { label: true } },
+      assignees: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
       checklists: {
         orderBy: { position: "asc" },
         include: { items: { orderBy: { position: "asc" } } },
@@ -270,17 +236,18 @@ export async function getCardDetails(cardId: string) {
       attachments: { orderBy: { createdAt: "desc" } },
     },
   });
+  return card ? { ...card, _access: { role: access.role, canEdit: access.canEdit, canAdmin: access.canAdmin } } : null;
 }
 
 // ─── Phase 6: attachments, cover, move dialog, archive ───────────────────────
 
 export async function deleteAttachment(attachmentId: string) {
-  const user = await requireAuth();
-  const attachment = await db.attachment.findFirst({
-    where: { id: attachmentId, card: { list: { board: { workspaceId: user.workspaceId ?? "" } } } },
+  const attachment = await db.attachment.findUnique({
+    where: { id: attachmentId },
     select: { id: true, url: true, cardId: true, card: { select: { list: { select: { boardId: true } } } } },
   });
   if (!attachment) throw new Error("Attachment not found");
+  await requireCardEdit(attachment.cardId);
 
   // Best-effort delete from UploadThing storage; DB deletion always runs.
   try {
@@ -301,8 +268,7 @@ export async function setCardCover(
   cardId: string,
   coverSource: { type: "color"; value: string } | { type: "image"; url: string } | null
 ) {
-  await requireAuth();
-  const boardId = await getBoardIdForCard(cardId);
+  const { boardId } = await requireCardEdit(cardId);
   if (coverSource === null) {
     await db.card.update({ where: { id: cardId }, data: { coverColor: null } });
   } else if (coverSource.type === "color") {
@@ -317,9 +283,12 @@ export async function setCardCover(
 
 // All boards + lists the current user can access (move-card dialog).
 export async function getBoardsForMoveDialog() {
-  const user = await requireAuth();
+  const user = await requireUser();
+  const { getActiveWorkspaceId } = await import("@/lib/authz");
+  const wid = await getActiveWorkspaceId(user.id);
+  if (!wid) return [];
   return db.board.findMany({
-    where: { workspaceId: user.workspaceId ?? "", deletedAt: null, closed: false },
+    where: { workspaceId: wid, deletedAt: null, closed: false },
     orderBy: { position: "asc" },
     select: {
       id: true, title: true,
@@ -329,34 +298,75 @@ export async function getBoardsForMoveDialog() {
 }
 
 export async function moveCardToList(cardId: string, targetListId: string) {
-  const user = await requireAuth();
-  const card = await db.card.findFirst({
-    where: { id: cardId, list: { board: { workspaceId: user.workspaceId ?? "" } } },
-    select: { id: true },
-  });
-  if (!card) throw new Error("Card not found");
+  await requireCardEdit(cardId);
+  const { boardId } = await requireListEdit(targetListId);
 
   const last = await db.card.findFirst({ where: { listId: targetListId, deletedAt: null }, orderBy: { position: "desc" }, select: { position: true } });
   await db.card.update({ where: { id: cardId }, data: { listId: targetListId, position: last ? last.position + 65536 : 65536 } });
 
-  const targetBoard = await db.list.findUnique({ where: { id: targetListId }, select: { boardId: true } });
-  if (targetBoard) revalidatePath(`/board/${targetBoard.boardId}`);
+  revalidatePath(`/board/${boardId}`);
   return { ok: true };
 }
 
 export async function getArchivedCards(boardId: string) {
-  const user = await requireAuth();
+  await requireBoardAccess(boardId);
   return db.card.findMany({
-    where: { archived: true, deletedAt: null, list: { board: { id: boardId, workspaceId: user.workspaceId ?? "" } } },
+    where: { archived: true, deletedAt: null, list: { boardId } },
     orderBy: { updatedAt: "desc" },
     include: { list: { select: { id: true, title: true } } },
   });
 }
 
 export async function restoreCard(cardId: string) {
-  await requireAuth();
-  const boardId = await getBoardIdForCard(cardId);
+  const { boardId } = await requireCardEdit(cardId);
   await db.card.update({ where: { id: cardId }, data: { archived: false } });
-  if (boardId) revalidatePath(`/board/${boardId}`);
+  revalidatePath(`/board/${boardId}`);
   return { ok: true };
+}
+
+// ─── Phase 3: card assignment (real workspace members) ───────────────────────
+
+/** Members assignable to a card: the union of its board's workspace members
+ *  and any per-board members. Used by the card-modal members popover. */
+export async function listAssignableMembers(cardId: string) {
+  const { boardId } = await requireCardAccess(cardId);
+  const board = await db.board.findUnique({
+    where: { id: boardId },
+    select: {
+      workspaceId: true,
+      members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
+    },
+  });
+  const out = new Map<string, { id: string; name: string | null; email: string | null; avatarUrl: string | null }>();
+  if (board?.workspaceId) {
+    const wm = await db.workspaceMember.findMany({
+      where: { workspaceId: board.workspaceId },
+      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+    });
+    for (const m of wm) out.set(m.user.id, m.user);
+  }
+  for (const m of board?.members ?? []) out.set(m.user.id, m.user);
+  return Array.from(out.values());
+}
+
+export async function assignCardMember(cardId: string, userId: string) {
+  const { boardId } = await requireCardEdit(cardId);
+  await db.cardAssignee.upsert({
+    where: { cardId_userId: { cardId, userId } },
+    create: { cardId, userId },
+    update: {},
+  });
+  revalidatePath(`/board/${boardId}`);
+  await cacheDel(CacheKeys.board(boardId));
+  await recordActivity({ boardId, cardId, type: "member.assigned", data: { userId } });
+  return { ok: true as const };
+}
+
+export async function unassignCardMember(cardId: string, userId: string) {
+  const { boardId } = await requireCardEdit(cardId);
+  await db.cardAssignee.deleteMany({ where: { cardId, userId } });
+  revalidatePath(`/board/${boardId}`);
+  await cacheDel(CacheKeys.board(boardId));
+  await recordActivity({ boardId, cardId, type: "member.unassigned", data: { userId } });
+  return { ok: true as const };
 }
