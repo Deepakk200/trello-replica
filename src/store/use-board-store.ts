@@ -7,6 +7,7 @@ import type {
   ID, Board, List, Card, Label, Member, Attachment,
   Workspace, BoardTemplate, CardTemplate, BoardVisibility,
   ActivityEntry, BoardState, FilterState, Checklist, Notification,
+  WorkspaceMember, WorkspaceMemberRole, WorkspaceVisibility,
 } from '@/types';
 // Butler automation: emit board events after mutations (no-op until the engine
 // registers a handler on the client). Decoupled via the bus → no import cycle.
@@ -121,6 +122,18 @@ function buildWorkspaces(memberIds: ID[]): { workspaces: Record<ID, Workspace>; 
     [ws2Id]: { id: ws2Id, name: 'Acme Inc.',    shortName: 'AC', color: 'linear-gradient(135deg,#0079bf,#5067c5)', description: '', tier: 'premium', memberIds: memberIds },
   };
   return { workspaces, ws1Id };
+}
+
+const DEFAULT_WS_AVATAR = 'linear-gradient(135deg,#22A06B,#1A7A4F)';
+
+// Seeded workspace members for the (mock) Members page. The first entry is the
+// current local user as Admin; swap to real users in the workspaces/RBAC phase.
+function buildWorkspaceMembers(): WorkspaceMember[] {
+  return [
+    { id: newId(), name: 'deepak chandra', email: 'nagireddydeepakchandra@gmail.com', role: 'Admin',    avatarColor: '#00B8D9' },
+    { id: newId(), name: 'Alex Rivera',     email: 'alex.rivera@example.com',          role: 'Member',   avatarColor: '#6554C0' },
+    { id: newId(), name: 'Sam Lee',         email: 'sam.lee@example.com',              role: 'Observer', avatarColor: '#E2483D' },
+  ];
 }
 
 function buildBoardTemplates(): Record<ID, BoardTemplate> {
@@ -265,6 +278,8 @@ function buildSeed(): BoardState {
     ],
     selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
     jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
+    workspaceDescription: '', workspaceVisibility: 'private', workspaceAvatarColor: DEFAULT_WS_AVATAR,
+    workspaceMembers: buildWorkspaceMembers(),
     userName: 'deepak chandra', userEmail: 'nagireddydeepakchandra@gmail.com', labsEnabled: false,
   };
 }
@@ -372,6 +387,13 @@ type Actions = {
   clearActiveCardModal(): void;
   setJiraPromoDismissed(v: boolean): void;
   setWorkspaceName(name: string): void;
+  // Workspace settings + members (frontend mock)
+  setWorkspaceDescription(description: string): void;
+  setWorkspaceVisibility(visibility: WorkspaceVisibility): void;
+  setWorkspaceAvatarColor(color: string): void;
+  inviteWorkspaceMember(name: string, email: string, role: WorkspaceMemberRole): ID;
+  changeWorkspaceMemberRole(id: ID, role: WorkspaceMemberRole): void;
+  removeWorkspaceMember(id: ID): void;
   setUserName(name: string): void;
   setUserEmail(email: string): void;
   setLabsEnabled(v: boolean): void;
@@ -404,6 +426,8 @@ export const boardStore = create<Store>()(
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
       jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
+      workspaceDescription: '', workspaceVisibility: 'private', workspaceAvatarColor: DEFAULT_WS_AVATAR,
+      workspaceMembers: buildWorkspaceMembers(),
       userName: 'deepak chandra', userEmail: 'nagireddydeepakchandra@gmail.com', labsEnabled: false,
 
       // ── Boards ──────────────────────────────────────────────────
@@ -735,6 +759,27 @@ export const boardStore = create<Store>()(
       clearActiveCardModal() { set((s) => { s.activeCardModalId = null; }); },
       setJiraPromoDismissed(v) { set((s) => { s.jiraPromoDismissed = v; }); },
       setWorkspaceName(name) { set((s) => { s.workspaceName = name.trim() || 'Trello Workspace'; }); },
+      setWorkspaceDescription(description) { set((s) => { s.workspaceDescription = description; }); },
+      setWorkspaceVisibility(visibility) { set((s) => { s.workspaceVisibility = visibility; }); },
+      setWorkspaceAvatarColor(color) { set((s) => { s.workspaceAvatarColor = color; }); },
+      inviteWorkspaceMember(name, email, role) {
+        const id = newId();
+        set((s) => {
+          const display = name.trim() || email.split('@')[0] || 'New member';
+          const colors = ['#0079BF', '#00875A', '#E2483D', '#6554C0', '#FF991F', '#00B8D9'];
+          s.workspaceMembers.push({
+            id, name: display, email: email.trim(), role,
+            avatarColor: colors[s.workspaceMembers.length % colors.length],
+          });
+        });
+        return id;
+      },
+      changeWorkspaceMemberRole(id, role) {
+        set((s) => { const m = s.workspaceMembers.find((x) => x.id === id); if (m) m.role = role; });
+      },
+      removeWorkspaceMember(id) {
+        set((s) => { s.workspaceMembers = s.workspaceMembers.filter((x) => x.id !== id); });
+      },
       setUserName(name) { set((s) => { s.userName = name.trim() || 'deepak chandra'; }); },
       setUserEmail(email) { set((s) => { s.userEmail = email.trim(); }); },
       setLabsEnabled(v) { set((s) => { s.labsEnabled = v; }); },
@@ -1176,6 +1221,8 @@ export const boardStore = create<Store>()(
           s.sidebarCollapsed = false; s.notifications = seed.notifications; s.selectedCardIds = [];
           s.notificationsOpen = false; s.activeCardModalId = null;
           s.jiraPromoDismissed = false; s.workspaceName = 'Trello Workspace';
+          s.workspaceDescription = ''; s.workspaceVisibility = 'private'; s.workspaceAvatarColor = DEFAULT_WS_AVATAR;
+          s.workspaceMembers = buildWorkspaceMembers();
           s.userName = 'deepak chandra'; s.userEmail = 'nagireddydeepakchandra@gmail.com'; s.labsEnabled = false;
           s._hasHydrated = true;
         });
@@ -1183,7 +1230,7 @@ export const boardStore = create<Store>()(
     })),
     {
       name: 'trello-clone-v1',
-      version: 9,
+      version: 10,
       storage: safeStorage,
       partialize: (state) => ({
         boards: state.boards, lists: state.lists, cards: state.cards,
@@ -1200,6 +1247,8 @@ export const boardStore = create<Store>()(
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
         jiraPromoDismissed: state.jiraPromoDismissed, workspaceName: state.workspaceName,
+        workspaceDescription: state.workspaceDescription, workspaceVisibility: state.workspaceVisibility,
+        workspaceAvatarColor: state.workspaceAvatarColor, workspaceMembers: state.workspaceMembers,
         userName: state.userName, userEmail: state.userEmail, labsEnabled: state.labsEnabled,
       }),
       migrate: (persisted, _version) => {
@@ -1247,6 +1296,11 @@ export const boardStore = create<Store>()(
           if (p.activeWorkspaceId === undefined) p.activeWorkspaceId = null;
           if (!p.activeViewByBoard) p.activeViewByBoard = {};
           if (p.activePanel !== 'board' && p.activePanel !== 'inbox' && p.activePanel !== 'planner') p.activePanel = 'board';
+          // Workspace sub-pages (added later) — default for stores persisted before they existed.
+          if (typeof p.workspaceDescription !== 'string') p.workspaceDescription = '';
+          if (p.workspaceVisibility !== 'private' && p.workspaceVisibility !== 'public') p.workspaceVisibility = 'private';
+          if (!p.workspaceAvatarColor) p.workspaceAvatarColor = DEFAULT_WS_AVATAR;
+          if (!Array.isArray(p.workspaceMembers) || p.workspaceMembers.length === 0) p.workspaceMembers = buildWorkspaceMembers();
         }
         return persisted;
       },

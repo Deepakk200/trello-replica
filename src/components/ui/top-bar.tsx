@@ -158,13 +158,15 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Trial badge */}
-        <div
-          className="hidden md:flex items-center gap-1.5 text-white text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+        {/* Trial badge → billing */}
+        <Link
+          href="/w/billing"
+          title="View plans & billing"
+          className="hidden md:flex items-center gap-1.5 text-white text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 hover:brightness-110 transition"
           style={{ background: 'linear-gradient(90deg,#8B5CF6,#0C66E4)' }}
         >
           <span>✦</span><span>1 day left</span>
-        </div>
+        </Link>
 
         {/* Announcements */}
         <div className="relative hidden sm:block">

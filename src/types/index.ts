@@ -39,6 +39,14 @@ export interface Workspace {
   tier: 'free' | 'standard' | 'premium' | 'enterprise';
   memberIds: ID[];
 }
+// Workspace sub-pages (frontend mock — swap to DB/RBAC in the workspaces phase).
+export type WorkspaceMemberRole = 'Admin' | 'Member' | 'Observer';
+export type WorkspaceVisibility = 'private' | 'public';
+export interface WorkspaceMember {
+  id: ID; name: string; email: string;
+  role: WorkspaceMemberRole;
+  avatarColor: string;
+}
 export interface BoardTemplate {
   id: ID; name: string; description: string;
   background: string;
@@ -114,6 +122,11 @@ export interface BoardState {
   jiraPromoDismissed: boolean;
   /** Editable workspace display name shown on the workspace-home header. Persisted. */
   workspaceName: string;
+  /** Workspace settings + members (frontend mock — swap to DB in the workspaces phase). Persisted. */
+  workspaceDescription: string;
+  workspaceVisibility: WorkspaceVisibility;
+  workspaceAvatarColor: string;
+  workspaceMembers: WorkspaceMember[];
   /** Mock local account identity (single anonymous user). Persisted. */
   userName: string;
   userEmail: string;
