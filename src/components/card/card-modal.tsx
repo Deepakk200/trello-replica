@@ -20,6 +20,8 @@ import { MembersPopover } from './members-popover';
 import { AttachmentsSection } from './attachments-section';
 import { LinkedCardsSection } from './linked-cards-section';
 import { MoveCardPopover } from './move-card-popover';
+import { CardAiAssist } from '@/components/ai/card-ai-assist';
+import { CardButtons } from '@/components/automation/card-buttons';
 
 function fmtDate(iso: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso));
@@ -231,6 +233,8 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
             <DescriptionEditor cardId={cardId} />
 
+            <CardAiAssist cardId={cardId} />
+
             {/* Attachments (before checklists) — section self-hides when empty
                 and not adding; the sidebar "Attachment" button opens the add form. */}
             <AttachmentsSection
@@ -249,6 +253,8 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
           {/* ── SIDEBAR ──────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 mt-6 md:mt-0">
+            {list && <CardButtons cardId={cardId} boardId={list.boardId} />}
+
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">Add to card</p>
               <div className="flex flex-col gap-1">

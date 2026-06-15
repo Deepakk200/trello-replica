@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, Archive, Check, Copy, Info, Palette, RotateCcw, X } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, Archive, Check, Copy, Info, LayoutTemplate, Palette, RotateCcw, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
@@ -25,12 +26,15 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const restoreCard            = useBoardStore((s) => s.restoreCard);
   const restoreList            = useBoardStore((s) => s.restoreList);
   const copyBoard              = useBoardStore((s) => s.copyBoard);
+  const saveBoardAsTemplate    = useBoardStore((s) => s.saveBoardAsTemplate);
 
   const [descDraft, setDescDraft]   = useState(board?.description ?? '');
   const [archiveTab, setArchiveTab] = useState<'cards' | 'lists'>('cards');
   const [copyOpen, setCopyOpen]     = useState(false);
   const [copyTitle, setCopyTitle]   = useState('');
   const [copied, setCopied]         = useState(false);
+  const [tplName, setTplName]       = useState('');
+  const [tplSaved, setTplSaved]     = useState(false);
 
   if (!board) return null;
 
@@ -47,6 +51,14 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
     setCopyOpen(false);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2500);
+  }
+
+  function submitSaveTemplate() {
+    const name = (tplName.trim() || board!.title);
+    saveBoardAsTemplate(boardId, name);
+    setTplName('');
+    setTplSaved(true);
+    window.setTimeout(() => setTplSaved(false), 4000);
   }
 
   const boardListIds = new Set(
@@ -123,6 +135,30 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
                   <button onClick={submitCopy} disabled={!copyTitle.trim()} className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50">Create</button>
                   <button onClick={() => setCopyOpen(false)} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
                 </div>
+              </div>
+            )}
+          </MenuSection>
+
+          <Divider />
+
+          <MenuSection icon={<LayoutTemplate className="w-4 h-4" />} label="Save as template">
+            {tplSaved ? (
+              <p className="flex items-center gap-1.5 text-sm text-green-400">
+                <Check className="w-4 h-4" /> Saved —{' '}
+                <Link href="/templates" className="text-trello-accent hover:underline">view in Templates</Link>
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <input
+                  className="w-full bg-trello-cardBg border border-trello-border focus:border-trello-accent rounded px-2 py-1.5 text-sm text-trello-text outline-none transition-colors"
+                  placeholder={board.title}
+                  value={tplName}
+                  onChange={(e) => setTplName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitSaveTemplate(); }}
+                />
+                <button onClick={submitSaveTemplate} className="btn-soft text-xs font-medium px-3 py-1.5 self-start">
+                  Save as template
+                </button>
               </div>
             )}
           </MenuSection>

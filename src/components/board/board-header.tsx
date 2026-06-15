@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, SlidersHorizontal, Star, UserPlus } from 'lucide-react';
+import { Bot, MoreHorizontal, SlidersHorizontal, Star, UserPlus } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Board, DueFilter } from '@/types';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { BoardMenu } from './board-menu';
 import { ViewsDropdown } from './views-dropdown';
 import { LABEL_VAR } from '@/lib/colors';
+import { AutomationPanel } from '@/components/automation/automation-panel';
+import { BoardButtons } from '@/components/automation/board-buttons';
+import { BoardSummaryButton } from '@/components/ai/board-summary-button';
 
 export function BoardHeader({ board }: { board: Board }) {
   const renameBoard = useBoardStore((s) => s.renameBoard);
@@ -20,6 +23,7 @@ export function BoardHeader({ board }: { board: Board }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(board.title);
   const [showMenu, setShowMenu] = useState(false);
+  const [showAutomation, setShowAutomation] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -89,6 +93,17 @@ export function BoardHeader({ board }: { board: Board }) {
 
         {/* Right group */}
         <div className="flex items-center gap-1 ml-auto">
+          {/* Board buttons (Butler) */}
+          <BoardButtons boardId={board.id} />
+
+          {/* AI board summary */}
+          <BoardSummaryButton boardId={board.id} className={iconBtn} />
+
+          {/* Automation (Butler) */}
+          <button onClick={() => setShowAutomation(true)} className={iconBtn} title="Automation" aria-label="Automation">
+            <Bot size={14} />
+          </button>
+
           {/* Member avatars */}
           <div className="flex items-center -space-x-1.5">
             {board.memberIds.slice(0, 3).map((mid) => (
@@ -192,6 +207,7 @@ export function BoardHeader({ board }: { board: Board }) {
       </div>
 
       {showMenu && <BoardMenu boardId={board.id} onClose={() => setShowMenu(false)} />}
+      {showAutomation && <AutomationPanel boardId={board.id} onClose={() => setShowAutomation(false)} />}
     </>
   );
 }

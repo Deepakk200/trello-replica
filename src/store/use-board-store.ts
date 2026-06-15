@@ -8,6 +8,9 @@ import type {
   Workspace, BoardTemplate, CardTemplate, BoardVisibility,
   ActivityEntry, BoardState, FilterState, Checklist, Notification,
 } from '@/types';
+// Butler automation: emit board events after mutations (no-op until the engine
+// registers a handler on the client). Decoupled via the bus → no import cycle.
+import { emitBoardEvent } from '@/lib/automation/bus';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -573,6 +576,8 @@ export const boardStore = create<Store>()(
           };
           list.cardIds.push(id);
         });
+        const bId = boardStore.getState().lists[listId]?.boardId;
+        if (bId) emitBoardEvent({ type: 'card.created', boardId: bId, cardId: id, listId });
         return id;
       },
       updateCard(id, patch) {
@@ -595,6 +600,12 @@ export const boardStore = create<Store>()(
             card.activity.push(makeActivity({ type: 'described', text: 'Description updated' }));
           Object.assign(card, patch, { updatedAt: ts });
         });
+        const c = boardStore.getState().cards[id];
+        const bId = c ? boardStore.getState().lists[c.listId]?.boardId : undefined;
+        if (c && bId) {
+          if (patch.dueDate) emitBoardEvent({ type: 'due.set', boardId: bId, cardId: id, listId: c.listId });
+          if (patch.completed === true) emitBoardEvent({ type: 'card.completed', boardId: bId, cardId: id, listId: c.listId });
+        }
       },
       deleteCard(id) {
         set((s) => {
@@ -610,21 +621,27 @@ export const boardStore = create<Store>()(
         });
       },
       moveCard(cardId, toListId, toIndex) {
+        const fromListId = boardStore.getState().cards[cardId]?.listId;
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
           const fromList = s.lists[card.listId]; const toList = s.lists[toListId];
           if (!fromList || !toList) return;
-          const fromListId = card.listId;
+          const originListId = card.listId;
           fromList.cardIds = fromList.cardIds.filter((cid) => cid !== cardId);
           toList.cardIds.splice(toIndex, 0, cardId);
           card.listId = toListId; card.updatedAt = now();
           card.activity.push(makeActivity({
             type: 'moved',
-            text: fromListId !== toListId
+            text: originListId !== toListId
               ? `Moved from "${fromList.title}" to "${toList.title}"`
               : `Moved within "${toList.title}"`,
           }));
         });
+        // Fire "moved into list" only when the list actually changed.
+        if (fromListId && fromListId !== toListId) {
+          const bId = boardStore.getState().lists[toListId]?.boardId;
+          if (bId) emitBoardEvent({ type: 'card.moved', boardId: bId, cardId, listId: toListId });
+        }
       },
       reorderCardsInList(listId, orderedIds) {
         set((s) => { if (s.lists[listId]) s.lists[listId].cardIds = orderedIds; });
@@ -738,6 +755,12 @@ export const boardStore = create<Store>()(
           }
           card.updatedAt = now();
         });
+        const card = boardStore.getState().cards[cardId];
+        if (card) {
+          const bId = boardStore.getState().lists[card.listId]?.boardId;
+          const added = card.labelIds.includes(labelId);
+          if (bId) emitBoardEvent({ type: added ? 'label.added' : 'label.removed', boardId: bId, cardId, listId: card.listId, labelId });
+        }
       },
 
       // ── Members ──────────────────────────────────────────────────
@@ -979,6 +1002,12 @@ export const boardStore = create<Store>()(
           card.activity.push(makeActivity({ type: 'described', text: item.completed ? `Completed "${item.text}"` : `Unchecked "${item.text}"` }));
           card.updatedAt = now();
         });
+        const card = boardStore.getState().cards[cardId];
+        const cl = card?.checklists.find((c) => c.id === checklistId);
+        if (card && cl && cl.items.length > 0 && cl.items.every((i) => i.completed)) {
+          const bId = boardStore.getState().lists[card.listId]?.boardId;
+          if (bId) emitBoardEvent({ type: 'checklist.completed', boardId: bId, cardId, listId: card.listId });
+        }
       },
       renameChecklistItem(cardId, checklistId, itemId, text) {
         set((s) => {

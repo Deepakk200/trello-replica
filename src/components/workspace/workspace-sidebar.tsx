@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Activity, Columns3, CreditCard, LayoutTemplate, Plus, Settings, Users } from 'lucide-react';
 import { ChevronUp } from 'lucide-react';
 
@@ -9,23 +10,27 @@ function SidebarItem({
   icon: Icon,
   label,
   active,
+  href,
 }: {
   icon: IconType;
   label: string;
   active?: boolean;
+  href?: string;
 }) {
-  return (
-    <button
-      className={`flex items-center gap-3 w-full px-2 py-1.5 rounded text-sm transition-colors ${
-        active
-          ? 'bg-[#1C3D5A] text-[#579DFF] font-medium'
-          : 'text-white/80 hover:bg-white/[0.06]'
-      }`}
-    >
+  const cls = `flex items-center gap-3 w-full px-2 py-1.5 rounded text-sm transition-colors ${
+    active
+      ? 'bg-[#1C3D5A] text-[#579DFF] font-medium'
+      : 'text-white/80 hover:bg-white/[0.06]'
+  }`;
+  const inner = (
+    <>
       <Icon size={16} className="flex-shrink-0" />
       <span className="truncate">{label}</span>
-    </button>
+    </>
   );
+  return href
+    ? <Link href={href} className={cls}>{inner}</Link>
+    : <button className={cls}>{inner}</button>;
 }
 
 function SidebarSubItem({
@@ -60,7 +65,7 @@ export function WorkspaceSidebar() {
       {/* Top nav group */}
       <nav className="flex flex-col gap-0.5 mb-4">
         <SidebarItem icon={Columns3} label="Boards" active />
-        <SidebarItem icon={LayoutTemplate} label="Templates" />
+        <SidebarItem icon={LayoutTemplate} label="Templates" href="/templates" />
         <SidebarItem icon={Activity} label="Home" />
       </nav>
 
