@@ -6,7 +6,7 @@ import { ResizeDivider } from './resize-divider';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { InboxPanel } from '@/components/ui/inbox-panel';
-import { SwitchBoardsPanel } from '@/components/ui/switch-boards-panel';
+import { SwitchBoardsPopup } from '@/components/board/switch-boards-popup';
 import { PlannerView } from '@/components/board/planner-view';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -63,8 +63,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <BottomNav />
 
-      {/* Switch-boards is a popup overlay (portal) */}
-      <SwitchBoardsPanel />
+      {/* Switch-boards is a centered modal overlay (portal) */}
+      <SwitchBoardsPopup />
     </div>
   );
 }
