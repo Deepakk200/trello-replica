@@ -8,7 +8,7 @@ import { Liveblocks } from "@liveblocks/node";
 import type { Json } from "@liveblocks/client";
 import { recordActivity } from "@/features/activity/actions";
 import { sanitizeHtml, sanitizeText } from "@/lib/sanitize";
-import { createMentionNotification } from "@/features/notifications/actions";
+import { createMentionNotification, notifyCardWatchers, createNotification } from "@/features/notifications/actions";
 import { cacheDel, CacheKeys } from "@/lib/redis";
 import { deliverWebhook } from "@/features/enterprise/webhooks";
 import {
@@ -211,6 +211,17 @@ export async function createComment(raw: unknown) {
     // Mentions are best-effort.
   }
 
+  // Notify the card's assignees / prior commenters / board creator (not the actor).
+  try {
+    await notifyCardWatchers({
+      cardId: data.cardId,
+      actorId: user.id,
+      actorName: user.name ?? "Someone",
+      type: "comment",
+      message: `${user.name ?? "Someone"} commented on a card you're on`,
+    });
+  } catch { /* best-effort */ }
+
   return { ok: true, comment };
 }
 
@@ -350,7 +361,7 @@ export async function listAssignableMembers(cardId: string) {
 }
 
 export async function assignCardMember(cardId: string, userId: string) {
-  const { boardId } = await requireCardEdit(cardId);
+  const { access, boardId } = await requireCardEdit(cardId);
   await db.cardAssignee.upsert({
     where: { cardId_userId: { cardId, userId } },
     create: { cardId, userId },
@@ -359,6 +370,27 @@ export async function assignCardMember(cardId: string, userId: string) {
   revalidatePath(`/board/${boardId}`);
   await cacheDel(CacheKeys.board(boardId));
   await recordActivity({ boardId, cardId, type: "member.assigned", data: { userId } });
+
+  // Notify the newly-assigned member (unless they assigned themselves).
+  if (userId !== access.userId) {
+    try {
+      const card = await db.card.findUnique({
+        where: { id: cardId },
+        select: { title: true, list: { select: { boardId: true, board: { select: { title: true } } } } },
+      });
+      if (card) {
+        await createNotification({
+          userId,
+          type: "assigned",
+          data: {
+            cardId, cardTitle: card.title,
+            boardId: card.list.boardId, boardTitle: card.list.board.title,
+            message: `You were assigned to "${card.title}"`,
+          },
+        });
+      }
+    } catch { /* best-effort */ }
+  }
   return { ok: true as const };
 }
 
