@@ -10,7 +10,7 @@ datasource db {
   // here AND setting DIRECT_URL in the environment. Left off by default because
   // referencing env("DIRECT_URL") makes `prisma generate` (Vercel postinstall)
   // fail when the var is unset — enable both together.
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model Board {
