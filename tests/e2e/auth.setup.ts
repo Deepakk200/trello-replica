@@ -19,12 +19,18 @@ setup("authenticate", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.waitForURL(/\/sign-in/);
 
-  // Sign in with the credentials we just created.
+  // Sign in with the credentials we just created. The credentials form calls
+  // signIn() then router.push("/") on success, so WAIT for that redirect — it's
+  // the deterministic signal that the session cookie is set. Setting up the wait
+  // before the click (Promise.all) avoids missing a fast navigation.
   await page.getByPlaceholder("Email").fill(email);
   await page.getByPlaceholder("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === "/"),
+    page.getByRole("button", { name: "Sign in" }).click(),
+  ]);
 
-  // Confirm the session works on a protected route.
+  // Session is now established → the protected boards route renders.
   await page.goto("/boards");
   await expect(page.getByRole("heading", { name: "Your Boards" })).toBeVisible();
 

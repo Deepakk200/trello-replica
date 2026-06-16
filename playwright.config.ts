@@ -11,6 +11,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
+  // Cold `next start` + a force-dynamic, multi-query /boards render can exceed the
+  // 5s default on the first request in CI. This is auto-retry headroom (polled),
+  // NOT a fixed delay — assertions resolve the instant the element is visible.
+  expect: { timeout: 15_000 },
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL,
