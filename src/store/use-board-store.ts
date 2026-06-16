@@ -266,7 +266,7 @@ function buildSeed(): BoardState {
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
     activePanel: 'board',
-    inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
+    inboxOpen: true, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
@@ -420,7 +420,9 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
-      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
+      // Board opens to Inbox + Board (kanban), matching Trello. inboxOpen/plannerOpen
+      // are NOT persisted (see partialize), so every fresh load resets to this default.
+      activeBoardId: null, activePanel: 'board', inboxOpen: true, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',

@@ -1,5 +1,14 @@
 # Trello Clone — Handoff
 
+## Board opens to Inbox + Board (kanban) by default, matching Trello (2026-06-16)
+
+Fixed the board-open layout in the **legacy localStorage app** (`/b` → `AppShell` + `BoardView`). **Step-0 diagnosis:** the board layout is driven purely by the store's `inboxOpen`/`plannerOpen` booleans (NOT `activePanel` — `PanelUrlSync`, which once drove `activePanel`, is defined but **mounted nowhere**, so `activePanel` is dead for the board canvas). `app-shell.tsx` always renders `BoardView` (kanban) in `main`; Inbox + Planner are width-animated **side panels**. Neither `inboxOpen` nor `plannerOpen` is in `partialize`, so **they're not persisted** — every load resets to the store's initial values, so the default is whatever the initial state says (rule: a fresh board open always lands on Inbox+Board regardless of stale session state).
+- **Root cause:** `inboxOpen` defaulted to `false` → the board opened with the Inbox **not** pinned (board-only). (The live Vercel site's Planner-on-open is older deployed code where `activePanel` drove `main`.)
+- **Fix:** default `inboxOpen = true` (Inbox pinned left on board open) in BOTH the store's initial state (`use-board-store.ts` ~L423) and `buildSeed()` (~L269); `plannerOpen` stays `false`. The board kanban renders to the right of the Inbox, on the board background — unchanged.
+- **Dock (`bottom-nav.tsx`):** was `boardActive = !inboxOpen && !plannerOpen` (which **deactivated** Board whenever Inbox opened). Now `boardActive = !plannerOpen` — so on open **Inbox + Board are both highlighted**, Planner inactive (matches Trello Image 2). Inbox tab toggles `inboxOpen`; Planner tab toggles `plannerOpen`; **Board tab now `setPlannerOpen(false)`** (return to lists, leaving the Inbox as the user left it — was nuking both panels).
+- **Preserved:** Inbox can be closed (then board-only, Inbox tab inactive); Planner can be opened (Inbox+Planner / Planner+Board per toggles) but is never the default; board DnD untouched.
+- **Verify:** `tsc` clean · `next build --webpack` clean · changed-file eslint clean (only the pre-existing `_version` unused-var warning). Because the panel flags aren't persisted, **hard-refresh on `/b` always reopens to Inbox + Board** (not Planner).
+
 ## "TaskFlow series" cherry-picks — GitHub OAuth · slug URLs · marketing/onboarding · emoji reactions (2026-06-16)
 
 The DB/auth/realtime/workspaces/templates/automation foundation the 12-prompt "TaskFlow" series describes **already exists** in this repo — so rather than rebuild it (which would destroy the auth/workspace/billing stack) I built only the **genuinely-new deltas** that are safe + verifiable to `tsc`/build/eslint **without** a live DB. **Excluded by necessity:** provisioning (no Neon creds — only the user can) and the TanStack-Query data-layer rewrite (invasive + DB-unverifiable; would regress the working optimistic flow).
