@@ -12,16 +12,17 @@ export function BottomNav() {
   const setPlannerOpen = useBoardStore((s) => s.setPlannerOpen);
   const setSwitchOpen = useBoardStore((s) => s.setSwitchBoardsOpen);
 
-  // The kanban canvas is always rendered (Inbox/Planner are side panels), so the
-  // Board tab is active whenever the Planner isn't the focus — matching Trello,
-  // where Inbox + Board are both highlighted on open. Clicking Board closes the
-  // Planner to return to the lists (the Inbox stays as the user left it).
-  const boardActive = !plannerOpen;
+  // The kanban canvas is always rendered (Inbox/Planner are side panels beside it),
+  // so the Board tab is the current "view" and stays active alongside the open
+  // Inbox/Planner panels — matching Trello, where the board opens as Inbox | Planner
+  // | Board with Board highlighted. Clicking Board focuses the kanban (closes both
+  // panels); clicking Inbox/Planner toggles each panel.
+  const boardActive = true;
 
   const tabs = [
     { id: 'inbox',   label: 'Inbox',         Icon: Inbox,           active: inboxOpen,   onClick: () => setInboxOpen(!inboxOpen) },
     { id: 'planner', label: 'Planner',       Icon: CalendarDays,    active: plannerOpen, onClick: () => setPlannerOpen(!plannerOpen) },
-    { id: 'board',   label: 'Board',         Icon: LayoutDashboard, active: boardActive, onClick: () => setPlannerOpen(false) },
+    { id: 'board',   label: 'Board',         Icon: LayoutDashboard, active: boardActive, onClick: () => { setInboxOpen(false); setPlannerOpen(false); } },
     { id: 'switch',  label: 'Switch boards', Icon: ArrowLeftRight,  active: false,       onClick: () => setSwitchOpen(true) },
   ];
 

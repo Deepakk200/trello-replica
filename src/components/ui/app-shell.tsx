@@ -1,7 +1,6 @@
 'use client';
 
 import { TopBar } from './top-bar';
-import { Sidebar } from './sidebar';
 import { BottomNav } from './bottom-nav';
 import { ResizeDivider } from './resize-divider';
 import { useShallow } from 'zustand/shallow';
@@ -38,10 +37,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <TopBar />
 
-      {/* Middle row: sidebar · Inbox · Planner · board canvas — animated + resizable */}
+      {/* Board shell: Inbox · Planner · board canvas — animated + resizable.
+          The workspace sidebar is intentionally NOT rendered here — opening a board
+          replaces it with the Inbox panel (Trello's board layout). The sidebar lives
+          in the workspace shell (/, /w/*) instead. */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar />
-
         <div className={animWrap} style={{ width: inboxOpen ? inboxWidth : 0, opacity: inboxOpen ? 1 : 0 }} aria-hidden={!inboxOpen}>
           <div style={{ width: inboxWidth }} className="h-full">
             <InboxPanel />
