@@ -48,10 +48,13 @@ export async function createCard(raw: unknown) {
     orderBy: { position: "desc" },
     select: { position: true },
   });
+  const { slugify, shortId } = await import("@/lib/slug");
   const card = await db.card.create({
     data: {
       listId: data.listId, title: data.title,
       position: last ? last.position + 65536 : initialPosition(),
+      shortId: shortId(),
+      slug: slugify(data.title),
     },
     include: { labels: { select: { labelId: true } }, _count: { select: { comments: true } } },
   });
@@ -232,6 +235,23 @@ export async function deleteComment(commentId: string, cardId: string) {
   return { ok: true };
 }
 
+// Emoji reactions (prompt 06): toggle the actor's reaction of `emoji` on a comment.
+export async function toggleReaction(commentId: string, emoji: string) {
+  const user = await requireUser();
+  const comment = await db.comment.findUnique({ where: { id: commentId }, select: { cardId: true } });
+  if (!comment) throw new Error("Comment not found");
+  const { boardId } = await requireCardEdit(comment.cardId);
+  const existing = await db.reaction.findUnique({
+    where: { commentId_userId_emoji: { commentId, userId: user.id, emoji } },
+    select: { id: true },
+  });
+  if (existing) await db.reaction.delete({ where: { id: existing.id } });
+  else await db.reaction.create({ data: { commentId, userId: user.id, emoji } });
+  revalidatePath(`/board/${boardId}`);
+  await cacheDel(CacheKeys.board(boardId));
+  return { ok: true as const };
+}
+
 export async function getCardDetails(cardId: string) {
   const { access } = await requireCardAccess(cardId);
   const card = await db.card.findFirst({
@@ -243,7 +263,11 @@ export async function getCardDetails(cardId: string) {
         orderBy: { position: "asc" },
         include: { items: { orderBy: { position: "asc" } } },
       },
-      comments: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      comments: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        include: { reactions: { select: { emoji: true, userId: true } } },
+      },
       attachments: { orderBy: { createdAt: "desc" } },
     },
   });

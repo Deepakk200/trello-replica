@@ -1,5 +1,16 @@
 # Trello Clone — Handoff
 
+## "TaskFlow series" cherry-picks — GitHub OAuth · slug URLs · marketing/onboarding · emoji reactions (2026-06-16)
+
+The DB/auth/realtime/workspaces/templates/automation foundation the 12-prompt "TaskFlow" series describes **already exists** in this repo — so rather than rebuild it (which would destroy the auth/workspace/billing stack) I built only the **genuinely-new deltas** that are safe + verifiable to `tsc`/build/eslint **without** a live DB. **Excluded by necessity:** provisioning (no Neon creds — only the user can) and the TanStack-Query data-layer rewrite (invasive + DB-unverifiable; would regress the working optimistic flow).
+
+- **Schema (additive, `prisma generate` clean; `db push` deferred — no local DB):** `Board` += `shortId @unique`, `slug`, `backgroundType`; `Card` += `shortId @unique`, `slug`; new **`Reaction`** model (`@@unique([commentId,userId,emoji])`) + `Comment.reactions`.
+- **GitHub OAuth (prompt 02 delta):** `src/lib/auth.ts` registers a **GitHub** provider *conditionally* (only when `GITHUB_CLIENT_ID` is set, inert otherwise) alongside Google + Credentials; "Continue with GitHub" button in the sign-in form. Env: `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`.
+- **Pretty-URL routing (prompt 03 delta):** `src/lib/slug.ts` (`slugify`, `shortId`); `createBoard`/`createCard` populate `shortId`+`slug`. Resolver routes `src/app/b/[shortId]/[slug]/page.tsx` + `src/app/c/[shortId]/[slug]/page.tsx` (await params) look up by `shortId`-or-id and `redirect` to `/board/[id]` (card → `?card=`). Coexists with the legacy `/b` page.
+- **Marketing + onboarding (prompt 12 delta):** `src/app/welcome/page.tsx` — public landing + features + 3-tier pricing (auth-aware CTA; `/welcome` added to `proxy.ts` PUBLIC_PREFIXES). Kept `/` as the authenticated app. `src/app/onboarding/page.tsx` — client wizard (welcome → name workspace via local store → first board) → `/boards`.
+- **Emoji reactions (prompt 06 delta):** `toggleReaction(commentId, emoji)` action (authz `requireCardEdit`); `getCardDetails` includes `comment.reactions`; `components/db-board/comment-reactions.tsx` renders grouped chips + a preset picker in the card-modal feed.
+- **Verify:** `tsc` clean · `next build --webpack` clean (new routes `/welcome`, `/onboarding`, `/b/[shortId]/[slug]`, `/c/[shortId]/[slug]`) · changed-file eslint clean. **DB-runtime acceptance** (reactions persist, slug resolves, GitHub login) needs the deferred `db push` + provider creds.
+
 ## Workspace sub-pages — Members / Settings / Billing (2026-06-15) — frontend MOCK
 
 The workspace home (`/`) + `WorkspaceSidebar` linked to Members/Settings/Billing, but those were **dead `<button>`s**. Built them as real pages. **Routing shape:** a new `/w` segment with a shared `layout.tsx` (reuses the global `TopBar` + `WorkspaceSidebar`) hosting `/w/members`, `/w/settings`, `/w/billing`. Chose `/w/*` to avoid the existing DB-app routes `/settings` (Phase-5 workspace settings) and `/boards` (Phase-1 grid). Workspace home stays at `/`; the board view stays at `/b`. **All frontend/mock — swap-ready for the DB/auth/RBAC + Stripe phases** (marked with comments in each file).

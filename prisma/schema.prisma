@@ -24,6 +24,10 @@ model Board {
   // Legacy-store parity (additive): per-board card numbering + visibility.
   nextCardNumber Int       @default(1)
   visibility     String    @default("workspace")
+  // Pretty-URL routing (prompt 03): /b/<shortId>/<slug>. backgroundType: "color"|"image"|"gradient".
+  shortId        String?   @unique
+  slug           String?
+  backgroundType String?
   workspaceId    String?
   createdById    String?
   createdAt      DateTime  @default(now())
@@ -75,6 +79,9 @@ model Card {
   coverImage     String?
   coverSize      String    @default("half")
   coverTextColor String?
+  // Pretty-URL routing (prompt 03): /c/<shortId>/<slug>.
+  shortId        String?   @unique
+  slug           String?
   // Per-board card number (legacy parity) + cross-card links (legacy linkedCardIds).
   number         Int?
   linkedCardIds  String[]  @default([])
@@ -162,10 +169,26 @@ model Comment {
   editedAt  DateTime?
   deletedAt DateTime?
 
-  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id])
+  card      Card       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id])
+  reactions Reaction[]
 
   @@index([cardId])
+}
+
+// Emoji reactions on comments (prompt 06). userId is the reactor (nullable until
+// auth scoping; uniqueness prevents duplicate same-emoji reactions per user).
+model Reaction {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
 }
 
 model Attachment {

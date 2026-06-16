@@ -157,12 +157,15 @@ export async function createBoard(raw: unknown) {
     orderBy: { position: "desc" },
     select: { position: true },
   });
+  const { slugify, shortId } = await import("@/lib/slug");
   const board = await db.board.create({
     data: {
       ...data,
       workspaceId: wid,
       createdById: user.id,
       position: last ? last.position + 65536 : initialPosition(),
+      shortId: shortId(),
+      slug: slugify(data.title),
     },
   });
   revalidatePath("/boards");

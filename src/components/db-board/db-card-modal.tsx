@@ -8,6 +8,7 @@ import { getCardActivity } from "@/features/activity/actions";
 import { generateCardDescription } from "@/features/ai/actions";
 import { UploadButton } from "@/lib/uploadthing";
 import { useEventListener } from "@/lib/liveblocks.config";
+import { CommentReactions } from "./comment-reactions";
 
 const COVER_COLORS = ["#E2483D", "#FF9F1A", "#61BD4F", "#0079BF", "#6554C0"];
 
@@ -327,7 +328,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
               )}
               <div className="flex flex-col gap-2.5">
                 {[
-                  ...card.comments.map((c) => ({ kind: "comment" as const, id: c.id, createdAt: c.createdAt, author: c.author, content: c.content })),
+                  ...card.comments.map((c) => ({ kind: "comment" as const, id: c.id, createdAt: c.createdAt, author: c.author, content: c.content, reactions: c.reactions })),
                   ...activities.map((a) => ({ kind: "activity" as const, id: a.id, createdAt: a.createdAt, type: a.type, data: (a.data ?? {}) as Record<string, unknown>, who: a.user?.name ?? "Someone" })),
                 ]
                   .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())
@@ -337,6 +338,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
                         <p className="text-xs font-medium text-trello-text">{item.author}</p>
                         <p className="text-sm text-trello-textSecondary break-words">{item.content}</p>
                         <p className="text-[10px] text-trello-textSubtle mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
+                        <CommentReactions commentId={item.id} reactions={item.reactions} onChanged={refetch} />
                       </div>
                     ) : (
                       <div key={item.id} className="flex items-start gap-2 px-1">
