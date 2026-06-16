@@ -14,7 +14,10 @@ import { NotificationsDrawer } from './notifications-drawer';
 type Menu = 'create' | 'account' | 'announce' | 'help' | null;
 
 export function TopBar() {
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+  // Compute platform after mount only — reading navigator during render is a
+  // client-only branch that mismatches SSR (server renders "Ctrl K", a Mac client
+  // would render "⌘K"). Start false so SSR + first client render agree, then update.
+  const [isMac, setIsMac] = useState(false);
   const [menu, setMenu] = useState<Menu>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [createWsOpen, setCreateWsOpen] = useState(false);
@@ -33,6 +36,11 @@ export function TopBar() {
   const currentUser = useCurrentUser();
   const unread = notifications.filter((n) => !n.read).length;
   const initials = currentUser.initials;
+
+  // Detect macOS after hydration so the ⌘/Ctrl shortcut hint never causes a mismatch.
+  useEffect(() => {
+    setIsMac(typeof navigator !== 'undefined' && navigator.platform.includes('Mac'));
+  }, []);
 
   // Global "?" opens the shortcuts modal (ignore while typing).
   useEffect(() => {
