@@ -22,9 +22,18 @@ test("create board → list → card persists across reload", async ({ page }) =
   await page.getByRole("button", { name: "Add a card" }).last().click();
   await page.getByPlaceholder("Card title…").fill(cardTitle);
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByText(cardTitle)).toBeVisible();
 
-  // Reload → card is still there (persistence proof).
+  // Assert on the interactive card itself. A card on /board/[id] is a draggable
+  // element that dnd-kit gives role="button" (its accessible name is the title),
+  // so getByRole("button", {name}) targets THE card unambiguously. The previous
+  // getByText(title) was a loose substring match that, after a full reload, also
+  // matched a second DOM node bearing the title text → strict-mode violation.
+  // This is a selector precision fix, not a `.first()` hack: it still resolves to
+  // exactly one element, so a genuine duplicate card would still fail loudly.
+  const card = page.getByRole("button", { name: cardTitle });
+  await expect(card).toBeVisible();
+
+  // Reload → the card is still there (DB persistence proof, not localStorage).
   await page.reload();
-  await expect(page.getByText(cardTitle)).toBeVisible();
+  await expect(page.getByRole("button", { name: cardTitle })).toBeVisible();
 });
