@@ -1,16 +1,23 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Bot, MoreHorizontal, SlidersHorizontal, Star, UserPlus } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Board, DueFilter } from '@/types';
 import { MemberAvatar } from '@/components/ui/member-avatar';
-import { BoardMenu } from './board-menu';
 import { ViewsDropdown } from './views-dropdown';
 import { LABEL_VAR } from '@/lib/colors';
-import { AutomationPanel } from '@/components/automation/automation-panel';
 import { BoardButtons } from '@/components/automation/board-buttons';
 import { BoardSummaryButton } from '@/components/ai/board-summary-button';
+
+// On-demand panels — code-split so their JS stays out of the board's initial
+// bundle and only loads when the user opens them.
+const BoardMenu = dynamic(() => import('./board-menu').then((m) => m.BoardMenu), { ssr: false });
+const AutomationPanel = dynamic(
+  () => import('@/components/automation/automation-panel').then((m) => m.AutomationPanel),
+  { ssr: false },
+);
 
 export function BoardHeader({ board }: { board: Board }) {
   const renameBoard = useBoardStore((s) => s.renameBoard);
@@ -67,7 +74,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
   return (
     <>
-      <div className="flex items-center gap-1 h-11 flex-wrap">
+      <div className="flex items-center gap-1 h-11 min-w-0">
         {/* Left: title + view switcher */}
         {editing ? (
           <input
@@ -82,7 +89,7 @@ export function BoardHeader({ board }: { board: Board }) {
         ) : (
           <button
             onClick={startEdit}
-            className="font-bold text-base text-white hover:bg-white/20 rounded px-1.5 py-0.5 transition-colors"
+            className="font-bold text-base text-white hover:bg-white/20 rounded px-1.5 py-0.5 transition-colors truncate min-w-0 max-w-[42vw] md:max-w-none"
           >
             {board.title}
           </button>
@@ -92,9 +99,11 @@ export function BoardHeader({ board }: { board: Board }) {
         <ViewsDropdown boardId={board.id} />
 
         {/* Right group */}
-        <div className="flex items-center gap-1 ml-auto">
-          {/* Board buttons (Butler) */}
-          <BoardButtons boardId={board.id} />
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {/* Board buttons (Butler) — desktop only (advanced) */}
+          <div className="hidden md:flex items-center gap-1">
+            <BoardButtons boardId={board.id} />
+          </div>
 
           {/* AI board summary */}
           <BoardSummaryButton boardId={board.id} className={iconBtn} />
@@ -104,8 +113,8 @@ export function BoardHeader({ board }: { board: Board }) {
             <Bot size={14} />
           </button>
 
-          {/* Member avatars */}
-          <div className="flex items-center -space-x-1.5">
+          {/* Member avatars — hidden on the narrowest screens */}
+          <div className="hidden sm:flex items-center -space-x-1.5">
             {board.memberIds.slice(0, 3).map((mid) => (
               <MemberAvatar key={mid} memberId={mid} size="sm" className="ring-2 ring-black/20" />
             ))}
@@ -125,7 +134,7 @@ export function BoardHeader({ board }: { board: Board }) {
             </button>
 
             {filterOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 p-3 text-sm text-trello-text">
+              <div className="anim-popover-enter origin-top-right absolute right-0 top-full mt-1.5 w-64 bg-trello-surfaceRaised border border-trello-border rounded-lg shadow-xl z-50 p-3 text-sm text-trello-text">
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-semibold">Filter cards</p>
                   {activeFilterCount > 0 && (
@@ -180,18 +189,18 @@ export function BoardHeader({ board }: { board: Board }) {
             )}
           </div>
 
-          {/* Star */}
-          <button className={iconBtn} aria-label="Star board">
+          {/* Star — desktop only */}
+          <button className={`${iconBtn} hidden md:flex`} aria-label="Star board">
             <Star size={14} />
           </button>
 
-          {/* Add member */}
-          <button className={iconBtn} aria-label="Add member" title="Add member">
+          {/* Add member — desktop only */}
+          <button className={`${iconBtn} hidden md:flex`} aria-label="Add member" title="Add member">
             <UserPlus size={14} />
           </button>
 
-          {/* Share */}
-          <button className="h-7 px-3 rounded border border-white/30 text-white text-sm hover:bg-white/10 transition-colors">
+          {/* Share — hidden on the narrowest screens */}
+          <button className="hidden sm:block h-7 px-3 rounded border border-white/30 text-white text-sm hover:bg-white/10 transition-colors">
             Share
           </button>
 

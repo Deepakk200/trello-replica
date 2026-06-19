@@ -83,6 +83,17 @@
 
   --shadow-card:       0 1px 0 rgba(0,0,0,0.25);
   --shadow-card-hover: 0 1px 0 rgba(0,0,0,0.25), 0 0 0 2px var(--card-border-hover) inset;
+  /* Elevation scale (referenced by popovers/menus/dialogs/drawers) */
+  --shadow-raised:     0 4px 10px -2px rgba(0,0,0,0.40);
+  --shadow-popover:    0 8px 24px -6px rgba(0,0,0,0.50), 0 0 0 1px var(--border-default);
+  --shadow-overlay:    0 16px 48px -12px rgba(0,0,0,0.60);
+
+  /* Type scale (Trello-tuned). The 12→24 steps map 1:1 to Tailwind's existing
+     text-xs(12)/sm(14, body)/base(16)/lg(18)/xl(20)/2xl(24) utilities already used
+     throughout, so they stay the single source of truth; we only add the missing
+     11px step (`text-2xs`) for badges/meta. Emphasis weight: 600 (font-semibold). */
+  --text-2xs: 0.6875rem;        /* 11px */
+  --text-2xs--line-height: 1rem;
 }
 
 /* ── Dark theme (default) ─────────────────────────────────────────────────── */
@@ -230,11 +241,15 @@
 }
 
 @layer components {
-  .btn-soft    { @apply bg-trello-cardHover hover:brightness-110 text-trello-text rounded transition-all active:scale-[0.98]; }
-  .btn-primary { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition-all active:scale-[0.98]; }
-  .btn-ghost   { @apply hover:bg-trello-cardHover text-trello-text rounded transition; }
-  .btn-icon    { @apply p-1.5 rounded hover:bg-trello-cardHover text-trello-text transition-all active:scale-90; }
-  .btn-press   { @apply active:scale-[0.97] transition-transform duration-75; }
+  /* Button variants — all share consistent radius, active press, and disabled
+     state. Focus rings come from the global :focus-visible (accent). */
+  .btn-soft      { @apply bg-trello-cardHover hover:brightness-110 text-trello-text rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100; }
+  .btn-secondary { @apply bg-trello-surfaceOverlay hover:brightness-110 text-trello-text rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100; }
+  .btn-primary   { @apply bg-trello-primary hover:bg-trello-primaryHover text-trello-textOnBold rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100; }
+  .btn-danger    { @apply bg-trello-danger hover:brightness-110 text-trello-textOnBold rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100; }
+  .btn-ghost     { @apply hover:bg-trello-cardHover text-trello-text rounded transition disabled:opacity-50 disabled:pointer-events-none; }
+  .btn-icon      { @apply p-1.5 rounded hover:bg-trello-cardHover text-trello-text transition-all active:scale-90 disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100; }
+  .btn-press     { @apply active:scale-[0.97] transition-transform duration-75; }
 }
 
 * {
@@ -257,11 +272,18 @@
 @keyframes modal-enter    { from { opacity:0; transform:scale(0.96)      } to { opacity:1; transform:scale(1)    } }
 @keyframes backdrop-enter { from { opacity:0 }                             to { opacity:1 }                        }
 @keyframes menu-enter     { from { transform:translateX(100%) }             to { transform:translateX(0) }          }
+@keyframes panel-enter-left { from { transform:translateX(-100%) }           to { transform:translateX(0) }          }
+@keyframes popover-enter  { from { opacity:0; transform:translateY(-4px) scale(0.98) } to { opacity:1; transform:translateY(0) scale(1) } }
+.anim-popover-enter     { animation: popover-enter  0.15s cubic-bezier(0.16, 1, 0.3, 1); }
 .anim-card-enter        { animation: card-enter     0.18s ease-out; }
 .anim-list-enter        { animation: list-enter     0.22s ease-out; }
 .anim-modal-enter       { animation: modal-enter    0.15s cubic-bezier(0.16, 1, 0.3, 1); }
 .animate-backdrop-enter { animation: backdrop-enter 0.15s ease-out; }
 .anim-menu-enter        { animation: menu-enter     0.2s ease-out; }
+.anim-panel-enter-left  { animation: panel-enter-left 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-panel-enter-left { animation: none; }
+}
 
 /* Themed thin scrollbar utility for list columns and popovers */
 /* Mobile snap scroll aliases (board already uses max-md:snap-x via Tailwind) */

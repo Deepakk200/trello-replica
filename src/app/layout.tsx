@@ -7,7 +7,7 @@ import { StoreNamespacer } from '@/components/ui/store-namespacer';
 import { LegacyDbSync } from '@/components/ui/legacy-db-sync';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { PwaInstallPrompt } from '@/components/ui/pwa-install-prompt';
-import { SearchPalette } from '@/components/ui/search-palette';
+import { CommandPalette } from '@/components/ui/command-palette';
 import { AutomationRunner } from '@/components/ui/automation-runner';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -75,8 +75,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <StoreNamespacer />
           <LegacyDbSync />
           <ThemeProvider>{children}</ThemeProvider>
-          {/* Global Cmd/Ctrl+K palette — available on every page (legacy + DB app). */}
-          <SearchPalette />
+          {/* Single global Cmd/Ctrl+K palette — searches boards & cards and runs
+              quick commands, available on every page. */}
+          <CommandPalette />
           {/* Registers the Butler automation engine (client). */}
           <AutomationRunner />
         </SessionProvider>

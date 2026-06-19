@@ -163,6 +163,8 @@ export function AttachmentsSection({
                 <img
                   src={att.thumbnail}
                   alt={att.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-16 w-28 rounded object-cover bg-trello-cardHover border border-trello-borderSubtle"
                 />
               ) : att.type === 'file' ? (

@@ -19,3 +19,12 @@ export function slugify(title: string): string {
 export function shortId(): string {
   return nanoid(8);
 }
+
+/**
+ * Canonical in-app URL for a legacy (localStorage) board: `/b/<id>/<slug>`.
+ * The id is the store's nanoid (the source of truth); the slug is cosmetic and
+ * self-corrects via <BoardUrlSync/> after a board is renamed.
+ */
+export function boardPath(id: string, title: string): string {
+  return `/b/${id}/${slugify(title)}`;
+}

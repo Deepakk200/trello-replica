@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     // (Gitignored, so absent in CI; ignore here so local lint matches CI.)
     "public/sw.js",
     "public/sw.js.map",
+    // Stale repo backup — an accidentally-embedded nested git repo, untracked and
+    // gitignored. Excluded so `eslint .` stops traversing a duplicate source tree.
+    "trello-replica-backup/**",
   ]),
   {
     // React-Compiler-readiness lints from eslint-plugin-react-hooks v6. This

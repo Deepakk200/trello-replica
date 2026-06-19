@@ -30,6 +30,23 @@ function isWithin24Hours(iso: string): boolean {
   return due - Date.now() <= 24 * 60 * 60 * 1000 && due >= Date.now() - 60 * 1000;
 }
 
+// Extract @mentions from a comment and resolve them to known member names.
+// Matches a member when an `@token` equals their first name, their full name
+// with spaces removed, or a prefix thereof (case-insensitive).
+function extractMentions(text: string, members: Record<ID, Member>): string[] {
+  const tokens = (text.match(/@([a-zA-Z][\w-]*)/g) ?? []).map((t) => t.slice(1).toLowerCase());
+  if (tokens.length === 0) return [];
+  const matched: string[] = [];
+  for (const member of Object.values(members)) {
+    const first = member.name.split(/\s+/)[0]?.toLowerCase() ?? '';
+    const compact = member.name.replace(/\s+/g, '').toLowerCase();
+    if (tokens.some((t) => t.length >= 2 && (t === first || compact.startsWith(t) || first.startsWith(t)))) {
+      matched.push(member.name);
+    }
+  }
+  return matched;
+}
+
 // ─── Seed constants ──────────────────────────────────────────────────────────
 
 const MEMBER_DEFS: Array<Omit<Member, 'id'>> = [
@@ -270,12 +287,9 @@ function buildSeed(): BoardState {
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
-    notifications: [
-      makeNotification({ type: 'commented', boardId, cardId: Object.keys(cards)[0], text: 'Maya commented on Research competitors' }),
-      makeNotification({ type: 'due_soon', boardId, cardId: Object.keys(cards)[1], text: 'Write user stories is due soon' }),
-      makeNotification({ type: 'assigned', boardId, cardId: Object.keys(cards)[2], text: 'You were assigned to Build board view' }),
-      makeNotification({ type: 'moved', boardId, text: 'Project kickoff was moved to Done' }),
-    ],
+    // Notifications start empty and are generated from real events (comments,
+    // mentions, assignments, due dates) — never seeded with placeholder data.
+    notifications: [],
     selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
     jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
     workspaceDescription: '', workspaceVisibility: 'private', workspaceAvatarColor: DEFAULT_WS_AVATAR,
@@ -615,13 +629,22 @@ export const boardStore = create<Store>()(
             card.activity.push(makeActivity({ type: 'renamed', text: `Renamed to "${patch.title}"` }));
           if (patch.dueDate !== undefined && patch.dueDate !== card.dueDate)
             card.activity.push(makeActivity({ type: 'due', text: patch.dueDate ? `Due date set to ${patch.dueDate}` : 'Due date removed' }));
-          if (patch.dueDate && patch.dueDate !== card.dueDate && isWithin24Hours(patch.dueDate)) {
-            s.notifications.unshift(makeNotification({
-              type: 'due_soon',
-              cardId: card.id,
-              boardId: s.lists[card.listId]?.boardId,
-              text: `${card.title} is due within 24 hours`,
-            }));
+          if (patch.dueDate && patch.dueDate !== card.dueDate) {
+            const boardId = s.lists[card.listId]?.boardId;
+            const dueMs = new Date(patch.dueDate).getTime();
+            if (!Number.isNaN(dueMs)) {
+              if (dueMs < Date.now()) {
+                s.notifications.unshift(makeNotification({
+                  type: 'overdue', cardId: card.id, boardId,
+                  text: `"${card.title}" is overdue`,
+                }));
+              } else if (isWithin24Hours(patch.dueDate)) {
+                s.notifications.unshift(makeNotification({
+                  type: 'due_soon', cardId: card.id, boardId,
+                  text: `"${card.title}" is due within 24 hours`,
+                }));
+              }
+            }
           }
           if (patch.description !== undefined && patch.description !== card.description)
             card.activity.push(makeActivity({ type: 'described', text: 'Description updated' }));
@@ -827,8 +850,17 @@ export const boardStore = create<Store>()(
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
           const idx = card.memberIds.indexOf(memberId);
-          if (idx === -1) card.memberIds.push(memberId);
-          else card.memberIds.splice(idx, 1);
+          if (idx === -1) {
+            card.memberIds.push(memberId);
+            // Assigning a member generates a real notification.
+            s.notifications.unshift(makeNotification({
+              type: 'assigned', cardId,
+              boardId: s.lists[card.listId]?.boardId,
+              text: `${s.members[memberId]?.name ?? 'A member'} was assigned to "${card.title}"`,
+            }));
+          } else {
+            card.memberIds.splice(idx, 1);
+          }
           card.updatedAt = now();
         });
       },
@@ -980,6 +1012,22 @@ export const boardStore = create<Store>()(
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
           card.activity.push(makeActivity(entry)); card.updatedAt = now();
+
+          // A new comment generates a real notification — plus a mention
+          // notification for every known member referenced with @name.
+          if (entry.type === 'commented') {
+            const boardId = s.lists[card.listId]?.boardId;
+            s.notifications.unshift(makeNotification({
+              type: 'commented', cardId, boardId,
+              text: `New comment on "${card.title}"`,
+            }));
+            for (const name of extractMentions(entry.text, s.members)) {
+              s.notifications.unshift(makeNotification({
+                type: 'mention', cardId, boardId,
+                text: `${name} was mentioned on "${card.title}"`,
+              }));
+            }
+          }
         });
       },
       updateComment(cardId, commentId, newContent) {
@@ -1385,7 +1433,7 @@ export const boardStore = create<Store>()(
 
         if (!state.activeViewByBoard) state.activeViewByBoard = {};
         if (state.activePanel !== 'board' && state.activePanel !== 'inbox' && state.activePanel !== 'planner') state.activePanel = 'board';
-        if (!state.notifications) state.notifications = buildSeed().notifications;
+        if (!state.notifications) state.notifications = [];
         if (!state.selectedCardIds) state.selectedCardIds = [];
         if (state.notificationsOpen === undefined) state.notificationsOpen = false;
         if (state.activeCardModalId === undefined) state.activeCardModalId = null;

@@ -9,7 +9,6 @@ import { CalendarView } from './calendar-view';
 import { TableView } from './table-view';
 import { DashboardView } from './dashboard-view';
 import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
-import { CommandPalette } from '@/components/ui/command-palette';
 import { BulkActionBar } from './bulk-action-bar';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(
@@ -84,7 +83,6 @@ export function BoardView() {
   return (
     <>
       <ShortcutsOverlay />
-      <CommandPalette />
       <BulkActionBar />
 
       {/* Board fills the remaining viewport height below the top-bar */}

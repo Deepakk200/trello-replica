@@ -41,19 +41,19 @@ export function ViewsDropdown({ boardId }: { boardId: ID }) {
   const CurrentIcon = current.Icon;
 
   return (
-    <div ref={ref} className="relative ml-1">
+    <div ref={ref} className="relative ml-1 shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-1 rounded text-white/80 hover:text-white transition-colors"
         aria-label="Switch board view"
       >
         <CurrentIcon size={16} />
-        <span className="text-sm">{current.label}</span>
+        <span className="text-sm hidden sm:inline">{current.label}</span>
         <ChevronDown size={12} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-60 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl py-2">
+        <div className="anim-popover-enter absolute left-0 top-full mt-1 z-50 w-60 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl py-2 origin-top">
           <div className="px-3 pb-2 mb-1 border-b border-white/10">
             <p className="text-xs font-semibold text-white">Views</p>
           </div>

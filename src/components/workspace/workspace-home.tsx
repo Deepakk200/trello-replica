@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Lock, Pencil, Plus, Sparkles, User, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
+import { boardPath } from '@/lib/slug';
 
 const SWATCHES = [
   'linear-gradient(135deg,#0079bf,#5067c5)',
@@ -63,7 +64,7 @@ export function WorkspaceHome() {
 
   function openBoard(id: string) {
     setActiveBoard(id);
-    router.push('/b');
+    router.push(boardPath(id, boards[id]?.title ?? ''));
   }
 
   function handleCreate() {
@@ -74,7 +75,7 @@ export function WorkspaceHome() {
     setNewBg(SWATCHES[0]);
     setCreating(false);
     setActiveBoard(id);
-    router.push('/b');
+    router.push(boardPath(id, t));
   }
 
   function startEditName() {

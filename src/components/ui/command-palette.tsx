@@ -13,11 +13,18 @@ import {
   Sparkles,
   Keyboard,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { useThemeStore } from '@/store/use-theme-store';
-import { TemplatesGallery } from '@/components/board/templates-gallery';
 import type { ID } from '@/types';
+
+// The palette is mounted globally; load the heavy templates gallery only when the
+// "Create board" command is actually run.
+const TemplatesGallery = dynamic(
+  () => import('@/components/board/templates-gallery').then((m) => m.TemplatesGallery),
+  { ssr: false },
+);
 
 type RecentItem = { kind: 'board' | 'card'; id: ID };
 type PaletteItem = {

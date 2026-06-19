@@ -83,7 +83,7 @@ export function TopBar() {
   const dropdownRow =
     'w-full text-left px-3 py-2 text-sm text-trello-text hover:bg-trello-cardHover transition-colors flex items-center gap-2';
   const popover =
-    'absolute right-0 top-full mt-1 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden max-w-[calc(100vw-1rem)]';
+    'anim-popover-enter origin-top-right absolute right-0 top-full mt-1 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden max-w-[calc(100vw-1rem)]';
 
   return (
     <header

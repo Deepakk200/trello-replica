@@ -1,5 +1,27 @@
 # Trello Clone — Handoff
 
+## Design system — tokens · components · motion (WP-1, 2026-06-19)
+
+A token/component/motion refinement pass over the already-mature system (Step 0 found the token system was largely in place; this **refined**, did not rebuild). **Framer Motion is NOT a dependency** — motion is CSS keyframes + dnd-kit only. There is **no shadcn `button.tsx`**; the button system is the `.btn-*` utility classes in `globals.css` (used in ~29 files / 70 usages).
+
+**Tokens (all in `src/app/globals.css`):**
+- **Color** — CSS vars for **both** themes (`:root,.dark` + `.light`), mapped to Tailwind via `@theme inline` as `--color-trello-*`: `bg/surface/surfaceRaised/surfaceOverlay/listBg/cardBg/cardHover`, `text/textSecondary/textSubtle/textOnBold`, `border/borderSubtle`, `accent` (#579DFF dark / #1D7AFC light), `accentHover`, `primary` (#1D7AFC), `primaryHover`, `success/warning/danger/info`, `label-*`.
+- **Spacing** — Tailwind v4 default 4px grid (1=4 … 6=24); components already use it.
+- **Type scale** — Tailwind `text-xs(12)/sm(14, body)/base(16)/lg(18)/xl(20)/2xl(24)` is the source of truth; **added** the missing 11px step `--text-2xs` (badges/meta). Emphasis weight 600 (`font-semibold`).
+- **Radii** — `--radius:0.5rem` + derived `--radius-sm…4xl`.
+- **Shadow/elevation** — existing `--shadow-card`/`--shadow-card-hover`; **added** scale `--shadow-raised`/`--shadow-popover`/`--shadow-overlay` (available for adoption).
+- **Focus ring** — global `:focus-visible { outline: 2px solid var(--accent) }` (accent), so every interactive element gets a ring for free.
+
+**Components/states refined:**
+- `.btn-*` classes now carry consistent **disabled** states (`disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100`) and gained **`.btn-secondary`** + **`.btn-danger`** variants (additive — existing usages unaffected). They already had hover + `active:scale` press.
+- **Card hover lift** (`card-item.tsx`): added `hover:shadow-[0_4px_10px_-2px_rgba(0,0,0,0.45)]`; transition scoped to `border-color,box-shadow,background-color` so it **never animates the drag transform** (no DnD conflict).
+
+**Motion:**
+- New **`popover-enter`** keyframe + `.anim-popover-enter` (fade + 4px slide-up + scale 0.98→1, 150ms) applied to dropdowns/popovers that previously popped in instantly: `views-dropdown`, board-header **filter** popover, top-bar popovers (`create/announce/help`). Modals already use `anim-modal-enter` (scale 0.96→1); drawers use `anim-menu-enter`/`panel-enter-left`; card/list use `card-enter`/`list-enter`.
+- **`prefers-reduced-motion`** is globally honoured (existing rule forces all animations/transitions to ~0, `scroll-behavior:auto`), so all of the above degrade automatically.
+
+**Verify:** `tsc` clean · changed-file eslint 0 errors (47 pre-existing legacy warnings unchanged) · `next build --webpack` ✓. No working component rebuilt; all props/APIs stable.
+
 ## Trello-style "Switch boards" popup — centered modal w/ search, filters, recent, workspace groups (2026-06-16)
 
 Replaced the old Switch-boards UI (a right-side slide-in panel, `src/components/ui/switch-boards-panel.tsx` — title bar + search + Starred/Your-boards lists + Create footer) with a **centered modal** matching real Trello. **Step-0 names:** dock "Switch boards" tab (`bottom-nav.tsx`) → `setSwitchBoardsOpen(true)`; mounted in `app-shell.tsx`. Store shapes: `boards: Record<ID,Board>` (`{id,title,background,workspaceId,…}`), `workspaces: Record<ID,Workspace>` (`{id,name,shortName,color,…}`), `recentBoardIds: ID[]` (exists), `starredBoardIds: ID[]`, `setActiveBoard(id)`. Board open = `setActiveBoard(id)` + `router.push('/b')` (matches `WorkspaceHome.openBoard`).

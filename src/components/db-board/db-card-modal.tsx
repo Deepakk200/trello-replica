@@ -242,7 +242,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
                   {card.attachments.map((att) => (
                     <div key={att.id} className="flex items-center gap-3 bg-trello-cardBg rounded-lg p-2">
                       {att.fileType.startsWith("image/")
-                        ? <img src={att.url} alt={att.name} className="w-16 h-12 object-cover rounded shrink-0" />
+                        ? <img src={att.url} alt={att.name} loading="lazy" decoding="async" className="w-16 h-12 object-cover rounded shrink-0" />
                         : <div className="w-16 h-12 bg-trello-cardHover rounded flex items-center justify-center shrink-0"><FileText size={20} className="text-trello-textSubtle" /></div>}
                       <div className="min-w-0 flex-1">
                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-trello-text hover:underline truncate block">{att.name}</a>

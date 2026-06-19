@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, LayoutGrid, Pin, Clock, ChevronDown } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
+import { boardPath } from '@/lib/slug';
 import type { Board, ID } from '@/types';
 
 const SYNTHETIC_WS = '__none__';
@@ -62,7 +63,7 @@ function SwitchBoardsDialog() {
 
   function openBoard(id: ID) {
     setActiveBoard(id);
-    router.push('/b');
+    router.push(boardPath(id, boards[id]?.title ?? ''));
     setOpen(false);
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useLayoutEffect, useRef, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { GripVertical, Pencil } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useShallow } from 'zustand/shallow';
@@ -29,8 +29,14 @@ export const CardItem = memo(
     const [quickEditPos, setQuickEditPos] = useState<{ x: number; y: number } | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
 
-    const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
+    const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } =
       useSortable({ id: cardId, data: { type: 'card', listId } });
+
+    // Split the sortable listeners: pointer/touch activation stays on the whole
+    // card (drag-from-anywhere, unchanged), while keyboard activation moves to a
+    // dedicated grip handle. This frees Enter/Space on the card body to open the
+    // modal, and gives keyboard users a real, discoverable way to start a drag.
+    const { onKeyDown: keyboardDragActivator, ...pointerDragListeners } = listeners ?? {};
 
     useLayoutEffect(() => {
       if (!rootRef.current) return;
@@ -58,8 +64,9 @@ export const CardItem = memo(
             setNodeRef(node);
             (rootRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
-          {...attributes}
-          {...listeners}
+          {...pointerDragListeners}
+          role="button"
+          tabIndex={0}
           onClick={(e) => {
             if (e.shiftKey) toggleCardSelection(cardId);
             else setActiveCardModal(cardId);
@@ -67,7 +74,8 @@ export const CardItem = memo(
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              e.shiftKey ? toggleCardSelection(cardId) : setActiveCardModal(cardId);
+              if (e.shiftKey) toggleCardSelection(cardId);
+              else setActiveCardModal(cardId);
             }
           }}
           onContextMenu={(e) => { e.preventDefault(); setQuickEditPos({ x: e.clientX, y: e.clientY }); }}
@@ -76,7 +84,10 @@ export const CardItem = memo(
             `${isNew ? 'anim-card-enter' : ''} group relative bg-[var(--card-bg)] rounded-lg cursor-pointer overflow-hidden`,
             'shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)]',
             'border-2 border-transparent hover:border-[var(--accent)]/50',
-            'transition-colors duration-75',
+            // Trello-style hover lift: elevate the shadow on hover. Transition is
+            // limited to colour/shadow only so it never animates the drag transform.
+            'hover:shadow-[0_4px_10px_-2px_rgba(0,0,0,0.45)]',
+            'transition-[border-color,box-shadow,background-color] duration-100',
             isDragging ? 'opacity-30 ring-2 ring-trello-accent' : '',
             isSelected ? 'ring-2 ring-trello-accent ring-offset-2 ring-offset-trello-listBg' : '',
           ].join(' ')}
@@ -84,7 +95,7 @@ export const CardItem = memo(
           {/* Cover band — real <img> for image covers, colour fill otherwise */}
           {hasCover && cover.type === 'image' && cover.image ? (
             <div className="relative w-full">
-              <img src={cover.image} alt="" className="w-full h-36 object-cover rounded-t-lg" />
+              <img src={cover.image} alt="" loading="lazy" decoding="async" className="w-full h-36 object-cover rounded-t-lg" />
               {isFull && (
                 <p className={[
                   'absolute bottom-2 left-3 right-10 text-sm font-medium leading-snug',
@@ -163,13 +174,28 @@ export const CardItem = memo(
             </>
           )}
 
-          {/* Edit pencil — always rendered, visible on hover/focus */}
+          {/* Keyboard drag handle — visually hidden until focused (mouse/touch users
+              drag the card body directly). Carries the sortable's keyboard activator
+              + ARIA, so keyboard users can pick up the card and move it with arrows. */}
+          <button
+            ref={setActivatorNodeRef}
+            {...attributes}
+            onKeyDown={keyboardDragActivator as React.KeyboardEventHandler<HTMLButtonElement> | undefined}
+            aria-label={`Drag card: ${card.title}. Press Space or Enter, then use arrow keys to move; Space or Enter to drop.`}
+            className="sr-only focus:not-sr-only focus:absolute focus:top-1 focus:left-1 focus:z-20 focus:h-7 focus:w-7 focus:rounded-full focus:bg-[var(--surface-raised)] focus:flex focus:items-center focus:justify-center focus:shadow-md"
+          >
+            <GripVertical className="h-3.5 w-3.5 text-trello-textSecondary" />
+          </button>
+
+          {/* Edit pencil — always rendered, visible on hover (mouse affordance).
+              tabIndex -1: the card body is the keyboard path to open the modal, so
+              the pencil is not a separate tab stop. */}
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setActiveCardModal(cardId); }}
-            className="absolute top-1 right-1 h-7 w-7 rounded-full bg-[var(--surface-raised)] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 hover:brightness-125 transition-opacity"
+            className="absolute top-1 right-1 h-7 w-7 rounded-full bg-[var(--surface-raised)] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 hover:brightness-125 transition-opacity"
             aria-label={`Edit card: ${card.title}`}
-            tabIndex={0}
+            tabIndex={-1}
           >
             <Pencil className="h-3 w-3 text-trello-textSecondary" />
           </button>
