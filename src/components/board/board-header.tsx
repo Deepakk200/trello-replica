@@ -10,6 +10,8 @@ import { ViewsDropdown } from './views-dropdown';
 import { LABEL_VAR } from '@/lib/colors';
 import { BoardButtons } from '@/components/automation/board-buttons';
 import { BoardSummaryButton } from '@/components/ai/board-summary-button';
+import { BoardMembersPopover } from './board-members-popover';
+import { ShareDialog } from './share-dialog';
 
 // On-demand panels — code-split so their JS stays out of the board's initial
 // bundle and only loads when the user opens them.
@@ -24,6 +26,8 @@ export function BoardHeader({ board }: { board: Board }) {
   const labels = useBoardStore((s) => s.labels);
   const filterState = useBoardStore((s) => s.filterState);
   const setFilter = useBoardStore((s) => s.setFilter);
+  const toggleStarBoard = useBoardStore((s) => s.toggleStarBoard);
+  const starred = useBoardStore((s) => (s.starredBoardIds ?? []).includes(board.id));
   const boardLabels = Object.values(labels);
   const activeFilterCount = filterState.labelIds.length + (filterState.dueFilter ? 1 : 0);
 
@@ -31,6 +35,8 @@ export function BoardHeader({ board }: { board: Board }) {
   const [draft, setDraft] = useState(board.title);
   const [showMenu, setShowMenu] = useState(false);
   const [showAutomation, setShowAutomation] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -189,18 +195,37 @@ export function BoardHeader({ board }: { board: Board }) {
             )}
           </div>
 
-          {/* Star — desktop only */}
-          <button className={`${iconBtn} hidden md:flex`} aria-label="Star board">
-            <Star size={14} />
+          {/* Star — toggles + persists; gold when starred */}
+          <button
+            onClick={() => toggleStarBoard(board.id)}
+            className={`${iconBtn} ${starred ? 'text-yellow-400 hover:text-yellow-300' : ''}`}
+            aria-label={starred ? 'Unstar board' : 'Star board'}
+            aria-pressed={starred}
+            title={starred ? 'Starred' : 'Star this board'}
+          >
+            <Star size={14} fill={starred ? 'currentColor' : 'none'} />
           </button>
 
-          {/* Add member — desktop only */}
-          <button className={`${iconBtn} hidden md:flex`} aria-label="Add member" title="Add member">
-            <UserPlus size={14} />
-          </button>
+          {/* Add member — opens the board members popover */}
+          <div className="relative hidden sm:block">
+            <button
+              onClick={() => { setShowMembers((v) => !v); setFilterOpen(false); }}
+              className={iconBtn}
+              aria-label="Add members to board"
+              aria-haspopup="dialog"
+              aria-expanded={showMembers}
+              title="Add members"
+            >
+              <UserPlus size={14} />
+            </button>
+            {showMembers && <BoardMembersPopover boardId={board.id} onClose={() => setShowMembers(false)} />}
+          </div>
 
-          {/* Share — hidden on the narrowest screens */}
-          <button className="hidden sm:block h-7 px-3 rounded border border-white/30 text-white text-sm hover:bg-white/10 transition-colors">
+          {/* Share — opens the share dialog (visibility + copy link + invite) */}
+          <button
+            onClick={() => setShowShare(true)}
+            className="hidden sm:inline-flex items-center h-7 px-3 rounded border border-white/30 text-white text-sm hover:bg-white/10 transition-colors"
+          >
             Share
           </button>
 
@@ -217,6 +242,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
       {showMenu && <BoardMenu boardId={board.id} onClose={() => setShowMenu(false)} />}
       {showAutomation && <AutomationPanel boardId={board.id} onClose={() => setShowAutomation(false)} />}
+      {showShare && <ShareDialog boardId={board.id} onClose={() => setShowShare(false)} />}
     </>
   );
 }
