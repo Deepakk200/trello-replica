@@ -19,18 +19,27 @@ setup("authenticate", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.waitForURL(/\/sign-in/);
 
-  // Sign in with the credentials we just created. The credentials form calls
-  // signIn() then router.push("/") on success, so WAIT for that redirect — it's
-  // the deterministic signal that the session cookie is set. Setting up the wait
-  // before the click (Promise.all) avoids missing a fast navigation.
+  // Sign in with the credentials we just created.
   await page.getByPlaceholder("Email").fill(email);
   await page.getByPlaceholder("Password").fill(password);
-  await Promise.all([
-    page.waitForURL((url) => url.pathname === "/"),
-    page.getByRole("button", { name: "Sign in" }).click(),
-  ]);
+  await page.getByRole("button", { name: "Sign in" }).click();
 
-  // Session is now established → the protected boards route renders.
+  // Deterministic readiness signal: the credentials form calls signIn() then
+  // router.push("/"), but that client-side redirect is an incidental side-effect,
+  // NOT proof the session cookie has committed — racing it (even via waitForURL)
+  // is what made this setup flaky before visiting the protected /boards route.
+  // Instead, poll NextAuth's own /api/auth/session: it returns the user ONLY once
+  // the auth cookie is set, and page.request shares the browser context's cookie
+  // jar. This is auto-retried polling (no fixed delay), independent of any app
+  // redirect timing.
+  await expect(async () => {
+    const res = await page.request.get("/api/auth/session");
+    expect(res.ok()).toBeTruthy();
+    const session = await res.json();
+    expect(session?.user?.email).toBe(email);
+  }).toPass({ timeout: 15_000 });
+
+  // Session is now provably established → the protected boards route renders.
   await page.goto("/boards");
   await expect(page.getByRole("heading", { name: "Your Boards" })).toBeVisible();
 
