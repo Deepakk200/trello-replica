@@ -1,5 +1,15 @@
 # Trello Clone — Handoff
 
+## Archive + Undo pipeline (WP-6, 2026-06-19) — MODE LOCAL
+
+Trello-accurate archive/close + time-boxed undo for the **legacy localStorage app** (where the archive UI lives). **Step-0 detect:** MODE LOCAL. Real names kept — `Card.isArchived`/`List.isArchived` (NOT renamed to `archived`), actions `archiveCard/restoreCard`, `archiveList/restoreList`, `archiveAllCardsInList`, `bulkArchiveCards`, `deleteCard/deleteList/deleteBoard`.
+- **Schema (store types):** added `archivedAt?: string|null` to Card & List; added **`isArchived?` + `archivedAt?` to Board** (boards had no archive field). All in `partialize` already → **persists across refresh**. `migrate` defaults `board.isArchived=false`.
+- **Store:** `archiveCard/restoreCard/archiveList/restoreList/archiveAllCardsInList/bulkArchiveCards` now set/clear `archivedAt`. **New `closeBoard(id)`/`reopenBoard(id)`** — soft-close a board (hidden from grid, removed from recents, active board switches to another open board).
+- **Undo (new):** `src/store/use-undo-store.ts` — ephemeral (NOT persisted) zustand stack `{entry:{id,message,undo}|null, push, runUndo, dismiss}`, ~7s auto-dismiss. `src/components/ui/undo-toast.tsx` — global toast (mounted in `layout.tsx`) "… archived — Undo" + **Ctrl/Cmd+Z** (ignored while typing). `src/features/undo/archive-actions.ts` — `archiveCardWithUndo/archiveListWithUndo/archiveAllCardsWithUndo/bulkArchiveWithUndo/closeBoardWithUndo` each call the real store action(s) + register the **exact inverse** (restore/reopen); bulk captures the affected ids so undo restores only those.
+- **UI wiring:** card-modal Archive → `archiveCardWithUndo`; list-actions "Archive this list"/"Archive all cards" → `archiveListWithUndo`/`archiveAllCardsWithUndo`; bulk-action-bar Archive → `bulkArchiveWithUndo`; board ··· menu (`board-menu.tsx`) gained a **"Close board"** danger section (`closeBoardWithUndo` + `router.push('/')`) and **Delete** buttons (inline confirm) on the Archived-items Cards/Lists rows (was restore-only). Hard delete stays explicit/confirm-gated from the archived view (Trello model: archive=soft+undoable, delete=permanent+confirm).
+- **Closed boards view (new):** `src/components/workspace/closed-boards-modal.tsx` — Reopen + Delete(confirm); opened from a **"View all closed boards (N)"** link on the workspace home. Closed boards filtered out of the home grid, switch-boards popup, and Cmd+K board results.
+- **Verify:** `tsc` clean · changed-file eslint 0 errors (47 pre-existing legacy warnings) · `next build --webpack` ✓. DnD + existing menus untouched. Undo toast is ephemeral by design (the archived items themselves persist; the toast does not).
+
 ## Design system — tokens · components · motion (WP-1, 2026-06-19)
 
 A token/component/motion refinement pass over the already-mature system (Step 0 found the token system was largely in place; this **refined**, did not rebuild). **Framer Motion is NOT a dependency** — motion is CSS keyframes + dnd-kit only. There is **no shadcn `button.tsx`**; the button system is the `.btn-*` utility classes in `globals.css` (used in ~29 files / 70 usages).

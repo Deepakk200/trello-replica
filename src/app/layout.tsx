@@ -8,6 +8,7 @@ import { LegacyDbSync } from '@/components/ui/legacy-db-sync';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { PwaInstallPrompt } from '@/components/ui/pwa-install-prompt';
 import { CommandPalette } from '@/components/ui/command-palette';
+import { UndoToast } from '@/components/ui/undo-toast';
 import { AutomationRunner } from '@/components/ui/automation-runner';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -78,6 +79,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Single global Cmd/Ctrl+K palette — searches boards & cards and runs
               quick commands, available on every page. */}
           <CommandPalette />
+          {/* Time-boxed undo toast for archive/close (Ctrl/Cmd+Z). */}
+          <UndoToast />
           {/* Registers the Butler automation engine (client). */}
           <AutomationRunner />
         </SessionProvider>

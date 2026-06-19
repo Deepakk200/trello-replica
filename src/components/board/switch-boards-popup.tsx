@@ -54,7 +54,7 @@ function SwitchBoardsDialog() {
     return () => window.removeEventListener('keydown', onKey);
   }, [setOpen]);
 
-  const allBoards = Object.values(boards);
+  const allBoards = Object.values(boards).filter((b) => !b.isArchived);
   const starredSet = new Set(starredBoardIds);
   const q = query.trim().toLowerCase();
 

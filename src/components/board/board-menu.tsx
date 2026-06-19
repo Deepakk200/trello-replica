@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Activity, Archive, Check, Copy, Info, LayoutTemplate, Palette, RotateCcw, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Activity, Archive, Check, Copy, Info, LayoutTemplate, Palette, RotateCcw, Trash2, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
+import { closeBoardWithUndo } from '@/features/undo/archive-actions';
 import type { ID } from '@/types';
 import { timeAgo } from '@/lib/time';
 
@@ -25,11 +27,15 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const updateBoardDescription = useBoardStore((s) => s.updateBoardDescription);
   const restoreCard            = useBoardStore((s) => s.restoreCard);
   const restoreList            = useBoardStore((s) => s.restoreList);
+  const deleteCard             = useBoardStore((s) => s.deleteCard);
+  const deleteList             = useBoardStore((s) => s.deleteList);
   const copyBoard              = useBoardStore((s) => s.copyBoard);
   const saveBoardAsTemplate    = useBoardStore((s) => s.saveBoardAsTemplate);
+  const router = useRouter();
 
   const [descDraft, setDescDraft]   = useState(board?.description ?? '');
   const [archiveTab, setArchiveTab] = useState<'cards' | 'lists'>('cards');
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [copyOpen, setCopyOpen]     = useState(false);
   const [copyTitle, setCopyTitle]   = useState('');
   const [copied, setCopied]         = useState(false);
@@ -220,13 +226,24 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
                   {archivedCards.map((c) => (
                     <div key={c.id} className="flex items-center justify-between bg-trello-cardBg rounded px-2 py-1.5 gap-2">
                       <span className="text-sm text-trello-text truncate">{c.title}</span>
-                      <button
-                        onClick={() => restoreCard(c.id)}
-                        className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover shrink-0 transition-colors"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        Send to board
-                      </button>
+                      {confirmKey === `card:${c.id}` ? (
+                        <span className="flex items-center gap-1.5 text-xs shrink-0">
+                          <button onClick={() => { deleteCard(c.id); setConfirmKey(null); }} className="text-trello-danger font-semibold hover:underline">Delete</button>
+                          <button onClick={() => setConfirmKey(null)} className="text-trello-textSubtle hover:underline">Cancel</button>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => restoreCard(c.id)}
+                            className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover transition-colors"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Send to board
+                          </button>
+                          <button onClick={() => setConfirmKey(`card:${c.id}`)} aria-label={`Delete ${c.title}`} className="text-trello-danger hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -241,18 +258,43 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
                   {archivedLists.map((l) => (
                     <div key={l.id} className="flex items-center justify-between bg-trello-cardBg rounded px-2 py-1.5 gap-2">
                       <span className="text-sm text-trello-text truncate">{l.title}</span>
-                      <button
-                        onClick={() => restoreList(l.id)}
-                        className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover shrink-0 transition-colors"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        Send to board
-                      </button>
+                      {confirmKey === `list:${l.id}` ? (
+                        <span className="flex items-center gap-1.5 text-xs shrink-0">
+                          <button onClick={() => { deleteList(l.id); setConfirmKey(null); }} className="text-trello-danger font-semibold hover:underline">Delete</button>
+                          <button onClick={() => setConfirmKey(null)} className="text-trello-textSubtle hover:underline">Cancel</button>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => restoreList(l.id)}
+                            className="flex items-center gap-1 text-xs text-trello-accent hover:text-trello-accentHover transition-colors"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Send to board
+                          </button>
+                          <button onClick={() => setConfirmKey(`list:${l.id}`)} aria-label={`Delete ${l.title}`} className="text-trello-danger hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
               )
             )}
+          </MenuSection>
+
+          <Divider />
+
+          <MenuSection icon={<Archive className="w-4 h-4" />} label="Close board">
+            <p className="text-xs text-trello-textSubtle mb-2">
+              Closing removes this board from your boards list. You can reopen it later from &ldquo;Closed boards&rdquo;.
+            </p>
+            <button
+              onClick={() => { closeBoardWithUndo(boardId); onClose(); router.push('/'); }}
+              className="btn-danger text-xs font-medium px-3 py-1.5"
+            >
+              Close board
+            </button>
           </MenuSection>
         </div>
       </div>

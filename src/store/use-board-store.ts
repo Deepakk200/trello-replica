@@ -313,6 +313,8 @@ type Actions = {
   copyBoard(boardId: ID, newTitle: string): ID;
   renameBoard(id: ID, title: string): void;
   deleteBoard(id: ID): void;
+  closeBoard(id: ID): void;
+  reopenBoard(id: ID): void;
   setActiveBoard(id: ID): void;
   setActivePanel(panel: 'board' | 'inbox' | 'planner'): void;
   setInboxOpen(v: boolean): void;
@@ -520,6 +522,25 @@ export const boardStore = create<Store>()(
           }
         });
       },
+      // Close = soft delete: hide from the grid but keep the record (restorable).
+      closeBoard(id) {
+        set((s) => {
+          const board = s.boards[id]; if (!board) return;
+          board.isArchived = true;
+          board.archivedAt = now();
+          s.recentBoardIds = (s.recentBoardIds ?? []).filter((r) => r !== id);
+          if (s.activeBoardId === id) {
+            s.activeBoardId = Object.keys(s.boards).find((bid) => bid !== id && !s.boards[bid]?.isArchived) ?? null;
+          }
+        });
+      },
+      reopenBoard(id) {
+        set((s) => {
+          const board = s.boards[id]; if (!board) return;
+          board.isArchived = false;
+          board.archivedAt = null;
+        });
+      },
       setActiveBoard(id) {
         set((s) => {
           s.activeBoardId = id;
@@ -723,6 +744,7 @@ export const boardStore = create<Store>()(
           for (const cardId of cardIds) {
             const card = s.cards[cardId]; if (!card) continue;
             card.isArchived = true;
+            card.archivedAt = now();
             card.activity.push(makeActivity({ type: 'described', text: 'archived this card' }));
             card.updatedAt = now();
           }
@@ -1140,6 +1162,7 @@ export const boardStore = create<Store>()(
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
           card.isArchived = true;
+          card.archivedAt = now();
           card.activity.push(makeActivity({ type: 'described', text: 'archived this card' }));
           card.updatedAt = now();
         });
@@ -1148,12 +1171,13 @@ export const boardStore = create<Store>()(
         set((s) => {
           const card = s.cards[cardId]; if (!card) return;
           card.isArchived = false;
+          card.archivedAt = null;
           card.activity.push(makeActivity({ type: 'described', text: 'sent this card to the board' }));
           card.updatedAt = now();
         });
       },
-      archiveList(listId) { set((s) => { if (s.lists[listId]) s.lists[listId].isArchived = true; }); },
-      restoreList(listId) { set((s) => { if (s.lists[listId]) s.lists[listId].isArchived = false; }); },
+      archiveList(listId) { set((s) => { const l = s.lists[listId]; if (l) { l.isArchived = true; l.archivedAt = now(); } }); },
+      restoreList(listId) { set((s) => { const l = s.lists[listId]; if (l) { l.isArchived = false; l.archivedAt = null; } }); },
       sortList(listId, by) {
         set((s) => {
           const list = s.lists[listId];
@@ -1221,8 +1245,10 @@ export const boardStore = create<Store>()(
       archiveAllCardsInList(listId) {
         set((s) => {
           const list = s.lists[listId]; if (!list) return;
+          const ts = now();
           for (const cardId of list.cardIds) {
-            if (s.cards[cardId]) s.cards[cardId].isArchived = true;
+            const c = s.cards[cardId];
+            if (c) { c.isArchived = true; c.archivedAt = ts; }
           }
         });
       },
@@ -1336,6 +1362,7 @@ export const boardStore = create<Store>()(
             if (p.boards![id].nextCardNumber === undefined) p.boards![id].nextCardNumber = 1;
             if (!p.boards![id].workspaceId)                 p.boards![id].workspaceId    = '';
             if (!p.boards![id].visibility)                  p.boards![id].visibility     = 'workspace';
+            if (p.boards![id].isArchived === undefined)     p.boards![id].isArchived     = false;
           }
           if (!p.starredBoardIds)      p.starredBoardIds      = [];
           if (!p.recentBoardIds)       p.recentBoardIds       = p.activeBoardId ? [p.activeBoardId] : [];

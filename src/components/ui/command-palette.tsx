@@ -107,7 +107,7 @@ export function CommandPalette() {
     const items: PaletteItem[] = [];
 
     const boardItems = Object.values(boards)
-      .filter((board) => !normalized || board.title.toLowerCase().includes(normalized))
+      .filter((board) => !board.isArchived && (!normalized || board.title.toLowerCase().includes(normalized)))
       .map((board) => ({
         id: `board:${board.id}`,
         kind: 'board' as const,

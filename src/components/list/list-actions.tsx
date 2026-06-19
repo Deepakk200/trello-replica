@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
+import { archiveListWithUndo, archiveAllCardsWithUndo } from '@/features/undo/archive-actions';
 import type { ID } from '@/types';
 
 interface Props { listId: ID; onClose: () => void; onAddCard: () => void; }
@@ -32,11 +33,9 @@ const danger = 'w-full flex items-center gap-2.5 px-3 py-2 rounded-md hover:bg-r
 
 export function ListActions({ listId, onClose, onAddCard }: Props) {
   const list = useBoardStore((s) => s.lists[listId]);
-  const archiveList = useBoardStore((s) => s.archiveList);
   const sortList = useBoardStore((s) => s.sortList);
   const copyList = useBoardStore((s) => s.copyList);
   const moveAllCards = useBoardStore((s) => s.moveAllCards);
-  const archiveAllCardsInList = useBoardStore((s) => s.archiveAllCardsInList);
   const toggleWatchList = useBoardStore((s) => s.toggleWatchList);
   const reorderListToPosition = useBoardStore((s) => s.reorderListToPosition);
   const watched = useBoardStore((s) => (s.watchedListIds ?? []).includes(listId));
@@ -158,10 +157,10 @@ export function ListActions({ listId, onClose, onAddCard }: Props) {
 
             <div className="my-1 border-t border-white/10" />
 
-            <button className={danger} onClick={() => { archiveList(listId); onClose(); }}>
+            <button className={danger} onClick={() => { archiveListWithUndo(listId); onClose(); }}>
               <Archive className="h-4 w-4 shrink-0" /> Archive this list
             </button>
-            <button className={danger} onClick={() => { archiveAllCardsInList(listId); onClose(); }}>
+            <button className={danger} onClick={() => { archiveAllCardsWithUndo(listId); onClose(); }}>
               <Archive className="h-4 w-4 shrink-0" /> Archive all cards in this list
             </button>
           </>

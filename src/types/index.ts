@@ -66,7 +66,7 @@ export interface Checklist { id: ID; title: string; items: ChecklistItem[] }
 export interface Card {
   id: ID; listId: ID; title: string; description: string;
   number: number; memberIds: ID[]; attachments: Attachment[];
-  labelIds: ID[]; dueDate: string | null; startDate?: string | null; completed: boolean; isArchived: boolean;
+  labelIds: ID[]; dueDate: string | null; startDate?: string | null; completed: boolean; isArchived: boolean; archivedAt?: string | null;
   linkedCardIds: ID[];
   checklists: Checklist[];
   activity: ActivityEntry[]; createdAt: string; updatedAt: string;
@@ -78,11 +78,13 @@ export interface Card {
     textColor?: 'light' | 'dark';
   };
 }
-export interface List { id: ID; boardId: ID; title: string; cardIds: ID[]; order: number; isArchived: boolean; collapsed?: boolean }
+export interface List { id: ID; boardId: ID; title: string; cardIds: ID[]; order: number; isArchived: boolean; archivedAt?: string | null; collapsed?: boolean }
 export interface Board {
   id: ID; title: string; background: string; description: string;
   listIds: ID[]; createdAt: string; memberIds: ID[]; nextCardNumber: number;
   workspaceId: ID; visibility: BoardVisibility;
+  /** Closed (soft-deleted) board — hidden from the grid, restorable from "Closed boards". */
+  isArchived?: boolean; archivedAt?: string | null;
 }
 export interface BoardState {
   boards: Record<ID, Board>;

@@ -22,6 +22,7 @@ import { LinkedCardsSection } from './linked-cards-section';
 import { MoveCardPopover } from './move-card-popover';
 import { CardAiAssist } from '@/components/ai/card-ai-assist';
 import { CardButtons } from '@/components/automation/card-buttons';
+import { archiveCardWithUndo } from '@/features/undo/archive-actions';
 
 function fmtDate(iso: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso));
@@ -32,7 +33,6 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const list           = useBoardStore((s) => (card ? s.lists[card.listId] : null));
   const labels         = useBoardStore((s) => s.labels);
   const updateCard     = useBoardStore((s) => s.updateCard);
-  const archiveCard    = useBoardStore((s) => s.archiveCard);
   const restoreCard    = useBoardStore((s) => s.restoreCard);
   const deleteCard     = useBoardStore((s) => s.deleteCard);
   const createCard     = useBoardStore((s) => s.createCard);
@@ -379,7 +379,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
                   </>
                 ) : (
                   <button
-                    onClick={() => { archiveCard(cardId); onClose(); }}
+                    onClick={() => { archiveCardWithUndo(cardId); onClose(); }}
                     className="btn-soft flex items-center gap-2 hover:bg-red-500/20 text-trello-danger text-sm h-8 px-3 w-full"
                   >
                     <Archive className="w-4 h-4" />Archive

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Archive, ArrowRight, Tag, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
+import { bulkArchiveWithUndo } from '@/features/undo/archive-actions';
 import { LABEL_BG } from '@/lib/colors';
 import type { LabelColor } from '@/types';
 
@@ -17,7 +18,6 @@ export function BulkActionBar() {
       activeBoardId: s.activeBoardId,
     })),
   );
-  const bulkArchiveCards = useBoardStore((s) => s.bulkArchiveCards);
   const bulkMoveCards = useBoardStore((s) => s.bulkMoveCards);
   const bulkAddLabelToCards = useBoardStore((s) => s.bulkAddLabelToCards);
   const clearCardSelection = useBoardStore((s) => s.clearCardSelection);
@@ -93,7 +93,7 @@ export function BulkActionBar() {
         </div>
 
         <button
-          onClick={() => { bulkArchiveCards(selectedCardIds); clearCardSelection(); }}
+          onClick={() => bulkArchiveWithUndo(selectedCardIds)}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-red-500/10 text-trello-danger hover:bg-red-500/20 transition-colors"
         >
           <Archive className="h-4 w-4" /> Archive

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, Lock, Pencil, Plus, Sparkles, User, X } from 'lucide-react';
+import { Archive, ArrowUpRight, Lock, Pencil, Plus, Sparkles, User, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { boardPath } from '@/lib/slug';
+import { ClosedBoardsModal } from './closed-boards-modal';
 
 const SWATCHES = [
   'linear-gradient(135deg,#0079bf,#5067c5)',
@@ -59,8 +60,10 @@ export function WorkspaceHome() {
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBg, setNewBg] = useState(SWATCHES[0]);
+  const [closedOpen, setClosedOpen] = useState(false);
 
-  const boardList = Object.values(boards);
+  const boardList = Object.values(boards).filter((b) => !b.isArchived);
+  const closedCount = Object.values(boards).filter((b) => b.isArchived).length;
 
   function openBoard(id: string) {
     setActiveBoard(id);
@@ -195,7 +198,16 @@ export function WorkspaceHome() {
       <div className="flex items-center gap-2 mb-4">
         <User size={18} className="text-white/70" />
         <h2 className="text-base font-semibold text-white">Your boards</h2>
+        {closedCount > 0 && (
+          <button
+            onClick={() => setClosedOpen(true)}
+            className="ml-auto inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white hover:bg-white/10 px-2.5 py-1 rounded transition-colors"
+          >
+            <Archive size={14} /> View all closed boards ({closedCount})
+          </button>
+        )}
       </div>
+      {closedOpen && <ClosedBoardsModal onClose={() => setClosedOpen(false)} />}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {boardList.map((board) => (
