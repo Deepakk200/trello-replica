@@ -2,21 +2,19 @@ name: Lighthouse
 
 # Deploy-measured Lighthouse against a Vercel preview, enforcing the budgets in
 # lighthouserc.json (Performance/A11y/Best-Practices/SEO >= 0.95, LCP < 2s,
-# CLS < 0.1). Kept out of the blocking CI gate because it needs a live URL:
-#  - run manually (workflow_dispatch) against a preview URL, OR
-#  - it auto-runs when a Vercel preview deployment succeeds.
+# CLS < 0.1). MANUAL-ONLY (workflow_dispatch): it needs a publicly reachable URL,
+# so it is NOT wired to deployment_status — otherwise it would fail on every
+# protected/auth-walled preview (Vercel SSO redirect) and red the deploy. Run it
+# by hand against a public URL (e.g. /welcome) once protection is off.
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: "Preview URL to audit (use a board with many cards)"
+        description: "Public URL to audit (e.g. https://<preview>/welcome)"
         required: true
-  deployment_status:
 
 jobs:
   lighthouse:
-    # On deployment_status, only run for successful preview deploys.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +24,4 @@ jobs:
       - name: Install Lighthouse CI
         run: npm install -g @lhci/cli@0.14.x
       - name: Run Lighthouse CI
-        run: |
-          URL="${{ github.event.inputs.url || github.event.deployment_status.target_url }}"
-          lhci autorun --collect.url="$URL" --collect.numberOfRuns=3
+        run: lhci autorun --collect.url="${{ github.event.inputs.url }}" --collect.numberOfRuns=3
