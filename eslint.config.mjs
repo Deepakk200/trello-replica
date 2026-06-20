@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     "public/sw.js.map",
     // Serwist precache worker — generated build artifact, not source.
     "public/swe-worker-*.js",
+    // Node CJS perf-measurement script (run with Playwright, not app code).
+    "bench-virtual.cjs",
     // Stale repo backup — an accidentally-embedded nested git repo, untracked and
     // gitignored. Excluded so `eslint .` stops traversing a duplicate source tree.
     "trello-replica-backup/**",

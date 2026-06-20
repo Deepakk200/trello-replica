@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 // /api/cron is public — Vercel Cron calls it directly (it self-checks CRON_SECRET).
 // The PWA/SEO assets must be reachable without a session (crawlers, the SW, manifest).
 const PUBLIC_PREFIXES = [
+  "/dev/", // dev-only benchmark harnesses (the pages themselves 404 in production)
   "/welcome", // public marketing landing (logged-out visitors)
   "/sign-in",
   "/sign-up",

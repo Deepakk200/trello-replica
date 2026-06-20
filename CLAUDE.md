@@ -1,5 +1,16 @@
 # Trello Clone — Handoff
 
+## WP-7 hardening: TRUE list virtualization (browser-measured) (2026-06-20)
+
+Upgraded the earlier content-visibility approach to **real virtualization** with `@tanstack/react-virtual@3` and **verified it in a real Chromium** (Playwright), not theoretically.
+- **`list-column.tsx`:** lists with **>50 cards** render only the visible window via `useVirtualizer` (overscan 8) inside the existing `SortableContext` — **off-screen cards are UNMOUNTED**. Virtual items are absolutely positioned (`measureElement` for dynamic heights). Lists ≤50 keep the **byte-identical non-virtual path** (zero risk to normal boards). Removed the `.cv-auto` content-visibility hack.
+- **Why @tanstack/react-virtual** (vs react-window): dynamic/variable item heights, any-scroll-container support, framework-agnostic, actively maintained, tiny. react-window is fixed-size-oriented.
+- **dnd-kit kept working:** `SortableContext items={cardIds}` holds ALL ids (stable); the scroll element is stable so dnd-kit auto-scroll mounts items as you drag/scroll; overscan keeps a buffer. Within-list pointer drag-reorder **measured working on a 1,000-card virtualized list**. (Cross-list + keyboard drag use the same unchanged dnd-context logic; full 2-list confirmation is a deploy/browser step.)
+- **MEASURED (real Chromium via `bench-virtual.cjs` against the `/dev/virtual-bench` harness):** mounted card DOM nodes stay **~25 (≈513 total DOM nodes) constant from 100 → 1,000 → 5,000 → 10,000 cards** — i.e. **O(viewport), not O(n)**. Before (all-mounted) was O(n) (10k cards → tens of thousands of nodes).
+- **Harness:** `src/app/dev/virtual-bench/page.tsx` (DEV-ONLY, 404s in production; seeds N cards into the store and renders the real `ListColumn` in the real `BoardDndContext`); `/dev/` added to `proxy.ts` public prefixes (inert in prod since the page 404s); `bench-virtual.cjs` reproduces the measurement (Playwright + Chromium). 
+- **Bundle:** largest client chunks measured (`2529` ~460KB vendor, `main` ~400KB, framework ~185KB). Alternate views already code-split (WP-7 prior). Precise per-route first-load JS + duplicate analysis needs `@next/bundle-analyzer` (follow-up).
+- **Verify:** `tsc` 0 · `eslint --max-warnings 0` 0/0 · `vitest` 32 · `build` ✓ · **browser-measured DOM-constant virtualization + drag-reorder (above).** **STILL deploy-only:** Lighthouse score, INP/FPS/memory GPU traces, and cross-list/keyboard drag on a 2-list virtualized board (no Vercel deploy / no profiler in this env — not faked).
+
 ## Performance: long-list virtualization + code-split views + Lighthouse CI (audit WP-7, 2026-06-20)
 
 Closes audit #20's remaining items. Phase 7 already did lazy/async images + `next/dynamic` for BoardMenu/AutomationPanel/TemplatesGallery + memo/CSS-containment; this adds the rest.

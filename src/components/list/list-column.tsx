@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useShallow } from 'zustand/shallow';
@@ -59,12 +60,25 @@ export const ListColumn = memo(
       rootRef.current.style.transition = transition ?? '';
     }, [transform, transition]);
 
+    // True virtualization: long lists render only the visible window of cards
+    // (off-screen cards are UNMOUNTED), so the DOM stays ~constant regardless of
+    // card count. The scroll element + SortableContext (all ids) stay stable so
+    // @dnd-kit sensors + auto-scroll keep working; overscan keeps a buffer mounted
+    // around the viewport for smooth drag/scroll. Short lists keep the plain layout.
+    const cardsScrollRef = useRef<HTMLDivElement>(null);
+    const cardCount = cardIds?.length ?? 0;
+    const shouldVirtualize = cardCount > 50;
+    const virtualizer = useVirtualizer({
+      count: cardCount,
+      getScrollElement: () => cardsScrollRef.current,
+      estimateSize: () => 84,
+      overscan: 8,
+      getItemKey: (i) => cardIds?.[i] ?? i,
+    });
+
     if (!cardIds) return null;
 
     const hiddenSet = new Set(hiddenCardIds);
-    // Long lists: let the browser skip rendering off-screen cards (cards remain in
-    // the DOM, so DnD is unaffected). Short lists keep the plain layout.
-    const virtualize = cardIds.length > 30;
 
     // Collapsed lists render as a slim vertical bar but still participate in DnD
     // reordering — the whole bar is the drag handle, and a click expands it.
@@ -106,24 +120,54 @@ export const ListColumn = memo(
         </div>
 
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          <div
-            className="flex-1 overflow-y-auto cards-scroll px-1.5 space-y-1.5 pb-1 min-h-2"
-            role="list"
-            aria-label="Cards"
-          >
-            {cardIds.length === 0 && (
-              <p className="text-xs text-trello-textSubtle italic px-3 py-2">Drop cards here</p>
-            )}
-            {cardIds.map((cardId) => (
-              <div
-                key={cardId}
-                role="listitem"
-                className={`${virtualize ? 'cv-auto ' : ''}${hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}`}
-              >
-                <CardItem boardId={boardId} listId={listId} cardId={cardId} />
+          {shouldVirtualize ? (
+            /* Virtualized: only the visible window is mounted; total height is
+               reserved so the scrollbar + drop math stay correct. */
+            <div
+              ref={cardsScrollRef}
+              data-virtualized="true"
+              className="flex-1 overflow-y-auto cards-scroll px-1.5 pb-1 min-h-2"
+              role="list"
+              aria-label="Cards"
+            >
+              <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+                {virtualizer.getVirtualItems().map((vi) => {
+                  const cardId = cardIds[vi.index];
+                  return (
+                    <div
+                      key={cardId}
+                      data-index={vi.index}
+                      ref={virtualizer.measureElement}
+                      role="listitem"
+                      className={`pb-1.5 ${hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none' : ''}`}
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
+                    >
+                      <CardItem boardId={boardId} listId={listId} cardId={cardId} />
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div
+              className="flex-1 overflow-y-auto cards-scroll px-1.5 space-y-1.5 pb-1 min-h-2"
+              role="list"
+              aria-label="Cards"
+            >
+              {cardIds.length === 0 && (
+                <p className="text-xs text-trello-textSubtle italic px-3 py-2">Drop cards here</p>
+              )}
+              {cardIds.map((cardId) => (
+                <div
+                  key={cardId}
+                  role="listitem"
+                  className={hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}
+                >
+                  <CardItem boardId={boardId} listId={listId} cardId={cardId} />
+                </div>
+              ))}
+            </div>
+          )}
         </SortableContext>
 
         <ListFooter

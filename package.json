@@ -40,6 +40,7 @@
     "@serwist/precaching": "^9.5.11",
     "@serwist/sw": "^9.5.11",
     "@stripe/stripe-js": "^9.7.0",
+    "@tanstack/react-virtual": "^3.14.3",
     "@uploadthing/react": "^7.3.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",

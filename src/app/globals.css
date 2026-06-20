@@ -313,16 +313,6 @@
   }
 }
 
-/* Long-list virtualization (content-visibility): the browser skips render/layout/
-   paint for off-screen cards in long lists, but the cards stay in the DOM so
-   @dnd-kit measurement + drag (pointer/keyboard) are unaffected. contain-intrinsic-
-   size reserves space (`auto` = remember the last-rendered height) to avoid scroll
-   jank / CLS. Applied only above a card-count threshold (see list-column). */
-.cv-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 72px;
-}
-
 /* Safe area utilities for notch/home-indicator devices */
 .pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pb-safe-lg  { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
