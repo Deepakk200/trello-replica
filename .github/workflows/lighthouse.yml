@@ -1,0 +1,31 @@
+name: Lighthouse
+
+# Deploy-measured Lighthouse against a Vercel preview, enforcing the budgets in
+# lighthouserc.json (Performance/A11y/Best-Practices/SEO >= 0.95, LCP < 2s,
+# CLS < 0.1). Kept out of the blocking CI gate because it needs a live URL:
+#  - run manually (workflow_dispatch) against a preview URL, OR
+#  - it auto-runs when a Vercel preview deployment succeeds.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Preview URL to audit (use a board with many cards)"
+        required: true
+  deployment_status:
+
+jobs:
+  lighthouse:
+    # On deployment_status, only run for successful preview deploys.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.14.x
+      - name: Run Lighthouse CI
+        run: |
+          URL="${{ github.event.inputs.url || github.event.deployment_status.target_url }}"
+          lhci autorun --collect.url="$URL" --collect.numberOfRuns=3

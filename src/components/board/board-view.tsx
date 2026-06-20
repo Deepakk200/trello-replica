@@ -5,12 +5,17 @@ import { ArrowRight } from 'lucide-react';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { BoardHeader } from './board-header';
 import { ListsRow } from './lists-row';
-import { CalendarView } from './calendar-view';
-import { TableView } from './table-view';
-import { DashboardView } from './dashboard-view';
 import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
 import { BulkActionBar } from './bulk-action-bar';
 import dynamic from 'next/dynamic';
+
+// The kanban ('board') is the default view; Calendar/Table/Dashboard render only
+// when selected, so they're code-split out of the board's initial bundle (Table
+// also pulls in the heavy CardModal). CardModal is split too.
+const viewFallback = () => <div className="flex-1 min-h-0 animate-pulse bg-white/5 m-3 rounded-lg" />;
+const CalendarView = dynamic(() => import('./calendar-view').then((m) => m.CalendarView), { ssr: false, loading: viewFallback });
+const TableView = dynamic(() => import('./table-view').then((m) => m.TableView), { ssr: false, loading: viewFallback });
+const DashboardView = dynamic(() => import('./dashboard-view').then((m) => m.DashboardView), { ssr: false, loading: viewFallback });
 const CardModal = dynamic(
   () => import('@/components/card/card-modal').then((m) => m.CardModal),
   { ssr: false },
