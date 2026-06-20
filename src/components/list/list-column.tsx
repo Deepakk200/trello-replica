@@ -62,6 +62,9 @@ export const ListColumn = memo(
     if (!cardIds) return null;
 
     const hiddenSet = new Set(hiddenCardIds);
+    // Long lists: let the browser skip rendering off-screen cards (cards remain in
+    // the DOM, so DnD is unaffected). Short lists keep the plain layout.
+    const virtualize = cardIds.length > 30;
 
     // Collapsed lists render as a slim vertical bar but still participate in DnD
     // reordering — the whole bar is the drag handle, and a click expands it.
@@ -112,7 +115,11 @@ export const ListColumn = memo(
               <p className="text-xs text-trello-textSubtle italic px-3 py-2">Drop cards here</p>
             )}
             {cardIds.map((cardId) => (
-              <div key={cardId} role="listitem" className={hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}>
+              <div
+                key={cardId}
+                role="listitem"
+                className={`${virtualize ? 'cv-auto ' : ''}${hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}`}
+              >
                 <CardItem boardId={boardId} listId={listId} cardId={cardId} />
               </div>
             ))}
