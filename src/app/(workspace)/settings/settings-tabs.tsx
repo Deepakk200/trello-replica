@@ -30,7 +30,6 @@ export function SettingsTabs({
   myRole: string;
   billing: ComponentProps<typeof BillingTab>;
 }) {
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>("general");
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
 
@@ -233,6 +232,7 @@ function KeysTab() {
   const [loading, setLoading] = useState(true);
 
   async function load() { setKeys(await listApiKeys()); setLoading(false); }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads data on mount
   useEffect(() => { load(); }, []);
 
   async function create() {
@@ -288,6 +288,7 @@ function WebhooksTab() {
   const [err, setErr] = useState("");
 
   async function load() { setHooks(await listWebhooks()); setLoading(false); }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads data on mount
   useEffect(() => { load(); }, []);
 
   function toggleEvent(e: string) {
@@ -350,6 +351,7 @@ function AuditTab() {
     if (rows.length < 50) setDone(true);
     setLoading(false);
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the first page on mount
   useEffect(() => { loadPage(0); }, []);
 
   return (

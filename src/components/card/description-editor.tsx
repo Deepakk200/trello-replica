@@ -9,16 +9,16 @@ import type { ID } from '@/types';
 // Dark-themed renderers for Markdown in card descriptions (Tailwind v4 — no
 // typography plugin, so styles are applied per element).
 const MD_COMPONENTS: Components = {
-  h1: ({ node, ...props }) => <h2 className="text-white font-semibold text-base mb-1" {...props} />,
-  h2: ({ node, ...props }) => <h3 className="text-white font-semibold text-sm mb-1" {...props} />,
-  h3: ({ node, ...props }) => <h4 className="text-white font-semibold text-sm mb-1" {...props} />,
-  p:  ({ node, ...props }) => <p className="text-white/80 mb-2 leading-relaxed text-sm" {...props} />,
-  ul: ({ node, ...props }) => <ul className="text-white/80 pl-4 list-disc mb-2 text-sm" {...props} />,
-  ol: ({ node, ...props }) => <ol className="text-white/80 pl-4 list-decimal mb-2 text-sm" {...props} />,
-  code: ({ node, ...props }) => <code className="bg-white/10 px-1 rounded font-mono text-xs" {...props} />,
-  pre: ({ node, ...props }) => <pre className="bg-white/10 p-3 rounded font-mono text-xs overflow-x-auto mb-2" {...props} />,
-  a:  ({ node, ...props }) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
-  blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-white/30 pl-3 text-white/60 italic text-sm mb-2" {...props} />,
+  h1: ({ ...props }) => <h2 className="text-white font-semibold text-base mb-1" {...props} />,
+  h2: ({ ...props }) => <h3 className="text-white font-semibold text-sm mb-1" {...props} />,
+  h3: ({ ...props }) => <h4 className="text-white font-semibold text-sm mb-1" {...props} />,
+  p:  ({ ...props }) => <p className="text-white/80 mb-2 leading-relaxed text-sm" {...props} />,
+  ul: ({ ...props }) => <ul className="text-white/80 pl-4 list-disc mb-2 text-sm" {...props} />,
+  ol: ({ ...props }) => <ol className="text-white/80 pl-4 list-decimal mb-2 text-sm" {...props} />,
+  code: ({ ...props }) => <code className="bg-white/10 px-1 rounded font-mono text-xs" {...props} />,
+  pre: ({ ...props }) => <pre className="bg-white/10 p-3 rounded font-mono text-xs overflow-x-auto mb-2" {...props} />,
+  a:  ({ ...props }) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+  blockquote: ({ ...props }) => <blockquote className="border-l-2 border-white/30 pl-3 text-white/60 italic text-sm mb-2" {...props} />,
 };
 
 export function DescriptionEditor({ cardId }: { cardId: ID }) {
@@ -54,6 +54,7 @@ export function DescriptionEditor({ cardId }: { cardId: ID }) {
         const board = list ? boards[list.boardId] : null;
         return { card: c, boardName: board?.title ?? 'Board' };
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keys on card?.linkedCardIds (not the whole card) so the list doesn't recompute on unrelated card edits
   }, [boards, card?.linkedCardIds, cardId, cards, lists, mentionState]);
 
   const activeMention =

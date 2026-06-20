@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Archive, ArrowRight, Bookmark, Calendar, CheckSquare,
-  Copy, CreditCard, Image, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
+  Copy, CreditCard, Image as ImageIcon, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
@@ -56,6 +56,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   useEffect(() => {
     prevFocusRef.current = document.activeElement as HTMLElement;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount flag for the enter animation + focus restore
     setMounted(true);
     return () => { prevFocusRef.current?.focus(); };
   }, []);
@@ -141,7 +142,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
               onClick={() => { closeAll(); setShowCover((v) => !v); }}
               className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/40 hover:bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
             >
-              <Image className="w-3 h-3" />Cover
+              <ImageIcon className="w-3 h-3" />Cover
             </button>
           </div>
         )}
@@ -260,7 +261,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
               <div className="flex flex-col gap-1">
                 <div className="relative">
                   <SidebarBtn
-                    icon={<Image className="w-4 h-4" />}
+                    icon={<ImageIcon className="w-4 h-4" />}
                     label="Cover"
                     onClick={() => { closeAll(); setShowCover((v) => !v); }}
                   />

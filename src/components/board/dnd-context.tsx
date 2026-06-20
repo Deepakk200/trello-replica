@@ -56,7 +56,6 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
     if (active.data.current?.type === 'card') {
       originalListIdRef.current = boardStore.getState().cards[id]?.listId ?? null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onDragOver = useCallback(function ({ active, over }: DragOverEvent) {
@@ -79,7 +78,6 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
     if (destList) {
       boardStore.getState().moveCard(active.id as ID, overListId, destList.cardIds.length);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onDragEnd = useCallback(function ({ active, over }: DragEndEvent) {
@@ -124,7 +122,6 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
       }
     }
     // Card over empty list container → already placed by onDragOver
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onDragCancel = useCallback(function ({ active }: DragCancelEvent) {
@@ -144,7 +141,6 @@ export function BoardDndContext({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

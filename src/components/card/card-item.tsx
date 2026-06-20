@@ -128,6 +128,7 @@ export const CardItem = memo(
           {/* Cover band — real <img> for image covers, colour fill otherwise */}
           {hasCover && cover.type === 'image' && cover.image ? (
             <div className="relative w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user cover URLs; next/image's domain allowlist would break them */}
               <img src={cover.image} alt="" loading="lazy" decoding="async" className="w-full h-36 object-cover rounded-t-lg" />
               {isFull && (
                 <p className={[

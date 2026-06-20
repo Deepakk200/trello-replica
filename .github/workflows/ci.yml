@@ -32,10 +32,9 @@ jobs:
       - name: TypeScript check
         run: npm run typecheck
 
-      # NOTE: `eslint .` fails on ERRORS (the real gate). `--max-warnings 0` is
-      # deferred until the ~134 pre-existing legacy react-hooks warnings are cleaned.
+      # Strict gate: 0 errors AND 0 warnings (legacy warnings cleaned in WP-1).
       - name: ESLint
-        run: npx eslint .
+        run: npx eslint . --max-warnings 0
 
       - name: Unit tests (+ coverage)
         run: npm run test:coverage -- tests/unit

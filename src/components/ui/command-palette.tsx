@@ -87,12 +87,15 @@ export function CommandPalette() {
 
   useEffect(() => {
     const onCard = activeCardModalId ? cards[activeCardModalId] : null;
+    /* eslint-disable react-hooks/set-state-in-effect -- tracks the recently-viewed board/card as they change */
     if (activeBoardId) setRecentItems((items) => dedupeRecent(items, { kind: 'board', id: activeBoardId }));
     if (onCard) setRecentItems((items) => dedupeRecent(items, { kind: 'card', id: onCard.id }));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [activeBoardId, activeCardModalId, cards]);
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the highlighted row each time the palette opens
     setSelectedIndex(0);
     const timer = setTimeout(() => {
       const input = document.getElementById('command-palette-input') as HTMLInputElement | null;
@@ -252,6 +255,7 @@ export function CommandPalette() {
   }, [query, visibleItems]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamps the highlighted index when the result count shrinks
     setSelectedIndex((index) => Math.min(index, Math.max(visibleItems.length - 1, 0)));
   }, [visibleItems.length]);
 

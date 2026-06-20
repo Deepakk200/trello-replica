@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { ArrowRight, Bell, CheckCircle2, Clock, MessageSquare, UserPlus, X, AlertTriangle } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
-import type { ID, Notification } from '@/types';
+import type { Notification } from '@/types';
 import { timeAgo } from '@/lib/time';
 
 function iconFor(notification: Notification) {
@@ -24,11 +24,10 @@ function iconFor(notification: Notification) {
 export function NotificationsDrawer() {
   const hydrated = useHasHydrated();
   const [tab, setTab] = useState<'all' | 'unread'>('all');
-  const { open, notifications, boards, cards, lists } = useBoardStore(
+  const { open, notifications, cards, lists } = useBoardStore(
     useShallow((s) => ({
       open: s.notificationsOpen,
       notifications: s.notifications,
-      boards: s.boards,
       cards: s.cards,
       lists: s.lists,
     })),

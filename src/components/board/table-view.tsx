@@ -24,6 +24,27 @@ function fmtDate(iso: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
 }
 
+// Hoisted (stable) sortable-header components — take sort state as props.
+function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; sortDir: SortDir }) {
+  if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 opacity-40 shrink-0" />;
+  return sortDir === 'asc'
+    ? <ChevronUp   className="w-3 h-3 shrink-0" />
+    : <ChevronDown className="w-3 h-3 shrink-0" />;
+}
+
+function Th({ label, col, sortCol, sortDir, onSort }: {
+  label: string; col: SortCol; sortCol: SortCol; sortDir: SortDir; onSort: (col: SortCol) => void;
+}) {
+  return (
+    <th
+      className="px-4 py-3 text-left text-xs font-semibold text-trello-textSubtle uppercase tracking-wide cursor-pointer hover:text-trello-text select-none whitespace-nowrap"
+      onClick={() => onSort(col)}
+    >
+      <span className="flex items-center gap-1">{label}<SortIcon col={col} sortCol={sortCol} sortDir={sortDir} /></span>
+    </th>
+  );
+}
+
 export function TableView({ boardId }: { boardId: ID }) {
   const [sortCol, setSortCol] = useState<SortCol>('number');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -66,22 +87,6 @@ export function TableView({ boardId }: { boardId: ID }) {
     else { setSortCol(col); setSortDir('asc'); }
   }
 
-  function SortIcon({ col }: { col: SortCol }) {
-    if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 opacity-40 shrink-0" />;
-    return sortDir === 'asc'
-      ? <ChevronUp   className="w-3 h-3 shrink-0" />
-      : <ChevronDown className="w-3 h-3 shrink-0" />;
-  }
-
-  const Th = ({ label, col }: { label: string; col: SortCol }) => (
-    <th
-      className="px-4 py-3 text-left text-xs font-semibold text-trello-textSubtle uppercase tracking-wide cursor-pointer hover:text-trello-text select-none whitespace-nowrap"
-      onClick={() => handleSort(col)}
-    >
-      <span className="flex items-center gap-1">{label}<SortIcon col={col} /></span>
-    </th>
-  );
-
   const today = new Date();
 
   return (
@@ -89,20 +94,20 @@ export function TableView({ boardId }: { boardId: ID }) {
       <table className="w-full min-w-275 border-collapse">
         <thead className="sticky top-0 bg-trello-listBg z-10">
           <tr className="border-b border-trello-borderSubtle">
-            <Th label="#"       col="number"  />
-            <Th label="Title"   col="title"   />
-            <Th label="List"    col="list"    />
+            <Th label="#"       col="number"  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+            <Th label="Title"   col="title"   sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+            <Th label="List"    col="list"    sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
             <th className="px-4 py-3 text-left text-xs font-semibold text-trello-textSubtle uppercase tracking-wide whitespace-nowrap">Labels</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-trello-textSubtle uppercase tracking-wide whitespace-nowrap">Members</th>
-            <Th label="Due"     col="due"     />
-            <Th label="Created" col="created" />
+            <Th label="Due"     col="due"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+            <Th label="Created" col="created" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody>
           {sorted.map((card) => {
             const isOverdue = card.dueDate && !card.completed && new Date(card.dueDate) < today;
             const isDueSoon = card.dueDate && !card.completed && !isOverdue &&
-              (new Date(card.dueDate).getTime() - Date.now()) < 86400000;
+              (new Date(card.dueDate).getTime() - today.getTime()) < 86400000;
             return (
               <tr
                 key={card.id}

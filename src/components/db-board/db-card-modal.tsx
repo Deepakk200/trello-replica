@@ -48,6 +48,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- shows the loading state while (re)fetching card details
     setLoading(true);
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -242,6 +243,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
                   {card.attachments.map((att) => (
                     <div key={att.id} className="flex items-center gap-3 bg-trello-cardBg rounded-lg p-2">
                       {att.fileType.startsWith("image/")
+                        // eslint-disable-next-line @next/next/no-img-element -- arbitrary uploaded file URLs; next/image domain allowlist would break them
                         ? <img src={att.url} alt={att.name} loading="lazy" decoding="async" className="w-16 h-12 object-cover rounded shrink-0" />
                         : <div className="w-16 h-12 bg-trello-cardHover rounded flex items-center justify-center shrink-0"><FileText size={20} className="text-trello-textSubtle" /></div>}
                       <div className="min-w-0 flex-1">

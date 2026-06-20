@@ -160,6 +160,7 @@ export function AttachmentsSection({
             {/* Thumbnail */}
             <a href={att.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
               {att.type === 'image' && att.thumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element -- arbitrary user attachment URLs; next/image domain allowlist would break them
                 <img
                   src={att.thumbnail}
                   alt={att.name}

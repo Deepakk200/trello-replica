@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // (Gitignored, so absent in CI; ignore here so local lint matches CI.)
     "public/sw.js",
     "public/sw.js.map",
+    // Serwist precache worker — generated build artifact, not source.
+    "public/swe-worker-*.js",
     // Stale repo backup — an accidentally-embedded nested git repo, untracked and
     // gitignored. Excluded so `eslint .` stops traversing a duplicate source tree.
     "trello-replica-backup/**",

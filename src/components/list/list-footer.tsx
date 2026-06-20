@@ -14,8 +14,9 @@ export function ListFooter({ listId, open, onOpen, onClose }: Props) {
   const wrapperRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 0);
-    else setTitle('');
+    if (open) { setTimeout(() => textareaRef.current?.focus(), 0); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the draft when the composer closes
+    setTitle('');
   }, [open]);
 
   // Close when clicking outside the footer area

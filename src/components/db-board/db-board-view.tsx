@@ -39,6 +39,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
   // Deep-link: /board/[id]?card=<id> (e.g. from Cmd+K search) opens that card.
   useEffect(() => {
     const cardId = searchParams.get("card");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- opens the deep-linked card on mount/param change
     if (cardId) setOpenCardId(cardId);
   }, [searchParams]);
 
@@ -47,6 +48,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
   const canAdmin = b._access?.canAdmin ?? false;
 
   // Server-refreshed prop wins (re-fetched after mutations / broadcasts).
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs local state to the refreshed server prop
   useEffect(() => setB(board), [board]);
 
   const labelColor = new Map(b.labels.map((l) => [l.id, l.color]));

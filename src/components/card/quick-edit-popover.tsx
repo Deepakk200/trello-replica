@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Archive, ArrowRight, Clock, Copy, Image, Maximize2, Tag, Users } from 'lucide-react';
+import { Archive, ArrowRight, Clock, Copy, Image as ImageIcon, Maximize2, Tag, Users } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
 
@@ -61,7 +61,7 @@ export function QuickEditPopover({
     { icon: <Maximize2 className="w-4 h-4" />, label: 'Open card',      action: onOpenModal },
     { icon: <Tag       className="w-4 h-4" />, label: 'Edit labels',    action: onOpenModal },
     { icon: <Users     className="w-4 h-4" />, label: 'Change members', action: onOpenModal },
-    { icon: <Image     className="w-4 h-4" />, label: 'Change cover',   action: onOpenModal },
+    { icon: <ImageIcon className="w-4 h-4" />, label: 'Change cover',   action: onOpenModal },
     { icon: <Clock     className="w-4 h-4" />, label: 'Edit dates',     action: onOpenModal },
     { icon: <ArrowRight className="w-4 h-4" />, label: 'Move',          action: onOpenModal },
     { icon: <Copy      className="w-4 h-4" />, label: 'Copy',           action: copyCard },

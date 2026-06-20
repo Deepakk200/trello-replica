@@ -14,7 +14,6 @@ function log(level: LogLevel, message: string, context?: Record<string, unknown>
     process.stdout.write(JSON.stringify(entry) + "\n");
   } else {
     const prefix = { info: "ℹ", warn: "⚠", error: "✖" }[level];
-    // eslint-disable-next-line no-console
     console[level === "info" ? "log" : level](`${prefix} [${entry.timestamp}] ${message}`, context ?? "");
   }
 }

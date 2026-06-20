@@ -39,6 +39,7 @@ export function TopBar() {
 
   // Detect macOS after hydration so the ⌘/Ctrl shortcut hint never causes a mismatch.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time platform detection after hydration (avoids SSR mismatch)
     setIsMac(typeof navigator !== 'undefined' && navigator.platform.includes('Mac'));
   }, []);
 

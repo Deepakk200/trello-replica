@@ -1328,7 +1328,7 @@ export const boardStore = create<Store>()(
         workspaceAvatarColor: state.workspaceAvatarColor, workspaceMembers: state.workspaceMembers,
         userName: state.userName, userEmail: state.userEmail, labsEnabled: state.labsEnabled,
       }),
-      migrate: (persisted, _version) => {
+      migrate: (persisted) => {
         if (typeof persisted === 'object' && persisted !== null) {
           const p = persisted as Record<string, unknown> & {
             cards?: Record<string, Record<string, unknown>>;
