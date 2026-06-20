@@ -23,13 +23,15 @@ const SHORTCUTS = [
     ],
   },
   {
-    category: "Card",
+    category: "Card (when focused)",
     items: [
-      { keys: ["E"], label: "Quick edit card" },
-      { keys: ["D"], label: "Set due date" },
-      { keys: ["L"], label: "Edit labels" },
-      { keys: ["Space"], label: "Select / assign yourself" },
       { keys: ["↵ Enter"], label: "Open card detail" },
+      { keys: ["Space"], label: "Toggle complete" },
+      { keys: ["E"], label: "Quick edit" },
+      { keys: ["L"], label: "Labels (quick edit)" },
+      { keys: ["D"], label: "Open card details" },
+      { keys: ["C"], label: "Archive card" },
+      { keys: ["Shift", "↵"], label: "Select card" },
     ],
   },
   {

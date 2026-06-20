@@ -12,6 +12,7 @@ import { LABEL_VAR } from '@/lib/colors';
 import { useLabelExpansion } from '@/lib/label-expansion';
 import { CardBadges } from './card-badges';
 import { QuickEditPopover } from './quick-edit-popover';
+import { archiveCardWithUndo } from '@/features/undo/archive-actions';
 
 export const CardItem = memo(
   function CardItem({ boardId, listId, cardId }: { boardId: ID; listId: ID; cardId: ID }) {
@@ -24,6 +25,7 @@ export const CardItem = memo(
     const selectedCardIds    = useBoardStore((s) => s.selectedCardIds);
     const toggleCardSelection = useBoardStore((s) => s.toggleCardSelection);
     const setActiveCardModal  = useBoardStore((s) => s.setActiveCardModal);
+    const updateCard          = useBoardStore((s) => s.updateCard);
     const { expanded: labelsExpanded, toggle: toggleLabels } = useLabelExpansion();
 
     const [quickEditPos, setQuickEditPos] = useState<{ x: number; y: number } | null>(null);
@@ -57,6 +59,37 @@ export const CardItem = memo(
     const isSelected    = selectedCardIds.includes(cardId);
     const isNew         = Date.now() - new Date(card.createdAt).getTime() < 2000;
 
+    function openQuickEdit() {
+      const rect = rootRef.current?.getBoundingClientRect();
+      const x = rect ? Math.min(rect.right + 4, window.innerWidth - 212) : 100;
+      const y = rect ? rect.top : 100;
+      setQuickEditPos({ x, y });
+    }
+
+    // Trello-style shortcuts while the card's open-target is focused.
+    function onCardKeyDown(e: React.KeyboardEvent) {
+      switch (e.key) {
+        case 'Enter':
+          e.preventDefault();
+          if (e.shiftKey) toggleCardSelection(cardId); else setActiveCardModal(cardId);
+          break;
+        case ' ': // space → toggle complete
+          e.preventDefault();
+          updateCard(cardId, { completed: !card.completed });
+          break;
+        case 'l': case 'L': // labels (in quick-edit)
+        case 'e': case 'E': // quick edit
+          e.preventDefault(); openQuickEdit();
+          break;
+        case 'd': case 'D': // due date / details
+          e.preventDefault(); setActiveCardModal(cardId);
+          break;
+        case 'c': case 'C': // archive (undoable)
+          e.preventDefault(); archiveCardWithUndo(cardId);
+          break;
+      }
+    }
+
     return (
       <>
         <div
@@ -65,21 +98,7 @@ export const CardItem = memo(
             (rootRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
           {...pointerDragListeners}
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            if (e.shiftKey) toggleCardSelection(cardId);
-            else setActiveCardModal(cardId);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              if (e.shiftKey) toggleCardSelection(cardId);
-              else setActiveCardModal(cardId);
-            }
-          }}
           onContextMenu={(e) => { e.preventDefault(); setQuickEditPos({ x: e.clientX, y: e.clientY }); }}
-          aria-label={`Open card: ${card.title}`}
           className={[
             `${isNew ? 'anim-card-enter' : ''} group relative bg-[var(--card-bg)] rounded-lg cursor-pointer overflow-hidden`,
             'shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)]',
@@ -92,6 +111,20 @@ export const CardItem = memo(
             isSelected ? 'ring-2 ring-trello-accent ring-offset-2 ring-offset-trello-listBg' : '',
           ].join(' ')}
         >
+          {/* Single activatable open-target overlay — a real <button> with no
+              interactive descendants. Replaces the old role=button on the card root
+              so the drag handle / labels / pencil are no longer nested inside a
+              button (fixes the axe nested-interactive violation). Sits above the
+              content (z-1) but below the action controls (z-2). Hosts the
+              focused-card shortcuts. */}
+          <button
+            type="button"
+            aria-label={`Open card: ${card.title}`}
+            onClick={(e) => { if (e.shiftKey) toggleCardSelection(cardId); else setActiveCardModal(cardId); }}
+            onKeyDown={onCardKeyDown}
+            className="absolute inset-0 z-[1] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-trello-accent"
+          />
+
           {/* Cover band — real <img> for image covers, colour fill otherwise */}
           {hasCover && cover.type === 'image' && cover.image ? (
             <div className="relative w-full">
@@ -127,7 +160,7 @@ export const CardItem = memo(
             <>
               {/* Label strip */}
               {cardLabels.length > 0 && (
-                <div className="px-3 pt-2 pb-0 flex flex-wrap gap-1">
+                <div className="relative z-[2] px-3 pt-2 pb-0 flex flex-wrap gap-1">
                   {cardLabels.map((label) => (
                     <button
                       key={label.id}
@@ -193,7 +226,7 @@ export const CardItem = memo(
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setActiveCardModal(cardId); }}
-            className="absolute top-1 right-1 h-7 w-7 rounded-full bg-[var(--surface-raised)] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 hover:brightness-125 transition-opacity"
+            className="absolute top-1 right-1 z-[2] h-7 w-7 rounded-full bg-[var(--surface-raised)] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 hover:brightness-125 transition-opacity"
             aria-label={`Edit card: ${card.title}`}
             tabIndex={-1}
           >
