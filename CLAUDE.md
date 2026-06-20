@@ -1,5 +1,15 @@
 # Trello Clone — Handoff
 
+## Unify legacy /w/* workspace pages onto DB RBAC (audit WP-3b, 2026-06-20)
+
+Resolved the audit's mock-vs-DB duality (#3). The legacy `/w/{members,settings,billing}` pages were **client components reading mock Zustand `workspaceMembers`**; the real RBAC lived only in the DB app (`features/workspaces/actions.ts` + `lib/authz.ts`). **Direction: DB = single source of truth.** Converted the 3 pages to the proven `/settings` pattern (server page fetches DB → client component calls authz-gated server actions). `/w/*` are now `force-dynamic` (DB-backed, like `/boards` `/settings`).
+- **Members** (`/w/members/page.tsx` server → `members-page.tsx` client): real members from `getMyWorkspace()`; invite/role-change/remove via `inviteMember`/`changeRole`/`removeMember` (each `requireWorkspaceAdmin`). Roles are the DB enum (OWNER/ADMIN/MEMBER/OBSERVER/GUEST). UI mirrors authz: **non-admins get a read-only view**; OWNER role/remove locked; can't remove self. `useTransition` + `router.refresh()`.
+- **Settings** (`/w/settings`): name + description → `updateWorkspace` (admin); **real `deleteWorkspace`** (owner-only, can't delete last). **Model mismatch:** the DB Workspace has no `visibility`/`avatarColor` columns, so those two controls stay **device-local display preferences** (Zustand, clearly labelled) — everything else is DB.
+- **Billing** (`/w/billing`): reads the real `planName` from `getMyWorkspace()` (DB `Plan` FREE/PRO/BUSINESS → display Free/Premium/Enterprise); highlights the current plan; upgrade stays a stub (Stripe checkout is the billing phase).
+- **Mock dropped as a source:** no page reads `s.workspaceMembers` anymore. The store slice + its actions (`inviteWorkspaceMember`/`changeWorkspaceMemberRole`/`removeWorkspaceMember`) are now **dormant/orphaned** — left in place to avoid a persist-version migration; safe to delete in a follow-up.
+- **Known cosmetic gap:** the `/w` `WorkspaceSidebar` header still shows the device-local workspace label (legacy chrome), so it won't reflect a DB name change live. Out of scope (would require making the legacy chrome DB-dependent too).
+- **Verify:** `tsc` clean · `eslint . --max-warnings 0` 0/0 · `vitest` 32 passed · `next build --webpack` ✓ (`/w/billing|members|settings` now `ƒ` dynamic). **Runtime RBAC acceptance is DEPLOY-ONLY** — no local `DATABASE_URL`/2nd user, so "real members shown", "OBSERVER blocked", "cross-user shared boards" must be exercised on Vercel (same ceiling as the whole DB app). Reused the DB app's existing actions — RBAC not forked.
+
 ## Header actions + card a11y + zero-warning lint gate (audit WP-1, 2026-06-20)
 
 Closed the three named audit gaps. Frontend only; wired to REAL existing store actions.

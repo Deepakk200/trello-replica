@@ -47,31 +47,34 @@ const PLANS: Plan[] = [
   },
 ];
 
-export function WorkspaceBillingPage() {
+const PLAN_DISPLAY: Record<string, string> = { FREE: 'Free', PRO: 'Premium', BUSINESS: 'Enterprise' };
+
+export function WorkspaceBillingPage({ planName }: { planName: string }) {
   const [upgradePlan, setUpgradePlan] = useState<string | null>(null);
+  const current = PLAN_DISPLAY[planName] ?? 'Free';
+  const currentPlan = PLANS.find((p) => p.name === current) ?? PLANS[0];
 
   return (
     <div className="px-6 py-6 md:px-10 max-w-[1000px]">
       <h1 className="text-xl font-bold text-white mb-1">Billing</h1>
-      <p className="text-sm text-white/55 mb-6">
-        Manage your workspace plan.
-        <span className="ml-1 text-white/35">(Mock — real payments arrive with Stripe in the billing phase.)</span>
-      </p>
+      <p className="text-sm text-white/55 mb-6">Manage your workspace plan.</p>
 
-      {/* Current plan */}
+      {/* Current plan — from the workspace record */}
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-wide text-white/40">Current plan</p>
-          <p className="text-2xl font-bold text-white mt-0.5">Free</p>
-          <p className="text-sm text-white/55 mt-1">$0 — free for your whole team.</p>
+          <p className="text-2xl font-bold text-white mt-0.5">{currentPlan.name}</p>
+          <p className="text-sm text-white/55 mt-1">{currentPlan.price} — {currentPlan.per}.</p>
         </div>
-        <button
-          onClick={() => setUpgradePlan('Premium')}
-          className="flex items-center gap-1.5 h-9 px-4 rounded text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(90deg,#8B5CF6,#0C66E4)' }}
-        >
-          <Sparkles size={15} /> Upgrade
-        </button>
+        {current === 'Free' && (
+          <button
+            onClick={() => setUpgradePlan('Premium')}
+            className="flex items-center gap-1.5 h-9 px-4 rounded text-sm font-medium text-white"
+            style={{ background: 'linear-gradient(90deg,#8B5CF6,#0C66E4)' }}
+          >
+            <Sparkles size={15} /> Upgrade
+          </button>
+        )}
       </div>
 
       {/* Plan comparison */}
@@ -99,16 +102,16 @@ export function WorkspaceBillingPage() {
               ))}
             </ul>
             <button
-              onClick={() => plan.name !== 'Free' && setUpgradePlan(plan.name)}
-              disabled={plan.name === 'Free'}
+              onClick={() => plan.name !== current && setUpgradePlan(plan.name)}
+              disabled={plan.name === current}
               className={`h-9 rounded text-sm font-medium transition-colors ${
-                plan.name === 'Free'
+                plan.name === current
                   ? 'bg-white/5 text-white/40 cursor-default'
                   : plan.highlight ? 'text-white' : 'bg-white/10 text-white hover:bg-white/15'
               }`}
-              style={plan.highlight ? { background: '#0C66E4' } : undefined}
+              style={plan.highlight && plan.name !== current ? { background: '#0C66E4' } : undefined}
             >
-              {plan.cta}
+              {plan.name === current ? 'Current plan' : plan.cta}
             </button>
           </div>
         ))}

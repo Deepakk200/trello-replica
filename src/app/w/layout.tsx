@@ -1,6 +1,7 @@
 // Workspace sub-pages (Members / Settings / Billing) share the same chrome as
-// the workspace home at "/": the global TopBar + WorkspaceSidebar. Frontend-only,
-// mock identity — these get swapped to DB/RBAC-backed data in the workspaces phase.
+// the workspace home at "/": the global TopBar + WorkspaceSidebar. The pages
+// themselves are now DB-backed (real workspace/members/roles via authz); only the
+// sidebar header still shows the device-local workspace label.
 import { TopBar } from '@/components/ui/top-bar';
 import { WorkspaceSidebar } from '@/components/workspace/workspace-sidebar';
 
