@@ -238,6 +238,9 @@ export function TopBar() {
           aria-label="Account menu"
           aria-haspopup="menu"
           title={currentUser.name}
+          // Session resolves client-side (useSession), so the avatar's initials/
+          // image legitimately differ between SSR and first client render.
+          suppressHydrationWarning
         >
           {currentUser.image ? '' : initials}
         </button>
