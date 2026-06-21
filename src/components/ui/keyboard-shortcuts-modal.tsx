@@ -16,10 +16,10 @@ const SHORTCUTS = [
   {
     category: "Board",
     items: [
-      { keys: ["N"], label: "Add a new card (focus on list first)" },
-      { keys: ["B"], label: "Open board switcher" },
+      { keys: ["N"], label: "Add a card to the focused list" },
+      { keys: ["B"], label: "Toggle sidebar" },
       { keys: ["F"], label: "Filter cards" },
-      { keys: ["W"], label: "Toggle board menu" },
+      { keys: ["W"], label: "Open board menu" },
     ],
   },
   {
@@ -30,8 +30,17 @@ const SHORTCUTS = [
       { keys: ["E"], label: "Quick edit" },
       { keys: ["L"], label: "Labels (quick edit)" },
       { keys: ["D"], label: "Open card details" },
+      { keys: ["M"], label: "Members" },
       { keys: ["C"], label: "Archive card" },
-      { keys: ["Shift", "↵"], label: "Select card" },
+    ],
+  },
+  {
+    category: "Select",
+    items: [
+      { keys: ["Shift", "↵"], label: "Select / unselect card" },
+      { keys: ["Shift", "Click"], label: "Range-select cards" },
+      { keys: ["Cmd", "Click"], label: "Toggle card in selection" },
+      { keys: ["Esc"], label: "Clear selection" },
     ],
   },
   {

@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
+import { cardMatchesFilter, isFilterActive } from '@/lib/card-filter';
 import { ListHeader } from './list-header';
 import { ListFooter } from './list-footer';
 import { CardItem } from '@/components/card/card-item';
@@ -16,35 +17,22 @@ export const ListColumn = memo(
     const cardIds = useBoardStore(
       useShallow((s) => s.lists[listId]?.cardIds?.filter((id) => !s.cards[id]?.isArchived)),
     );
-    // Compute which card IDs don't match the current filter (returned IDs should be hidden)
+    // Cards that DON'T match the active filter (to dim or hide). Uses the shared
+    // matcher (Trello semantics: OR within a dimension, AND across dimensions).
     const hiddenCardIds = useBoardStore(
       useShallow((s) => {
         const f = s.filterState;
-        if (!f.search && f.labelIds.length === 0 && !f.dueFilter) return [] as ID[];
+        if (!isFilterActive(f)) return [] as ID[];
         const ids = (s.lists[listId]?.cardIds ?? []).filter((id) => !s.cards[id]?.isArchived);
         const now = Date.now();
         return ids.filter((id) => {
           const card = s.cards[id];
-          if (!card) return false;
-          if (f.search && !card.title.toLowerCase().includes(f.search.toLowerCase())) return true;
-          if (f.labelIds.length > 0 && !f.labelIds.some((lid) => card.labelIds.includes(lid))) return true;
-          if (f.dueFilter === 'none') return card.dueDate !== null;
-          if (f.dueFilter === 'overdue') return !(card.dueDate && !card.completed && new Date(card.dueDate).getTime() < now);
-          if (f.dueFilter === 'next24h') {
-            if (!card.dueDate) return true;
-            const t = new Date(card.dueDate).getTime();
-            return !(t >= now && t <= now + 86400000);
-          }
-          if (f.dueFilter === 'nextweek') {
-            if (!card.dueDate) return true;
-            const t = new Date(card.dueDate).getTime();
-            return !(t >= now && t <= now + 7 * 86400000);
-          }
-          if (f.dueFilter === 'complete') return !card.completed;
-          return false;
+          return card ? !cardMatchesFilter(card, f, now) : false;
         });
       }),
     );
+    // dim (default) keeps non-matching cards visible-but-faded; hide removes them.
+    const filterMode = useBoardStore((s) => s.filterState.mode);
     const title = useBoardStore((s) => s.lists[listId]?.title ?? '');
     const collapsed = useBoardStore((s) => s.lists[listId]?.collapsed ?? false);
     const toggleListCollapse = useBoardStore((s) => s.toggleListCollapse);
@@ -139,7 +127,7 @@ export const ListColumn = memo(
                       data-index={vi.index}
                       ref={virtualizer.measureElement}
                       role="listitem"
-                      className={`pb-1.5 ${hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none' : ''}`}
+                      className={`pb-1.5 ${hiddenSet.has(cardId) ? (filterMode === 'hide' ? 'hidden' : 'opacity-30 pointer-events-none') : ''}`}
                       style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
                     >
                       <CardItem boardId={boardId} listId={listId} cardId={cardId} />
@@ -161,7 +149,7 @@ export const ListColumn = memo(
                 <div
                   key={cardId}
                   role="listitem"
-                  className={hiddenSet.has(cardId) ? 'opacity-30 pointer-events-none transition-opacity' : 'transition-opacity'}
+                  className={hiddenSet.has(cardId) ? (filterMode === 'hide' ? 'hidden' : 'opacity-30 pointer-events-none transition-opacity') : 'transition-opacity'}
                 >
                   <CardItem boardId={boardId} listId={listId} cardId={cardId} />
                 </div>

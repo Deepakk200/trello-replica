@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { AlignJustify, SlidersHorizontal, MoreHorizontal, Lock, X, ChevronRight,
          Mail, Globe, Smartphone, MessageSquare, Users } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
+import { InboxFilter, EMPTY_INBOX_FILTER, isInboxFilterActive, inboxCardMatches, type InboxFilterState } from '@/components/inbox/inbox-filter';
 
 const INTEGRATIONS = [
   { Icon: Mail,          label: 'Email',  color: '#EA4335', badge: false },
@@ -16,6 +17,10 @@ const INTEGRATIONS = [
 export function InboxPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [moveMenuId, setMoveMenuId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filter, setFilter] = useState<InboxFilterState>(EMPTY_INBOX_FILTER);
+  const filterActive = isInboxFilterActive(filter);
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const inboxCards = useBoardStore((s) => s.inboxCards);
   const addInboxCard = useBoardStore((s) => s.addInboxCard);
@@ -39,6 +44,9 @@ export function InboxPanel() {
       .map((l) => ({ id: l.id, title: l.title }));
   }, [activeBoardId, boards, listsById]);
 
+  // Apply the inbox filter (AND across sections, OR within each).
+  const visibleCards = useMemo(() => inboxCards.filter((c) => inboxCardMatches(c, filter)), [inboxCards, filter]);
+
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 150);
   }, []);
@@ -52,8 +60,45 @@ export function InboxPanel() {
           <span className="text-sm font-semibold text-white">Inbox</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="p-1 rounded hover:bg-white/10 text-white/50" aria-label="Filter"><SlidersHorizontal size={14} /></button>
-          <button className="p-1 rounded hover:bg-white/10 text-white/50" aria-label="Inbox options"><MoreHorizontal size={14} /></button>
+          <div className="relative">
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              aria-label="Filter"
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
+              className={`relative p-1 rounded hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#579DFF] ${filterActive ? 'text-[#579DFF] bg-white/10' : 'text-white/50'}`}
+            >
+              <SlidersHorizontal size={14} />
+              {filterActive && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#579DFF] ring-2 ring-[#1C2B41]" />}
+            </button>
+            {filterOpen && <InboxFilter filter={filter} onChange={setFilter} onClose={() => setFilterOpen(false)} />}
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setOptionsOpen((v) => !v)}
+              aria-label="Inbox options"
+              aria-haspopup="menu"
+              aria-expanded={optionsOpen}
+              className="p-1 rounded hover:bg-white/10 text-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#579DFF]"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            {optionsOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setOptionsOpen(false)} aria-hidden="true" />
+                <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-[#282E33] border border-white/10 rounded-lg shadow-2xl py-1" role="menu">
+                  <button
+                    role="menuitem"
+                    disabled={inboxCards.length === 0}
+                    onClick={() => { inboxCards.forEach((c) => deleteInboxCard(c.id)); setOptionsOpen(false); }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Clear inbox{inboxCards.length > 0 ? ` (${inboxCards.length})` : ''}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -79,9 +124,20 @@ export function InboxPanel() {
       </div>
 
       {inboxCards.length > 0 ? (
-        /* Inbox card list */
+        /* Inbox card list (filtered) */
         <div className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2">
-          {inboxCards.map((card) => (
+          {visibleCards.length === 0 && (
+            <div className="flex flex-col items-center text-center gap-2 pt-10">
+              <p className="text-sm text-white/60">No cards match your filters.</p>
+              <button
+                onClick={() => setFilter(EMPTY_INBOX_FILTER)}
+                className="text-xs text-[#579DFF] hover:underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+          {visibleCards.map((card) => (
             <div key={card.id} className="relative group bg-[#22272B] border border-white/10 rounded-lg px-3 py-2.5">
               <div className="flex items-start gap-2">
                 <p className="flex-1 text-sm text-white leading-snug break-words">{card.title}</p>

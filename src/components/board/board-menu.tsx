@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Activity, Archive, Check, Copy, Info, LayoutTemplate, Palette, RotateCcw, Trash2, X } from 'lucide-react';
+import { Activity, Archive, Check, Copy, History, Info, LayoutTemplate, Palette, RotateCcw, Trash2, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { closeBoardWithUndo } from '@/features/undo/archive-actions';
@@ -31,6 +31,8 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
   const deleteList             = useBoardStore((s) => s.deleteList);
   const copyBoard              = useBoardStore((s) => s.copyBoard);
   const saveBoardAsTemplate    = useBoardStore((s) => s.saveBoardAsTemplate);
+  const cardAgingEnabled       = useBoardStore((s) => s.cardAgingEnabled);
+  const toggleCardAging        = useBoardStore((s) => s.toggleCardAging);
   const router = useRouter();
 
   const [descDraft, setDescDraft]   = useState(board?.description ?? '');
@@ -182,6 +184,25 @@ export function BoardMenu({ boardId, onClose }: { boardId: ID; onClose: () => vo
                   aria-label="Change board background"
                 />
               ))}
+            </div>
+          </MenuSection>
+
+          <Divider />
+
+          <MenuSection icon={<History className="w-4 h-4" />} label="Card aging">
+            <div className="flex items-start gap-3">
+              <p className="flex-1 text-xs text-trello-textSubtle">
+                Fade cards that haven&rsquo;t been touched in a while, so stale work stands out.
+              </p>
+              <button
+                role="switch"
+                aria-checked={cardAgingEnabled}
+                aria-label="Toggle card aging"
+                onClick={toggleCardAging}
+                className={`mt-0.5 shrink-0 relative h-5 w-9 rounded-full transition-colors ${cardAgingEnabled ? 'bg-trello-accent' : 'bg-white/20'}`}
+              >
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${cardAgingEnabled ? 'left-4' : 'left-0.5'}`} />
+              </button>
             </div>
           </MenuSection>
 

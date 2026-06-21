@@ -1,8 +1,9 @@
 'use client';
 
-import { AlignLeft, CheckSquare, Clock, MessageSquare, Paperclip } from 'lucide-react';
+import { AlignLeft, Check, CheckSquare, Clock, MessageSquare, Paperclip } from 'lucide-react';
 import type { Card } from '@/types';
 import { formatDate } from '@/lib/time';
+import { useBoardStore } from '@/store/use-board-store';
 
 type DueStatus = 'overdue' | 'soon' | 'completed' | 'normal';
 
@@ -22,6 +23,7 @@ const DUE_STYLES: Record<DueStatus, string> = {
 };
 
 export function CardBadges({ card }: { card: Card }) {
+  const updateCard = useBoardStore((s) => s.updateCard);
   const commentCount = card.activity.filter((a) => a.type === 'commented').length;
   const checklists   = card.checklists ?? [];
   const clTotal      = checklists.reduce((n, cl) => n + cl.items.length, 0);
@@ -38,10 +40,22 @@ export function CardBadges({ card }: { card: Card }) {
   return (
     <div className="px-3 pb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-subtle)]">
       {card.dueDate && dueStatus && (
-        <span className={`flex items-center gap-1 ${DUE_STYLES[dueStatus]}`}>
-          <Clock className="w-3 h-3 shrink-0" />
+        /* Click toggles completion (Trello "mark complete from the badge"); sits
+           above the card's open-target overlay (z-2) with stopPropagation. */
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); updateCard(card.id, { completed: !card.completed }); }}
+          title={card.completed ? 'Mark incomplete' : 'Mark complete'}
+          aria-label={card.completed ? 'Mark incomplete' : 'Mark complete'}
+          className={`relative z-[2] group/due flex items-center gap-1 ${DUE_STYLES[dueStatus]}`}
+        >
+          {card.completed
+            ? <Check className="w-3 h-3 shrink-0" />
+            : <Clock className="w-3 h-3 shrink-0 group-hover/due:hidden" />}
+          {!card.completed && <Check className="w-3 h-3 shrink-0 hidden group-hover/due:block" />}
           {formatDate(card.dueDate)}
-        </span>
+        </button>
       )}
 
       {card.description.length > 0 && (

@@ -19,6 +19,7 @@ const SORT_OPTIONS = [
   { label: 'Date created (oldest first)', by: 'created-asc' as const },
   { label: 'Card name (alphabetically)', by: 'name' as const },
   { label: 'Due date', by: 'due' as const },
+  { label: 'Label', by: 'label' as const },
 ];
 
 const AUTOMATION_RULES = [

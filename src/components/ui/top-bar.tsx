@@ -32,6 +32,7 @@ export function TopBar() {
   );
   const toggleNotifications = useBoardStore((s) => s.toggleNotificationsDrawer);
   const closeNotifications = useBoardStore((s) => s.closeNotificationsDrawer);
+  const setCurrentUserId = useBoardStore((s) => s.setCurrentUserId);
 
   const currentUser = useCurrentUser();
   const unread = notifications.filter((n) => !n.read).length;
@@ -42,6 +43,11 @@ export function TopBar() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time platform detection after hydration (avoids SSR mismatch)
     setIsMac(typeof navigator !== 'undefined' && navigator.platform.includes('Mac'));
   }, []);
+
+  // Keep the store's current-user id in sync (used to suppress self-notifications).
+  useEffect(() => {
+    setCurrentUserId(currentUser.id);
+  }, [currentUser.id, setCurrentUserId]);
 
   // Global "?" opens the shortcuts modal (ignore while typing).
   useEffect(() => {

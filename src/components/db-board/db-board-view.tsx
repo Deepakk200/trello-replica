@@ -24,6 +24,8 @@ import { ArchivedCardsDrawer } from "./archived-cards-drawer";
 import { BoardActivityDrawer } from "./board-activity-drawer";
 import { BoardShareBar } from "./board-share-bar";
 import { exportBoardAsCSV } from "@/features/enterprise/export";
+import { notify } from "@/store/use-toast-store";
+import * as Sentry from "@sentry/nextjs";
 
 type BoardData = NonNullable<Awaited<ReturnType<typeof getBoard>>>;
 type ListData = BoardData["lists"][number];
@@ -122,7 +124,9 @@ export function DbBoardView({ board }: { board: BoardData }) {
     const newPos = positionBetween(before, after);
     const moved: CardData = { ...moving, listId: toListId, position: newPos };
 
-    setB((prev) => ({
+    // Snapshot the pre-move board so a failed server move can visibly snap back.
+    const snapshot = b;
+    const applyOptimistic = () => setB((prev) => ({
       ...prev,
       lists: prev.lists.map((l) => {
         if (l.id === fromListId && l.id !== toListId) {
@@ -136,12 +140,43 @@ export function DbBoardView({ board }: { board: BoardData }) {
       }),
     }));
 
-    startTransition(async () => {
-      await moveCard({ cardId, toListId, beforePosition: before, afterPosition: after });
-      broadcast({ type: "CARD_MOVED", cardId, toListId, position: newPos });
-      router.refresh();
+    const attempt = () => startTransition(async () => {
+      try {
+        await moveCard({ cardId, toListId, beforePosition: before, afterPosition: after });
+        broadcast({ type: "CARD_MOVED", cardId, toListId, position: newPos });
+        router.refresh();
+      } catch (err) {
+        // Roll back the optimistic move so the card snaps back — never a mystery revert.
+        setB(snapshot);
+        const offline = typeof navigator !== "undefined" && !navigator.onLine;
+        notify.error(
+          offline ? "You're offline — the card couldn't be moved" : "Couldn't move the card",
+          { action: { label: "Retry", onClick: () => { applyOptimistic(); attempt(); } } },
+        );
+        Sentry.captureException(err);
+      }
     });
-  }, [b.lists, broadcast, router]);
+
+    applyOptimistic();
+    attempt();
+  }, [b, broadcast, router]);
+
+  // Run a mutating server action in a transition, surfacing failures (never
+  // silent) with a human message + Retry instead of an unhandled throw.
+  function run(action: () => Promise<unknown>, errorMsg: string) {
+    startTransition(async () => {
+      try {
+        await action();
+        router.refresh();
+      } catch (err) {
+        const offline = typeof navigator !== "undefined" && !navigator.onLine;
+        notify.error(offline ? "You're offline — that change didn't save" : errorMsg, {
+          action: { label: "Retry", onClick: () => run(action, errorMsg) },
+        });
+        Sentry.captureException(err);
+      }
+    });
+  }
 
   function openCard(cardId: string) {
     setOpenCardId(cardId);
@@ -162,7 +197,11 @@ export function DbBoardView({ board }: { board: BoardData }) {
       a.download = `${b.title.replace(/[^a-z0-9]/gi, "_")}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+      notify.success("Board exported as CSV");
+    } catch (err) {
+      notify.error("Export failed — try again");
+      Sentry.captureException(err);
+    }
   }
 
   return (
@@ -211,12 +250,12 @@ export function DbBoardView({ board }: { board: BoardData }) {
                 canEdit={canEdit}
                 viewersFor={(cid) => others.filter((o) => o.presence?.selectedCardId === cid)}
                 onOpenCard={openCard}
-                onDeleteCard={(cid) => startTransition(async () => { await deleteCard(cid); router.refresh(); })}
-                onAddCard={(title) => startTransition(async () => { await createCard({ listId: list.id, title }); router.refresh(); })}
-                onDeleteList={() => startTransition(async () => { await deleteList(list.id); router.refresh(); })}
+                onDeleteCard={(cid) => run(() => deleteCard(cid), "Couldn't delete the card")}
+                onAddCard={(title) => run(() => createCard({ listId: list.id, title }), "Couldn't add the card")}
+                onDeleteList={() => run(() => deleteList(list.id), "Couldn't delete the list")}
               />
             ))}
-            {canEdit && <AddListForm onAdd={(title) => startTransition(async () => { await createList({ boardId: b.id, title }); router.refresh(); })} />}
+            {canEdit && <AddListForm onAdd={(title) => run(() => createList({ boardId: b.id, title }), "Couldn't add the list")} />}
           </div>
         </div>
       </DndContext>

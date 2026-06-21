@@ -4,7 +4,10 @@ import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { boardStore, useHasHydrated } from '@/store/use-board-store';
 import { loadLegacyState, saveLegacyState } from '@/features/legacy-sync/actions';
+import { getActiveWorkspaceName } from '@/features/workspaces/actions';
 import type { LegacySnapshot } from '@/features/legacy-sync/types';
+import { useSyncStatus } from '@/store/use-sync-status';
+import { notify } from '@/store/use-toast-store';
 
 const DEBOUNCE_MS = 800;
 
@@ -46,10 +49,18 @@ export function LegacyDbSync() {
       if (saving.current) { dirty.current = true; return; }
       saving.current = true;
       dirty.current = false;
+      useSyncStatus.getState().setStatus('saving');
       try {
         await saveLegacyState(snapshot());
+        // Don't overwrite a newer 'saving' if a change landed mid-flush.
+        if (!dirty.current) useSyncStatus.getState().setStatus('saved');
       } catch {
-        // Network/DB hiccup — keep local state; the next change retries.
+        // Network/DB hiccup — keep local state, surface it (never silent), and
+        // offer a manual retry in addition to the automatic next-change retry.
+        useSyncStatus.getState().setStatus('error', () => { void flush(); });
+        notify.error("Couldn't save your changes", {
+          action: { label: 'Retry', onClick: () => { void flush(); } },
+        });
       } finally {
         saving.current = false;
         if (dirty.current) schedule();
@@ -69,10 +80,15 @@ export function LegacyDbSync() {
     });
     const onHide = () => { if (ready.current && dirty.current) void flush(); };
     document.addEventListener('visibilitychange', onHide);
+    // Re-sync on reconnect: a failed/queued save flushes as soon as we're back
+    // online (network errors set `dirty`, so this picks up where we left off).
+    const onOnline = () => { if (ready.current && (dirty.current || useSyncStatus.getState().status === 'error')) void flush(); };
+    window.addEventListener('online', onOnline);
 
     return () => {
       unsub();
       document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('online', onOnline);
       if (timer.current) clearTimeout(timer.current);
     };
   }, []);
@@ -109,6 +125,16 @@ export function LegacyDbSync() {
         // Nothing in the DB yet → import the current local boards once.
         ready.current = true;
         void flushRef.current();
+      }
+
+      // Canonical workspace name lives in the DB (edited via /settings or the
+      // workspace home) — hydrate the legacy sidebar/home label from it so they
+      // reflect the real saved name after refresh.
+      try {
+        const wsName = await getActiveWorkspaceName();
+        if (!cancelled && wsName) boardStore.getState().setWorkspaceName(wsName);
+      } catch {
+        // DB unreachable — keep the local label.
       }
     })();
 

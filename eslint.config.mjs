@@ -23,6 +23,9 @@ const eslintConfig = defineConfig([
     // Stale repo backup — an accidentally-embedded nested git repo, untracked and
     // gitignored. Excluded so `eslint .` stops traversing a duplicate source tree.
     "trello-replica-backup/**",
+    // Installed skill/agent tooling (third-party scripts, untracked). Not app
+    // source — exclude so `eslint .` doesn't lint vendored tooling.
+    ".agents/**",
   ]),
   {
     // React-Compiler-readiness lints from eslint-plugin-react-hooks v6. This

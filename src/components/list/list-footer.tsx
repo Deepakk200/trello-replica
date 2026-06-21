@@ -43,6 +43,18 @@ export function ListFooter({ listId, open, onOpen, onClose }: Props) {
     if (e.key === 'Escape') onClose();
   }
 
+  // Paste multiple lines → one card per non-empty line (Trello behaviour).
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const lines = e.clipboardData.getData('text').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      e.preventDefault();
+      for (const line of lines) createCard(listId, line);
+      setTitle('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  }
+
   function autoResize(el: HTMLTextAreaElement) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -53,6 +65,7 @@ export function ListFooter({ listId, open, onOpen, onClose }: Props) {
       {!open ? (
         <button
           onClick={onOpen}
+          data-add-card={listId}
           className="w-full flex items-center gap-2 px-2.5 py-2 md:py-1.5 min-h-[44px] md:min-h-0 rounded-lg text-sm text-[var(--text-subtle,#8C9BAB)] hover:bg-white/10 hover:text-[var(--text-primary,#B6C2CF)] transition-colors"
         >
           <Plus className="h-4 w-4 shrink-0" />
@@ -68,6 +81,7 @@ export function ListFooter({ listId, open, onOpen, onClose }: Props) {
             value={title}
             onChange={(e) => { setTitle(e.target.value); autoResize(e.target); }}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
           />
           <div className="flex items-center gap-1.5">
             <button

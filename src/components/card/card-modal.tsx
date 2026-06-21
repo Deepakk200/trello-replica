@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Archive, ArrowRight, Bookmark, Calendar, CheckSquare,
-  Copy, CreditCard, Image as ImageIcon, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
+  Copy, CreditCard, Eye, Image as ImageIcon, Paperclip, Plus, RotateCcw, Tag, Trash2, Users, X,
 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { ID } from '@/types';
@@ -20,6 +20,7 @@ import { MembersPopover } from './members-popover';
 import { AttachmentsSection } from './attachments-section';
 import { LinkedCardsSection } from './linked-cards-section';
 import { MoveCardPopover } from './move-card-popover';
+import { CopyCardPopover } from './copy-card-popover';
 import { CardAiAssist } from '@/components/ai/card-ai-assist';
 import { CardButtons } from '@/components/automation/card-buttons';
 import { archiveCardWithUndo } from '@/features/undo/archive-actions';
@@ -35,9 +36,10 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const updateCard     = useBoardStore((s) => s.updateCard);
   const restoreCard    = useBoardStore((s) => s.restoreCard);
   const deleteCard     = useBoardStore((s) => s.deleteCard);
-  const createCard     = useBoardStore((s) => s.createCard);
   const createChecklist    = useBoardStore((s) => s.createChecklist);
   const saveCardAsTemplate = useBoardStore((s) => s.saveCardAsTemplate);
+  const toggleWatchCard    = useBoardStore((s) => s.toggleWatchCard);
+  const watched            = useBoardStore((s) => (s.watchedCardIds ?? []).includes(cardId));
 
   const [titleDraft, setTitleDraft]       = useState(card?.title ?? '');
   const [showLabels, setShowLabels]       = useState(false);
@@ -46,6 +48,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   const [showChecklist, setShowChecklist] = useState(false);
   const [showMembers, setShowMembers]     = useState(false);
   const [showMove, setShowMove]           = useState(false);
+  const [showCopy, setShowCopy]           = useState(false);
   const [addingAttachment, setAddingAttachment] = useState(false);
   const [clTitle, setClTitle]             = useState('Checklist');
   const [mounted, setMounted]             = useState(false);
@@ -94,7 +97,7 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
   if (!card || !mounted) return null;
 
-  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); setShowMove(false); setAddingAttachment(false); }
+  function closeAll() { setShowLabels(false); setShowDates(false); setShowCover(false); setShowChecklist(false); setShowMembers(false); setShowMove(false); setShowCopy(false); setAddingAttachment(false); }
 
   function commitTitle() {
     const t = titleDraft.trim();
@@ -346,10 +349,19 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
                   />
                   {showMove && <MoveCardPopover cardId={cardId} onClose={() => setShowMove(false)} />}
                 </div>
+                <div className="relative">
+                  <SidebarBtn
+                    icon={<Copy className="w-4 h-4" />}
+                    label="Copy"
+                    onClick={() => { closeAll(); setShowCopy((v) => !v); }}
+                  />
+                  {showCopy && <CopyCardPopover cardId={cardId} onClose={() => setShowCopy(false)} onCopied={() => onClose()} />}
+                </div>
                 <SidebarBtn
-                  icon={<Copy className="w-4 h-4" />}
-                  label="Copy"
-                  onClick={() => { createCard(card!.listId, `${card!.title} (copy)`); onClose(); }}
+                  icon={<Eye className="w-4 h-4" />}
+                  label={watched ? 'Watching' : 'Watch'}
+                  onClick={() => toggleWatchCard(cardId)}
+                  active={watched}
                 />
                 <SidebarBtn
                   icon={<Bookmark className="w-4 h-4" />}
@@ -397,11 +409,12 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
   return createPortal(modal, document.body);
 }
 
-function SidebarBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
+function SidebarBtn({ icon, label, onClick, active }: { icon: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="btn-soft flex items-center gap-2 text-sm h-11 md:h-8 px-3 w-full justify-start"
+      aria-pressed={active}
+      className={`btn-soft flex items-center gap-2 text-sm h-11 md:h-8 px-3 w-full justify-start ${active ? 'ring-1 ring-trello-accent text-trello-text' : ''}`}
     >
       {icon}{label}
     </button>

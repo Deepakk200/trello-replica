@@ -1,11 +1,13 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
+import { EmptyState } from '@/components/ui/empty-state';
 import { BoardHeader } from './board-header';
 import { ListsRow } from './lists-row';
-import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
+import { BoardShortcuts } from './board-shortcuts';
 import { BulkActionBar } from './bulk-action-bar';
 import dynamic from 'next/dynamic';
 
@@ -79,15 +81,23 @@ export function BoardView() {
 
   if (!board) {
     return (
-      <div className="h-full flex items-center justify-center text-white/50 text-sm">
-        No boards yet. Create one to get started.
+      <div className="h-full flex items-center justify-center">
+        <EmptyState
+          title="No boards yet"
+          subtitle="Create your first board to start organising lists and cards."
+          action={
+            <Link href="/" className="btn-primary text-sm font-medium px-4 py-2 inline-block">
+              Go to your boards
+            </Link>
+          }
+        />
       </div>
     );
   }
 
   return (
     <>
-      <ShortcutsOverlay />
+      <BoardShortcuts />
       <BulkActionBar />
 
       {/* Board fills the remaining viewport height below the top-bar */}

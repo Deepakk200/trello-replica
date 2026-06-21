@@ -1,8 +1,28 @@
 export type ID = string;
 export type LabelColor = 'green'|'yellow'|'orange'|'red'|'purple'|'blue'|'sky'|'lime'|'pink'|'black';
 export type DueFilter = ''|'none'|'overdue'|'next24h'|'nextweek'|'complete';
+export type CompleteFilter = '' | 'complete' | 'incomplete';
+export type FilterMode = 'dim' | 'hide';
 export type BoardVisibility = 'private' | 'workspace' | 'public';
-export interface FilterState { search: string; labelIds: ID[]; dueFilter: DueFilter }
+/**
+ * Board filter. Within a dimension = OR (any label / any member); across
+ * dimensions = AND (Trello semantics). `mode` toggles dim-vs-hide for
+ * non-matching cards. Transient (not persisted) — saved sets live in `savedFilters`.
+ */
+export interface FilterState {
+  search: string;
+  labelIds: ID[];
+  memberIds: ID[];
+  dueFilter: DueFilter;
+  complete: CompleteFilter;
+  mode: FilterMode;
+}
+/** A named, persisted filter set (per board). `mode` is excluded — it's a view pref. */
+export interface SavedFilter {
+  id: ID;
+  name: string;
+  filter: Pick<FilterState, 'search' | 'labelIds' | 'memberIds' | 'dueFilter' | 'complete'>;
+}
 
 export type PanelKey = 'inbox' | 'planner' | 'board';
 export interface PanelLayout {
@@ -67,6 +87,8 @@ export interface Card {
   id: ID; listId: ID; title: string; description: string;
   number: number; memberIds: ID[]; attachments: Attachment[];
   labelIds: ID[]; dueDate: string | null; startDate?: string | null; completed: boolean; isArchived: boolean; archivedAt?: string | null;
+  /** Due-date reminder lead time (e.g. "none" | "at" | "10m" | "1h" | "1d"). Optional. */
+  reminder?: string | null;
   linkedCardIds: ID[];
   checklists: Checklist[];
   activity: ActivityEntry[]; createdAt: string; updatedAt: string;
@@ -107,8 +129,10 @@ export interface BoardState {
   /** Resizable panel widths (px). Persisted. */
   inboxWidth: number;
   plannerWidth: number;
-  /** Personal Inbox capture cards (not yet on a board). Persisted. */
-  inboxCards: { id: ID; title: string; createdAt: string }[];
+  /** Personal Inbox capture cards (not yet on a board). Persisted.
+   *  completed/dueDate are optional (quick-add doesn't set them) — present so the
+   *  Inbox filter can read real fields; unset cards read as "not complete" / "no dates". */
+  inboxCards: { id: ID; title: string; createdAt: string; completed?: boolean; dueDate?: string | null }[];
   /** Calendar view state. Persisted. */
   calendarViewDate: string;
   calendarGranularity: 'Month' | 'Week' | 'Day';
@@ -120,6 +144,12 @@ export interface BoardState {
   activeViewByBoard: Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>;
   notifications: Notification[];
   selectedCardIds: ID[];
+  /** Named, persisted board filters keyed by board id. */
+  savedFilters: Record<ID, SavedFilter[]>;
+  /** Cards the user watches (subscribed) → eligible for watch notifications. Persisted. */
+  watchedCardIds: ID[];
+  /** Card aging: fade cards untouched for a long time (board-menu toggle). Persisted. */
+  cardAgingEnabled: boolean;
   /** Workspace-home Jira/templates promo banner dismissal. Persisted. */
   jiraPromoDismissed: boolean;
   /** Editable workspace display name shown on the workspace-home header. Persisted. */

@@ -54,6 +54,16 @@ export async function getMyWorkspace() {
   });
 }
 
+/** Just the active workspace's display name (selects only `name`). Used to hydrate
+ *  the legacy sidebar's workspace label from the DB (the single source of truth). */
+export async function getActiveWorkspaceName(): Promise<string | null> {
+  const user = await requireUser();
+  const wid = await getActiveWorkspaceId(user.id);
+  if (!wid) return null;
+  const ws = await db.workspace.findFirst({ where: { id: wid, deletedAt: null }, select: { name: true } });
+  return ws?.name ?? null;
+}
+
 /** Every workspace the user belongs to, with their role + board count. */
 export async function listMyWorkspaces() {
   const user = await requireUser();

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Check, Copy, Globe, Lock, UserPlus, Users, X } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
+import { notify } from '@/store/use-toast-store';
 import { boardPath } from '@/lib/slug';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import type { BoardVisibility, ID } from '@/types';
@@ -37,7 +38,7 @@ export function ShareDialog({ boardId, onClose }: { boardId: ID; onClose: () => 
   function copyLink() {
     navigator.clipboard?.writeText(link).then(
       () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
-      () => {},
+      () => notify.error("Couldn't copy the link — copy it manually"),
     );
   }
 

@@ -65,7 +65,7 @@ export function WorkspaceSidebar() {
         <div className="ml-2 mt-0.5 flex flex-col gap-0.5">
           <NavRow icon={Columns3} label="Boards" href="/" active={onBoards} size={15} sub />
           <NavRow icon={Users} label="Members" href="/w/members" active={pathname === '/w/members'} trailing={<Plus size={13} />} size={15} sub />
-          <NavRow icon={Settings} label="Settings" href="/w/settings" active={pathname === '/w/settings'} size={15} sub />
+          <NavRow icon={Settings} label="Settings" href="/settings" active={pathname === '/settings'} size={15} sub />
           <NavRow icon={CreditCard} label="Billing" href="/w/billing" active={pathname === '/w/billing'} size={15} sub />
         </div>
       </div>

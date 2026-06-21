@@ -14,13 +14,23 @@ function toTimeInput(iso: string | null): string {
   return iso.slice(11, 16);
 }
 
+const REMINDER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'none', label: 'No reminder' },
+  { value: 'at',   label: 'At time of due date' },
+  { value: '10m',  label: '10 minutes before' },
+  { value: '1h',   label: '1 hour before' },
+  { value: '1d',   label: '1 day before' },
+];
+
 export function DatePopover({ cardId, onClose }: { cardId: ID; onClose: () => void }) {
   const card         = useBoardStore((s) => s.cards[cardId]);
   const updateCard   = useBoardStore((s) => s.updateCard);
   const pushActivity = useBoardStore((s) => s.pushActivity);
 
+  const [startPart, setStartPart] = useState(toDateInput(card?.startDate ?? null));
   const [datePart, setDatePart] = useState(toDateInput(card?.dueDate ?? null));
   const [timePart, setTimePart] = useState(toTimeInput(card?.dueDate ?? null));
+  const [reminder, setReminder] = useState(card?.reminder ?? 'none');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,16 +48,17 @@ export function DatePopover({ cardId, onClose }: { cardId: ID; onClose: () => vo
     const iso = timePart
       ? `${datePart}T${timePart}:00.000Z`
       : `${datePart}T00:00:00.000Z`;
+    const startIso = startPart ? `${startPart}T00:00:00.000Z` : null;
     const formatted = new Intl.DateTimeFormat('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
     }).format(new Date(iso));
-    updateCard(cardId, { dueDate: iso });
+    updateCard(cardId, { dueDate: iso, startDate: startIso, reminder: reminder === 'none' ? null : reminder });
     pushActivity(cardId, { type: 'due', text: `set this card to be due ${formatted}` });
     onClose();
   }
 
   function remove() {
-    updateCard(cardId, { dueDate: null });
+    updateCard(cardId, { dueDate: null, startDate: null, reminder: null });
     onClose();
   }
 
@@ -61,6 +72,18 @@ export function DatePopover({ cardId, onClose }: { cardId: ID; onClose: () => vo
     >
       <div className="w-10 h-1 bg-trello-border rounded-full mx-auto mb-1 md:hidden" aria-hidden="true" />
       <p className="text-xs font-semibold text-center text-trello-textSubtle">Dates</p>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-trello-textSubtle">Start date (optional)</label>
+        <input
+          type="date"
+          title="Start date"
+          className={inputClass}
+          value={startPart}
+          max={datePart || undefined}
+          onChange={(e) => setStartPart(e.target.value)}
+        />
+      </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-xs text-trello-textSubtle">Due date</label>
@@ -82,6 +105,20 @@ export function DatePopover({ cardId, onClose }: { cardId: ID; onClose: () => vo
           value={timePart}
           onChange={(e) => setTimePart(e.target.value)}
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-trello-textSubtle">Reminder</label>
+        <select
+          title="Set a reminder"
+          className={inputClass}
+          value={reminder ?? 'none'}
+          onChange={(e) => setReminder(e.target.value)}
+        >
+          {REMINDER_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1.5">

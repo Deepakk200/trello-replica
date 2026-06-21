@@ -231,6 +231,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
           {/* More */}
           <button
+            id="board-menu-trigger"
             onClick={() => setShowMenu((v) => !v)}
             className={iconBtn}
             aria-label="Board menu"

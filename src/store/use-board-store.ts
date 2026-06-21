@@ -7,7 +7,7 @@ import type {
   ID, Board, List, Card, Label, Member, Attachment,
   Workspace, BoardTemplate, CardTemplate, BoardVisibility,
   ActivityEntry, BoardState, FilterState, Checklist, Notification,
-  WorkspaceMember, WorkspaceMemberRole, WorkspaceVisibility,
+  WorkspaceMember, WorkspaceMemberRole, WorkspaceVisibility, SavedFilter,
 } from '@/types';
 // Butler automation: emit board events after mutations (no-op until the engine
 // registers a handler on the client). Decoupled via the bus → no import cycle.
@@ -22,6 +22,26 @@ function makeActivity(entry: Omit<ActivityEntry, 'id' | 'createdAt'>): ActivityE
 }
 function makeNotification(entry: Omit<Notification, 'id' | 'createdAt' | 'read'>): Notification {
   return { ...entry, id: newId(), createdAt: now(), read: false };
+}
+
+// Notifications are persisted (see partialize) but bounded: keep the most recent
+// MAX and drop read items older than the retention window so the list can't grow
+// without limit across sessions.
+const MAX_NOTIFICATIONS = 100;
+const NOTIFICATION_RETENTION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+/** Prepend a notification onto the (immer draft) list and cap its length. */
+function pushNotif(list: Notification[], entry: Omit<Notification, 'id' | 'createdAt' | 'read'>): void {
+  list.unshift(makeNotification(entry));
+  if (list.length > MAX_NOTIFICATIONS) list.length = MAX_NOTIFICATIONS;
+}
+
+/** Drop read notifications older than the retention window and cap. */
+function pruneNotifications(list: Notification[] | undefined): Notification[] {
+  const t = Date.now();
+  return (list ?? [])
+    .filter((n) => !n.read || t - new Date(n.createdAt).getTime() < NOTIFICATION_RETENTION_MS)
+    .slice(0, MAX_NOTIFICATIONS);
 }
 
 function isWithin24Hours(iso: string): boolean {
@@ -291,6 +311,7 @@ function buildSeed(): BoardState {
     // mentions, assignments, due dates) — never seeded with placeholder data.
     notifications: [],
     selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
+    savedFilters: {}, watchedCardIds: [], cardAgingEnabled: false,
     jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
     workspaceDescription: '', workspaceVisibility: 'private', workspaceAvatarColor: DEFAULT_WS_AVATAR,
     workspaceMembers: buildWorkspaceMembers(),
@@ -306,6 +327,9 @@ type Transient = {
   notificationsOpen: boolean;
   activeCardModalId: ID | null;
   watchedListIds: ID[];
+  /** The real signed-in user id (set from useCurrentUser) — used to suppress
+   *  self-notifications. Not persisted. */
+  currentUserId: ID | null;
 };
 
 type Actions = {
@@ -336,7 +360,8 @@ type Actions = {
   reorderLists(boardId: ID, orderedIds: ID[]): void;
   toggleListCollapse(listId: ID): void;
   createCard(listId: ID, title: string): ID;
-  updateCard(id: ID, patch: Partial<Pick<Card, 'title'|'description'|'dueDate'|'startDate'|'completed'|'labelIds'>>): void;
+  copyCard(cardId: ID, opts: { title?: string; toListId?: ID; index?: number; keepChecklists?: boolean; keepLabels?: boolean; keepMembers?: boolean; keepDates?: boolean; keepAttachments?: boolean; keepComments?: boolean }): ID;
+  updateCard(id: ID, patch: Partial<Pick<Card, 'title'|'description'|'dueDate'|'startDate'|'completed'|'labelIds'|'reminder'>>): void;
   deleteCard(id: ID): void;
   moveCard(cardId: ID, toListId: ID, toIndex: number): void;
   reorderCardsInList(listId: ID, orderedIds: ID[]): void;
@@ -378,11 +403,16 @@ type Actions = {
   restoreCard(cardId: ID): void;
   archiveList(listId: ID): void;
   restoreList(listId: ID): void;
-  sortList(listId: ID, by: 'created-asc' | 'created-desc' | 'name' | 'due'): void;
+  sortList(listId: ID, by: 'created-asc' | 'created-desc' | 'name' | 'due' | 'label'): void;
   copyList(listId: ID): ID;
   moveAllCards(fromListId: ID, toListId: ID): void;
   archiveAllCardsInList(listId: ID): void;
   toggleWatchList(listId: ID): void;
+  toggleWatchCard(cardId: ID): void;
+  saveCurrentFilter(boardId: ID, name: string): ID;
+  applySavedFilter(boardId: ID, filterId: ID): void;
+  deleteSavedFilter(boardId: ID, filterId: ID): void;
+  toggleCardAging(): void;
   reorderListToPosition(listId: ID, position: number): void;
   updateBoardBackground(boardId: ID, background: string): void;
   updateBoardDescription(boardId: ID, description: string): void;
@@ -391,10 +421,14 @@ type Actions = {
   markAllNotificationsRead(): void;
   clearNotifications(): void;
   toggleCardSelection(cardId: ID): void;
+  selectCardRange(cardId: ID): void;
   clearCardSelection(): void;
   bulkArchiveCards(cardIds: ID[]): void;
   bulkMoveCards(cardIds: ID[], toListId: ID): void;
   bulkAddLabelToCards(cardIds: ID[], labelId: ID): void;
+  bulkRemoveLabelFromCards(cardIds: ID[], labelId: ID): void;
+  bulkSetDueForCards(cardIds: ID[], dueDate: string | null): void;
+  bulkAddMemberToCards(cardIds: ID[], memberId: ID): void;
   linkCards(fromCardId: ID, toCardId: ID): void;
   unlinkCards(fromCardId: ID, toCardId: ID): void;
   toggleNotificationsDrawer(): void;
@@ -412,6 +446,7 @@ type Actions = {
   removeWorkspaceMember(id: ID): void;
   setUserName(name: string): void;
   setUserEmail(email: string): void;
+  setCurrentUserId(id: ID | null): void;
   setLabsEnabled(v: boolean): void;
   clearAll(): void;
 };
@@ -431,7 +466,7 @@ export const boardStore = create<Store>()(
   persist(
     immer((set) => ({
       _hasHydrated: false,
-      filterState: { search: '', labelIds: [] as ID[], dueFilter: '' } as FilterState,
+      filterState: { search: '', labelIds: [] as ID[], memberIds: [] as ID[], dueFilter: '', complete: '', mode: 'dim' } as FilterState,
       boards: {}, lists: {}, cards: {}, labels: {}, members: {},
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
@@ -443,7 +478,8 @@ export const boardStore = create<Store>()(
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
-      notificationsOpen: false, activeCardModalId: null, watchedListIds: [],
+      savedFilters: {}, watchedCardIds: [], cardAgingEnabled: false,
+      notificationsOpen: false, activeCardModalId: null, watchedListIds: [], currentUserId: null,
       jiraPromoDismissed: false, workspaceName: 'Trello Workspace',
       workspaceDescription: '', workspaceVisibility: 'private', workspaceAvatarColor: DEFAULT_WS_AVATAR,
       workspaceMembers: buildWorkspaceMembers(),
@@ -642,6 +678,49 @@ export const boardStore = create<Store>()(
         if (bId) emitBoardEvent({ type: 'card.created', boardId: bId, cardId: id, listId });
         return id;
       },
+      // Copy-with-options: builds an INDEPENDENT card (fresh ids everywhere) keeping
+      // only the chosen parts. Description + cover always carry over; attachments
+      // and comments/activity never do (file refs / history are not duplicated).
+      copyCard(cardId, opts) {
+        const newCardId = newId(); const ts = now();
+        set((s) => {
+          const src = s.cards[cardId]; if (!src) return;
+          const toListId = opts.toListId ?? src.listId;
+          const list = s.lists[toListId]; if (!list) return;
+          const board = s.boards[list.boardId];
+          const num = board?.nextCardNumber ?? 1;
+          if (board) board.nextCardNumber = num + 1;
+          const title = opts.title?.trim() || `${src.title} (copy)`;
+          const copiedComments = opts.keepComments
+            ? src.activity
+                .filter((a) => a.type === 'commented')
+                .map((a) => ({ ...a, id: newId() }))
+            : [];
+          s.cards[newCardId] = {
+            id: newCardId, listId: toListId, title, description: src.description,
+            number: num,
+            memberIds: opts.keepMembers ? [...src.memberIds] : [],
+            attachments: opts.keepAttachments
+              ? src.attachments.map((att) => ({ ...att, id: newId() }))
+              : [],
+            labelIds: opts.keepLabels ? [...src.labelIds] : [],
+            dueDate: opts.keepDates ? src.dueDate : null,
+            startDate: opts.keepDates ? (src.startDate ?? null) : null,
+            completed: false, isArchived: false, linkedCardIds: [],
+            cover: { ...src.cover },
+            checklists: opts.keepChecklists
+              ? src.checklists.map((cl) => ({ ...cl, id: newId(), items: cl.items.map((it) => ({ ...it, id: newId() })) }))
+              : [],
+            activity: [makeActivity({ type: 'created', text: `Card "${title}" created` }), ...copiedComments],
+            createdAt: ts, updatedAt: ts,
+          };
+          const idx = opts.index ?? list.cardIds.length;
+          list.cardIds.splice(Math.max(0, Math.min(idx, list.cardIds.length)), 0, newCardId);
+        });
+        const bId = boardStore.getState().lists[boardStore.getState().cards[newCardId]?.listId ?? '']?.boardId;
+        if (bId) emitBoardEvent({ type: 'card.created', boardId: bId, cardId: newCardId, listId: boardStore.getState().cards[newCardId]!.listId });
+        return newCardId;
+      },
       updateCard(id, patch) {
         set((s) => {
           const card = s.cards[id]; if (!card) return;
@@ -654,16 +733,17 @@ export const boardStore = create<Store>()(
             const boardId = s.lists[card.listId]?.boardId;
             const dueMs = new Date(patch.dueDate).getTime();
             if (!Number.isNaN(dueMs)) {
+              // Time-based — fires for the card owner regardless of actor.
               if (dueMs < Date.now()) {
-                s.notifications.unshift(makeNotification({
+                pushNotif(s.notifications, {
                   type: 'overdue', cardId: card.id, boardId,
                   text: `"${card.title}" is overdue`,
-                }));
+                });
               } else if (isWithin24Hours(patch.dueDate)) {
-                s.notifications.unshift(makeNotification({
+                pushNotif(s.notifications, {
                   type: 'due_soon', cardId: card.id, boardId,
                   text: `"${card.title}" is due within 24 hours`,
-                }));
+                });
               }
             }
           }
@@ -707,6 +787,23 @@ export const boardStore = create<Store>()(
               ? `Moved from "${fromList.title}" to "${toList.title}"`
               : `Moved within "${toList.title}"`,
           }));
+
+          // Notify the card's members (not the mover) on a MEANINGFUL move: only a
+          // cross-list move (reordering within a list never notifies), and coalesce
+          // rapid moves of the same card — drag fires moveCard per list-boundary —
+          // into a single notification instead of spamming.
+          if (originListId !== toListId) {
+            const recipients = card.memberIds.filter((mid) => mid !== s.currentUserId);
+            if (recipients.length > 0) {
+              const text = `"${card.title}" was moved to "${toList.title}"`;
+              const recent = s.notifications.find(
+                (n) => n.type === 'moved' && n.cardId === cardId && !n.read &&
+                  Date.now() - new Date(n.createdAt).getTime() < 6000,
+              );
+              if (recent) { recent.text = text; recent.boardId = toList.boardId; recent.createdAt = now(); }
+              else { pushNotif(s.notifications, { type: 'moved', cardId, boardId: toList.boardId, text }); }
+            }
+          }
         });
         // Fire "moved into list" only when the list actually changed.
         if (fromListId && fromListId !== toListId) {
@@ -719,7 +816,7 @@ export const boardStore = create<Store>()(
       },
 
       pushNotification(notification) {
-        set((s) => { s.notifications.unshift(makeNotification(notification)); });
+        set((s) => { pushNotif(s.notifications, notification); });
       },
       markNotificationRead(id) {
         set((s) => {
@@ -739,6 +836,24 @@ export const boardStore = create<Store>()(
         });
       },
       clearCardSelection() { set((s) => { s.selectedCardIds = []; }); },
+      // Shift-click range select: union the contiguous run between the most-recent
+      // anchor and the target, in the target's list order (Trello range behaviour).
+      selectCardRange(cardId) {
+        set((s) => {
+          const card = s.cards[cardId];
+          const list = card ? s.lists[card.listId] : undefined;
+          if (!card || !list) return;
+          const order = list.cardIds;
+          const targetIdx = order.indexOf(cardId);
+          if (targetIdx === -1) return;
+          const anchor = [...s.selectedCardIds].reverse().find((id) => s.cards[id]?.listId === card.listId);
+          const anchorIdx = anchor ? order.indexOf(anchor) : targetIdx;
+          const [lo, hi] = anchorIdx <= targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+          for (const id of order.slice(lo, hi + 1)) {
+            if (!s.selectedCardIds.includes(id)) s.selectedCardIds.push(id);
+          }
+        });
+      },
       bulkArchiveCards(cardIds) {
         set((s) => {
           for (const cardId of cardIds) {
@@ -777,6 +892,34 @@ export const boardStore = create<Store>()(
           for (const cardId of cardIds) {
             const card = s.cards[cardId]; if (!card) continue;
             if (!card.labelIds.includes(labelId)) card.labelIds.push(labelId);
+            card.updatedAt = now();
+          }
+        });
+      },
+      bulkRemoveLabelFromCards(cardIds, labelId) {
+        set((s) => {
+          for (const cardId of cardIds) {
+            const card = s.cards[cardId]; if (!card) continue;
+            card.labelIds = card.labelIds.filter((id) => id !== labelId);
+            card.updatedAt = now();
+          }
+        });
+      },
+      bulkSetDueForCards(cardIds, dueDate) {
+        set((s) => {
+          for (const cardId of cardIds) {
+            const card = s.cards[cardId]; if (!card) continue;
+            card.dueDate = dueDate;
+            card.updatedAt = now();
+            card.activity.push(makeActivity({ type: 'due', text: dueDate ? 'set the due date' : 'removed the due date' }));
+          }
+        });
+      },
+      bulkAddMemberToCards(cardIds, memberId) {
+        set((s) => {
+          for (const cardId of cardIds) {
+            const card = s.cards[cardId]; if (!card) continue;
+            if (!card.memberIds.includes(memberId)) card.memberIds.push(memberId);
             card.updatedAt = now();
           }
         });
@@ -828,6 +971,7 @@ export const boardStore = create<Store>()(
       removeWorkspaceMember(id) {
         set((s) => { s.workspaceMembers = s.workspaceMembers.filter((x) => x.id !== id); });
       },
+      setCurrentUserId(id) { set((s) => { s.currentUserId = id; }); },
       setUserName(name) { set((s) => { s.userName = name.trim() || 'deepak chandra'; }); },
       setUserEmail(email) { set((s) => { s.userEmail = email.trim(); }); },
       setLabsEnabled(v) { set((s) => { s.labsEnabled = v; }); },
@@ -874,12 +1018,14 @@ export const boardStore = create<Store>()(
           const idx = card.memberIds.indexOf(memberId);
           if (idx === -1) {
             card.memberIds.push(memberId);
-            // Assigning a member generates a real notification.
-            s.notifications.unshift(makeNotification({
-              type: 'assigned', cardId,
-              boardId: s.lists[card.listId]?.boardId,
-              text: `${s.members[memberId]?.name ?? 'A member'} was assigned to "${card.title}"`,
-            }));
+            // Notify the assignee — never when you assign yourself.
+            if (memberId !== s.currentUserId) {
+              pushNotif(s.notifications, {
+                type: 'assigned', cardId,
+                boardId: s.lists[card.listId]?.boardId,
+                text: `${s.members[memberId]?.name ?? 'A member'} was assigned to "${card.title}"`,
+              });
+            }
           } else {
             card.memberIds.splice(idx, 1);
           }
@@ -1039,15 +1185,22 @@ export const boardStore = create<Store>()(
           // notification for every known member referenced with @name.
           if (entry.type === 'commented') {
             const boardId = s.lists[card.listId]?.boardId;
-            s.notifications.unshift(makeNotification({
-              type: 'commented', cardId, boardId,
-              text: `New comment on "${card.title}"`,
-            }));
+            // A comment notifies the card's OTHER members (recipients), never the
+            // commenter — so only when such recipients exist (excludes the current user).
+            const recipients = card.memberIds.filter((mid) => mid !== s.currentUserId);
+            if (recipients.length > 0) {
+              pushNotif(s.notifications, {
+                type: 'commented', cardId, boardId,
+                text: `New comment on "${card.title}"`,
+              });
+            }
+            // @mention → notify the mentioned member (the signed-in user isn't in the
+            // card-member roster, so this is never a self-mention).
             for (const name of extractMentions(entry.text, s.members)) {
-              s.notifications.unshift(makeNotification({
+              pushNotif(s.notifications, {
                 type: 'mention', cardId, boardId,
                 text: `${name} was mentioned on "${card.title}"`,
-              }));
+              });
             }
           }
         });
@@ -1192,6 +1345,15 @@ export const boardStore = create<Store>()(
               if (!cb.dueDate) return -1;
               return ca.dueDate.localeCompare(cb.dueDate);
             }
+            if (by === 'label') {
+              // Sort by the first label's name (cards with no label sink to the bottom).
+              const la = ca.labelIds.map((id) => s.labels[id]?.name ?? '').filter(Boolean).sort()[0] ?? '';
+              const lb = cb.labelIds.map((id) => s.labels[id]?.name ?? '').filter(Boolean).sort()[0] ?? '';
+              if (!la && !lb) return 0;
+              if (!la) return 1;
+              if (!lb) return -1;
+              return la.localeCompare(lb);
+            }
             if (by === 'created-asc') return ca.createdAt.localeCompare(cb.createdAt);
             return cb.createdAt.localeCompare(ca.createdAt);
           });
@@ -1259,6 +1421,43 @@ export const boardStore = create<Store>()(
           s.watchedListIds = [...watched];
         });
       },
+      toggleWatchCard(cardId) {
+        set((s) => {
+          const watched = new Set(s.watchedCardIds ?? []);
+          if (watched.has(cardId)) watched.delete(cardId); else watched.add(cardId);
+          s.watchedCardIds = [...watched];
+          const c = s.cards[cardId];
+          if (c) c.activity.push(makeActivity({ type: 'described', text: watched.has(cardId) ? 'started watching this card' : 'stopped watching this card' }));
+        });
+      },
+      saveCurrentFilter(boardId, name) {
+        const filterId = newId();
+        set((s) => {
+          const f = s.filterState;
+          const entry: SavedFilter = {
+            id: filterId,
+            name: name.trim() || 'Saved filter',
+            filter: { search: f.search, labelIds: [...f.labelIds], memberIds: [...f.memberIds], dueFilter: f.dueFilter, complete: f.complete },
+          };
+          (s.savedFilters[boardId] ??= []).push(entry);
+        });
+        return filterId;
+      },
+      applySavedFilter(boardId, filterId) {
+        set((s) => {
+          const found = (s.savedFilters[boardId] ?? []).find((sf) => sf.id === filterId);
+          if (!found) return;
+          s.filterState = { ...found.filter, mode: s.filterState.mode };
+        });
+      },
+      deleteSavedFilter(boardId, filterId) {
+        set((s) => {
+          s.savedFilters[boardId] = (s.savedFilters[boardId] ?? []).filter((sf) => sf.id !== filterId);
+        });
+      },
+      toggleCardAging() {
+        set((s) => { s.cardAgingEnabled = !s.cardAgingEnabled; });
+      },
       reorderListToPosition(listId, position) {
         set((s) => {
           const list = s.lists[listId]; if (!list) return;
@@ -1323,10 +1522,15 @@ export const boardStore = create<Store>()(
         calendarViewDate: state.calendarViewDate, calendarGranularity: state.calendarGranularity,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
         sidebarCollapsed: state.sidebarCollapsed,
+        // Q3 depth: saved filters + watch subscriptions + aging now survive refresh.
+        savedFilters: state.savedFilters, watchedCardIds: state.watchedCardIds,
+        watchedListIds: state.watchedListIds, cardAgingEnabled: state.cardAgingEnabled,
         jiraPromoDismissed: state.jiraPromoDismissed, workspaceName: state.workspaceName,
         workspaceDescription: state.workspaceDescription, workspaceVisibility: state.workspaceVisibility,
         workspaceAvatarColor: state.workspaceAvatarColor, workspaceMembers: state.workspaceMembers,
         userName: state.userName, userEmail: state.userEmail, labsEnabled: state.labsEnabled,
+        // Persisted so the bell survives refresh; capped + pruned of stale read items.
+        notifications: pruneNotifications(state.notifications),
       }),
       migrate: (persisted) => {
         if (typeof persisted === 'object' && persisted !== null) {
@@ -1460,8 +1664,21 @@ export const boardStore = create<Store>()(
 
         if (!state.activeViewByBoard) state.activeViewByBoard = {};
         if (state.activePanel !== 'board' && state.activePanel !== 'inbox' && state.activePanel !== 'planner') state.activePanel = 'board';
-        if (!state.notifications) state.notifications = [];
+        state.notifications = pruneNotifications(state.notifications);
+        if (state.currentUserId === undefined) state.currentUserId = null;
         if (!state.selectedCardIds) state.selectedCardIds = [];
+        // Q3 depth defaults for stores persisted before these fields existed.
+        if (!state.savedFilters) state.savedFilters = {};
+        if (!state.watchedCardIds) state.watchedCardIds = [];
+        if (!state.watchedListIds) state.watchedListIds = [];
+        if (state.cardAgingEnabled === undefined) state.cardAgingEnabled = false;
+        // Migrate any pre-Q3 transient filterState shape to include the new dimensions.
+        if (state.filterState) {
+          const f = state.filterState as Partial<FilterState>;
+          if (!Array.isArray(f.memberIds)) f.memberIds = [];
+          if (f.complete === undefined) f.complete = '';
+          if (f.mode !== 'dim' && f.mode !== 'hide') f.mode = 'dim';
+        }
         if (state.notificationsOpen === undefined) state.notificationsOpen = false;
         if (state.activeCardModalId === undefined) state.activeCardModalId = null;
         if (state.jiraPromoDismissed === undefined) state.jiraPromoDismissed = false;

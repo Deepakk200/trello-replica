@@ -22,8 +22,10 @@ export const CardItem = memo(
     const cardLabels     = useBoardStore(
       useShallow((s) => (s.cards[cardId]?.labelIds ?? []).map((id) => s.labels[id]).filter(Boolean)),
     );
+    const cardAgingEnabled   = useBoardStore((s) => s.cardAgingEnabled);
     const selectedCardIds    = useBoardStore((s) => s.selectedCardIds);
     const toggleCardSelection = useBoardStore((s) => s.toggleCardSelection);
+    const selectCardRange     = useBoardStore((s) => s.selectCardRange);
     const setActiveCardModal  = useBoardStore((s) => s.setActiveCardModal);
     const updateCard          = useBoardStore((s) => s.updateCard);
     const { expanded: labelsExpanded, toggle: toggleLabels } = useLabelExpansion();
@@ -59,6 +61,17 @@ export const CardItem = memo(
     const isSelected    = selectedCardIds.includes(cardId);
     const isNew         = Date.now() - new Date(card.createdAt).getTime() < 2000;
 
+    // Card aging (board-menu toggle): fade cards untouched for a long time so stale
+    // work stands out. Two steps by idle age; never applied to completed cards or
+    // while dragging/selected (where the styling would fight the active state).
+    const idleDays = (Date.now() - new Date(card.updatedAt).getTime()) / 86_400_000;
+    const agingClass =
+      cardAgingEnabled && !card.completed && !isDragging && !isSelected
+        ? idleDays > 30 ? 'opacity-50'
+        : idleDays > 14 ? 'opacity-75'
+        : ''
+        : '';
+
     function openQuickEdit() {
       const rect = rootRef.current?.getBoundingClientRect();
       const x = rect ? Math.min(rect.right + 4, window.innerWidth - 212) : 100;
@@ -87,7 +100,18 @@ export const CardItem = memo(
         case 'c': case 'C': // archive (undoable)
           e.preventDefault(); archiveCardWithUndo(cardId);
           break;
+        case 'm': case 'M': // members (live in the card modal)
+          e.preventDefault(); setActiveCardModal(cardId);
+          break;
       }
+    }
+
+    // Click selection model: Cmd/Ctrl-click toggles, Shift-click range-selects,
+    // a plain click opens the card.
+    function onCardClick(e: React.MouseEvent | React.KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey) { toggleCardSelection(cardId); return; }
+      if (e.shiftKey) { selectCardRange(cardId); return; }
+      setActiveCardModal(cardId);
     }
 
     return (
@@ -109,6 +133,7 @@ export const CardItem = memo(
             'transition-[border-color,box-shadow,background-color] duration-100',
             isDragging ? 'opacity-30 ring-2 ring-trello-accent' : '',
             isSelected ? 'ring-2 ring-trello-accent ring-offset-2 ring-offset-trello-listBg' : '',
+            agingClass,
           ].join(' ')}
         >
           {/* Single activatable open-target overlay — a real <button> with no
@@ -119,8 +144,9 @@ export const CardItem = memo(
               focused-card shortcuts. */}
           <button
             type="button"
+            data-list-id={listId}
             aria-label={`Open card: ${card.title}`}
-            onClick={(e) => { if (e.shiftKey) toggleCardSelection(cardId); else setActiveCardModal(cardId); }}
+            onClick={onCardClick}
             onKeyDown={onCardKeyDown}
             className="absolute inset-0 z-[1] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-trello-accent"
           />

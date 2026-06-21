@@ -6,6 +6,7 @@ import { Archive, ArrowUpRight, Lock, Pencil, Plus, Sparkles, User, X } from 'lu
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { boardPath } from '@/lib/slug';
+import { updateWorkspace } from '@/features/workspaces/actions';
 import { ClosedBoardsModal } from './closed-boards-modal';
 
 const SWATCHES = [
@@ -86,7 +87,11 @@ export function WorkspaceHome() {
     setEditingName(true);
   }
   function commitName() {
-    setWorkspaceName(nameDraft);
+    const t = nameDraft.trim();
+    setWorkspaceName(t); // Zustand cache — reflects live in the sidebar/header
+    // Persist to the canonical DB workspace record (best-effort; same record the
+    // /settings General tab edits — single source of truth).
+    if (t) void updateWorkspace({ name: t }).catch(() => {});
     setEditingName(false);
   }
 
