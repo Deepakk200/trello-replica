@@ -52,6 +52,16 @@ async function getOrCreateLegacyWorkspace(userId: string) {
 const iso = (d: Date) => d.toISOString();
 const toDate = (s: string | null | undefined) => (s ? new Date(s) : null);
 
+/**
+ * DB sync is an optional enhancement over the localStorage-first legacy app. When
+ * no real `DATABASE_URL` is configured, `db` targets a placeholder host and every
+ * query throws — so we short-circuit to a clean no-op instead. The app stays fully
+ * usable on localStorage; nothing is lost and no error is surfaced.
+ */
+function dbConfigured(): boolean {
+  return !!process.env.DATABASE_URL;
+}
+
 // ── Load: DB → legacy snapshot ───────────────────────────────────────────────
 
 /**
@@ -60,6 +70,7 @@ const toDate = (s: string | null | undefined) => (s ? new Date(s) : null);
  * client keeps its local seed and performs a one-time import on first save.
  */
 export async function loadLegacyState(): Promise<LegacySnapshot | null> {
+  if (!dbConfigured()) return null; // sync unavailable → keep the local cache
   const user = await requireAuth();
   const slug = `legacy-${user.id}`;
   const ws = await db.workspace.findUnique({ where: { slug }, select: { id: true } });
@@ -220,7 +231,8 @@ export async function loadLegacyState(): Promise<LegacySnapshot | null> {
  * transactional delete-and-recreate of this user's legacy workspace contents —
  * the snapshot is small (single user) and this keeps the mapping diff-free.
  */
-export async function saveLegacyState(snapshot: LegacySnapshot): Promise<{ ok: boolean }> {
+export async function saveLegacyState(snapshot: LegacySnapshot): Promise<{ ok: boolean; skipped?: boolean }> {
+  if (!dbConfigured()) return { ok: true, skipped: true }; // no DB → localStorage-only, not an error
   const user = await requireAuth();
   if (!snapshot || typeof snapshot !== "object") return { ok: false };
   const ws = await getOrCreateLegacyWorkspace(user.id);

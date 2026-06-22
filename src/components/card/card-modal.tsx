@@ -19,6 +19,9 @@ import { ChecklistSection } from './checklist-section';
 import { MembersPopover } from './members-popover';
 import { AttachmentsSection } from './attachments-section';
 import { LinkedCardsSection } from './linked-cards-section';
+import { CardCustomFields } from './card-custom-fields';
+import { CardVoteButton } from './card-vote-button';
+import { CardLocationSection } from './card-location';
 import { MoveCardPopover } from './move-card-popover';
 import { CopyCardPopover } from './copy-card-popover';
 import { CardAiAssist } from '@/components/ai/card-ai-assist';
@@ -237,6 +240,10 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
             <DescriptionEditor cardId={cardId} />
 
+            <CardCustomFields cardId={cardId} />
+
+            <CardLocationSection cardId={cardId} />
+
             <CardAiAssist cardId={cardId} />
 
             {/* Attachments (before checklists) — section self-hides when empty
@@ -257,6 +264,8 @@ export function CardModal({ cardId, onClose }: { cardId: ID; onClose: () => void
 
           {/* ── SIDEBAR ──────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 mt-6 md:mt-0">
+            <CardVoteButton cardId={cardId} className="w-full justify-center" />
+
             {list && <CardButtons cardId={cardId} boardId={list.boardId} />}
 
             <div>

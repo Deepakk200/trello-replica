@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, ChevronUp, Columns3, CreditCard, LayoutTemplate, Plus, Settings, Users } from 'lucide-react';
+import { Activity, BarChart3, Calendar, ChevronUp, Columns3, CreditCard, LayoutTemplate, Plus, Settings, Table2, Users } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 
@@ -40,6 +40,9 @@ export function WorkspaceSidebar() {
       {/* Top nav group */}
       <nav className="flex flex-col gap-0.5 mb-4">
         <NavRow icon={Columns3} label="Boards" href="/" active={onBoards} />
+        <NavRow icon={Calendar} label="Calendar" href="/w/calendar" active={pathname === '/w/calendar'} />
+        <NavRow icon={Table2} label="Table" href="/w/table" active={pathname === '/w/table'} />
+        <NavRow icon={BarChart3} label="Analytics" href="/w/analytics" active={pathname === '/w/analytics'} />
         <NavRow icon={LayoutTemplate} label="Templates" href="/templates" active={pathname.startsWith('/templates')} />
         <NavRow icon={Activity} label="Home" href="/" active={false} />
       </nav>

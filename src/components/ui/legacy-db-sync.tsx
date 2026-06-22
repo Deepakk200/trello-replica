@@ -7,7 +7,6 @@ import { loadLegacyState, saveLegacyState } from '@/features/legacy-sync/actions
 import { getActiveWorkspaceName } from '@/features/workspaces/actions';
 import type { LegacySnapshot } from '@/features/legacy-sync/types';
 import { useSyncStatus } from '@/store/use-sync-status';
-import { notify } from '@/store/use-toast-store';
 
 const DEBOUNCE_MS = 800;
 
@@ -35,6 +34,9 @@ export function LegacyDbSync() {
   const ready = useRef(false);
   const saving = useRef(false);
   const dirty = useRef(false);
+  // Once a save reports the DB isn't configured, stop scheduling further saves
+  // (localStorage-only mode) so we don't churn failing requests every change.
+  const syncUnavailable = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushRef = useRef<() => Promise<void>>(async () => {});
 
@@ -51,16 +53,21 @@ export function LegacyDbSync() {
       dirty.current = false;
       useSyncStatus.getState().setStatus('saving');
       try {
-        await saveLegacyState(snapshot());
-        // Don't overwrite a newer 'saving' if a change landed mid-flush.
-        if (!dirty.current) useSyncStatus.getState().setStatus('saved');
+        const res = await saveLegacyState(snapshot());
+        if (res?.skipped) {
+          // DB sync isn't configured (localStorage-only mode). Not an error —
+          // stop showing any sync state and don't keep retrying.
+          syncUnavailable.current = true;
+          useSyncStatus.getState().setStatus('idle');
+        } else if (!dirty.current) {
+          // Don't overwrite a newer 'saving' if a change landed mid-flush.
+          useSyncStatus.getState().setStatus('saved');
+        }
       } catch {
-        // Network/DB hiccup — keep local state, surface it (never silent), and
-        // offer a manual retry in addition to the automatic next-change retry.
+        // Real transient failure (DB reachable but the write failed). Surface it
+        // QUIETLY via the subtle bottom-left SyncIndicator (with a Retry) — NOT a
+        // toast on every change. Data is safe in localStorage either way.
         useSyncStatus.getState().setStatus('error', () => { void flush(); });
-        notify.error("Couldn't save your changes", {
-          action: { label: 'Retry', onClick: () => { void flush(); } },
-        });
       } finally {
         saving.current = false;
         if (dirty.current) schedule();
@@ -73,7 +80,7 @@ export function LegacyDbSync() {
     flushRef.current = flush;
 
     const unsub = boardStore.subscribe((s, p) => {
-      if (!ready.current || !userIdRef.current) return;
+      if (!ready.current || !userIdRef.current || syncUnavailable.current) return;
       if (s.boards === p.boards && s.lists === p.lists && s.cards === p.cards && s.labels === p.labels) return;
       dirty.current = true;
       schedule();

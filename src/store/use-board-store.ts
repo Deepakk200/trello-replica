@@ -7,7 +7,8 @@ import type {
   ID, Board, List, Card, Label, Member, Attachment,
   Workspace, BoardTemplate, CardTemplate, BoardVisibility,
   ActivityEntry, BoardState, FilterState, Checklist, Notification,
-  WorkspaceMember, WorkspaceMemberRole, WorkspaceVisibility, SavedFilter,
+  WorkspaceMember, WorkspaceMemberRole, WorkspaceVisibility, SavedFilter, BoardViewKind,
+  PowerUpKey, CustomFieldDef, CustomFieldType, CustomFieldValue, CardLocation,
 } from '@/types';
 // Butler automation: emit board events after mutations (no-op until the engine
 // registers a handler on the client). Decoupled via the bus → no import cycle.
@@ -305,7 +306,7 @@ function buildSeed(): BoardState {
     activePanel: 'board',
     inboxOpen: true, switchBoardsOpen: false, plannerOpen: true, inboxWidth: 360, plannerWidth: 360,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
-    activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
+    activeViewByBoard: {} as Record<ID, BoardViewKind>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
     // Notifications start empty and are generated from real events (comments,
     // mentions, assignments, due dates) — never seeded with placeholder data.
@@ -382,7 +383,15 @@ type Actions = {
   createCardFromTemplate(templateId: ID, listId: ID): ID;
   saveBoardAsTemplate(boardId: ID, name: string): ID;
   saveCardAsTemplate(cardId: ID, name: string): ID;
-  setBoardView(boardId: ID, view: 'board' | 'calendar' | 'table' | 'dashboard'): void;
+  setBoardView(boardId: ID, view: BoardViewKind): void;
+  // power-ups (in-house, per-board)
+  toggleBoardPowerUp(boardId: ID, key: PowerUpKey): void;
+  addCustomField(boardId: ID, def: { name: string; type: CustomFieldType; options?: string[] }): ID;
+  updateCustomField(boardId: ID, fieldId: ID, patch: Partial<Pick<CustomFieldDef, 'name' | 'options'>>): void;
+  removeCustomField(boardId: ID, fieldId: ID): void;
+  setCardFieldValue(cardId: ID, fieldId: ID, value: CustomFieldValue): void;
+  toggleCardVote(cardId: ID): void;
+  setCardLocation(cardId: ID, location: CardLocation | null): void;
   // activity / covers / checklists
   pushActivity(cardId: ID, entry: Omit<ActivityEntry, 'id'|'createdAt'>): void;
   updateComment(cardId: ID, commentId: ID, newContent: string): void;
@@ -470,7 +479,7 @@ export const boardStore = create<Store>()(
       boards: {}, lists: {}, cards: {}, labels: {}, members: {},
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
-      activeViewByBoard: {} as Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>,
+      activeViewByBoard: {} as Record<ID, BoardViewKind>,
       // Board opens to the Trello 3-panel layout: Inbox | Planner | Board (kanban).
       // inboxOpen/plannerOpen are NOT persisted (see partialize), so every fresh load
       // resets to this default and a hard refresh keeps the 3-panel layout.
@@ -1173,6 +1182,83 @@ export const boardStore = create<Store>()(
 
       setBoardView(boardId, view) {
         set((s) => { s.activeViewByBoard[boardId] = view; });
+      },
+
+      // ── Power-Ups (in-house, per-board) ──────────────────────────
+      toggleBoardPowerUp(boardId, key) {
+        set((s) => {
+          const b = s.boards[boardId]; if (!b) return;
+          const pu = { ...(b.powerUps ?? {}) };
+          pu[key] = !pu[key];
+          b.powerUps = pu;
+        });
+      },
+      addCustomField(boardId, def) {
+        const id = newId();
+        set((s) => {
+          const b = s.boards[boardId]; if (!b) return;
+          const field: CustomFieldDef = {
+            id,
+            name: def.name.trim() || 'Field',
+            type: def.type,
+            ...(def.type === 'dropdown' ? { options: def.options ?? [] } : {}),
+          };
+          b.customFields = [...(b.customFields ?? []), field];
+        });
+        return id;
+      },
+      updateCustomField(boardId, fieldId, patch) {
+        set((s) => {
+          const b = s.boards[boardId]; if (!b?.customFields) return;
+          const f = b.customFields.find((x) => x.id === fieldId); if (!f) return;
+          if (patch.name !== undefined) f.name = patch.name;
+          if (patch.options !== undefined) f.options = patch.options;
+        });
+      },
+      removeCustomField(boardId, fieldId) {
+        set((s) => {
+          const b = s.boards[boardId]; if (!b?.customFields) return;
+          b.customFields = b.customFields.filter((x) => x.id !== fieldId);
+          // Drop the value from every card on this board.
+          for (const listId of b.listIds) {
+            const list = s.lists[listId]; if (!list) continue;
+            for (const cardId of list.cardIds) {
+              const card = s.cards[cardId];
+              if (card?.customFieldValues && fieldId in card.customFieldValues) {
+                const next = { ...card.customFieldValues };
+                delete next[fieldId];
+                card.customFieldValues = next;
+              }
+            }
+          }
+        });
+      },
+      setCardFieldValue(cardId, fieldId, value) {
+        set((s) => {
+          const card = s.cards[cardId]; if (!card) return;
+          const next = { ...(card.customFieldValues ?? {}) };
+          if (value === null || value === '') delete next[fieldId];
+          else next[fieldId] = value;
+          card.customFieldValues = next;
+          card.updatedAt = now();
+        });
+      },
+      toggleCardVote(cardId) {
+        set((s) => {
+          const card = s.cards[cardId]; if (!card) return;
+          const voter = s.currentUserId ?? 'me';
+          const votes = new Set(card.votes ?? []);
+          if (votes.has(voter)) votes.delete(voter); else votes.add(voter);
+          card.votes = [...votes];
+          card.updatedAt = now();
+        });
+      },
+      setCardLocation(cardId, location) {
+        set((s) => {
+          const card = s.cards[cardId]; if (!card) return;
+          card.location = location && location.address.trim() ? location : null;
+          card.updatedAt = now();
+        });
       },
 
       // ── Activity / covers / checklists ───────────────────────────

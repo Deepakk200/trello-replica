@@ -8,6 +8,13 @@ import { db } from "@/lib/db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
+  // Trust the incoming host. Required for self-hosted / local dev (and any non-
+  // Vercel host, e.g. a different port, 127.0.0.1, or a LAN IP): without it
+  // Auth.js v5 throws `UntrustedHost`, which makes `auth()` fail inside proxy.ts
+  // so every protected route (e.g. a board's /b/<id>/<slug>) redirects to
+  // /sign-in and bounces back via callbackUrl — an infinite redirect loop.
+  // Vercel auto-trusts its host, so this is a safe no-op there.
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
     Google({

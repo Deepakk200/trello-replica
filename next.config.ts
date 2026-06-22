@@ -30,10 +30,10 @@ const withSerwist = withSerwistInit({
 // replay web-worker via blob:), Stripe, Google fonts/avatars, or the PWA SW.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://browser.sentry-cdn.com https://js.sentry-cdn.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://lh3.googleusercontent.com https://*.googleusercontent.com https://*.tile.openstreetmap.org",
   "connect-src 'self' wss://*.liveblocks.io https://*.liveblocks.io https://*.ingest.sentry.io https://*.uploadthing.com https://*.ufs.sh https://utfs.io https://api.stripe.com https://*.posthog.com https://us.i.posthog.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
   "worker-src 'self' blob:",

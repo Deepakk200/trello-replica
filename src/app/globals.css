@@ -114,8 +114,8 @@
   --border-subtle:     #38414A;
   --accent:            #579DFF;
   --accent-hover:      #85B8FF;
-  --primary:           #1D7AFC;
-  --primary-hover:     #388BFF;
+  --primary:           #0C66E4;
+  --primary-hover:     #0055CC;
   --success:           #4BCE97;
   --warning:           #F5CD47;
   --danger:            #F87168;
@@ -177,7 +177,7 @@
   --border-subtle:     #DCDFE4;
   --accent:            #1D7AFC;
   --accent-hover:      #0055CC;
-  --primary:           #1D7AFC;
+  --primary:           #0C66E4;
   --primary-hover:     #0055CC;
   --success:           #1F845A;
   --warning:           #946F00;
@@ -267,6 +267,18 @@
 .cards-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
 .cards-scroll::-webkit-scrollbar-track { background: transparent; }
 
+/* ── Motion tokens (single source of truth for all transitions/animations) ──
+   Trello-parity timing scale. `standard` = ease-out for enter/move;
+   `emphasized` = the snappier curve for modals/popovers. Reference these via
+   var(--duration-*)/var(--ease-*) so motion stays consistent across surfaces. */
+:root {
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+  --ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes card-enter     { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
 @keyframes list-enter     { from { opacity:0; transform:translateX(8px)  } to { opacity:1; transform:translateX(0) } }
 @keyframes modal-enter    { from { opacity:0; transform:scale(0.96)      } to { opacity:1; transform:scale(1)    } }
@@ -274,13 +286,13 @@
 @keyframes menu-enter     { from { transform:translateX(100%) }             to { transform:translateX(0) }          }
 @keyframes panel-enter-left { from { transform:translateX(-100%) }           to { transform:translateX(0) }          }
 @keyframes popover-enter  { from { opacity:0; transform:translateY(-4px) scale(0.98) } to { opacity:1; transform:translateY(0) scale(1) } }
-.anim-popover-enter     { animation: popover-enter  0.15s cubic-bezier(0.16, 1, 0.3, 1); }
-.anim-card-enter        { animation: card-enter     0.18s ease-out; }
-.anim-list-enter        { animation: list-enter     0.22s ease-out; }
-.anim-modal-enter       { animation: modal-enter    0.15s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-backdrop-enter { animation: backdrop-enter 0.15s ease-out; }
-.anim-menu-enter        { animation: menu-enter     0.2s ease-out; }
-.anim-panel-enter-left  { animation: panel-enter-left 0.2s ease-out; }
+.anim-popover-enter     { animation: popover-enter  var(--duration-fast) var(--ease-emphasized); }
+.anim-card-enter        { animation: card-enter     var(--duration-base) var(--ease-standard); }
+.anim-list-enter        { animation: list-enter     var(--duration-slow) var(--ease-standard); }
+.anim-modal-enter       { animation: modal-enter    var(--duration-fast) var(--ease-emphasized); }
+.animate-backdrop-enter { animation: backdrop-enter var(--duration-fast) var(--ease-standard); }
+.anim-menu-enter        { animation: menu-enter     var(--duration-base) var(--ease-standard); }
+.anim-panel-enter-left  { animation: panel-enter-left var(--duration-base) var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) {
   .anim-panel-enter-left { animation: none; }
 }

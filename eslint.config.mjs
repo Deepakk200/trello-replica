@@ -18,14 +18,18 @@ const eslintConfig = defineConfig([
     "public/sw.js.map",
     // Serwist precache worker — generated build artifact, not source.
     "public/swe-worker-*.js",
-    // Node CJS perf-measurement script (run with Playwright, not app code).
+    // Node/Playwright perf-measurement scripts (run manually, not app code).
     "bench-virtual.cjs",
+    "scripts/**",
     // Stale repo backup — an accidentally-embedded nested git repo, untracked and
     // gitignored. Excluded so `eslint .` stops traversing a duplicate source tree.
     "trello-replica-backup/**",
-    // Installed skill/agent tooling (third-party scripts, untracked). Not app
-    // source — exclude so `eslint .` doesn't lint vendored tooling.
+    // Installed skill/agent tooling (third-party vendored scripts). Not app
+    // source — exclude so `eslint .` doesn't lint vendored tooling. `.claude/`
+    // holds committed skill bundles (e.g. impeccable's detector scripts) whose
+    // hundreds of upstream warnings would otherwise fail the --max-warnings 0 CI.
     ".agents/**",
+    ".claude/**",
   ]),
   {
     // React-Compiler-readiness lints from eslint-plugin-react-hooks v6. This

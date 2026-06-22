@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Bot, MoreHorizontal, SlidersHorizontal, Star, UserPlus } from 'lucide-react';
+import { Bot, MoreHorizontal, SlidersHorizontal, Star, UserPlus, Zap } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
 import type { Board, DueFilter } from '@/types';
 import { MemberAvatar } from '@/components/ui/member-avatar';
@@ -20,6 +20,10 @@ const AutomationPanel = dynamic(
   () => import('@/components/automation/automation-panel').then((m) => m.AutomationPanel),
   { ssr: false },
 );
+const PowerUpsPanel = dynamic(
+  () => import('./power-ups-panel').then((m) => m.PowerUpsPanel),
+  { ssr: false },
+);
 
 export function BoardHeader({ board }: { board: Board }) {
   const renameBoard = useBoardStore((s) => s.renameBoard);
@@ -35,6 +39,7 @@ export function BoardHeader({ board }: { board: Board }) {
   const [draft, setDraft] = useState(board.title);
   const [showMenu, setShowMenu] = useState(false);
   const [showAutomation, setShowAutomation] = useState(false);
+  const [showPowerUps, setShowPowerUps] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -117,6 +122,11 @@ export function BoardHeader({ board }: { board: Board }) {
           {/* Automation (Butler) */}
           <button onClick={() => setShowAutomation(true)} className={iconBtn} title="Automation" aria-label="Automation">
             <Bot size={14} />
+          </button>
+
+          {/* Power-Ups */}
+          <button onClick={() => setShowPowerUps(true)} className={iconBtn} title="Power-Ups" aria-label="Power-Ups">
+            <Zap size={14} />
           </button>
 
           {/* Member avatars — hidden on the narrowest screens */}
@@ -243,6 +253,7 @@ export function BoardHeader({ board }: { board: Board }) {
 
       {showMenu && <BoardMenu boardId={board.id} onClose={() => setShowMenu(false)} />}
       {showAutomation && <AutomationPanel boardId={board.id} onClose={() => setShowAutomation(false)} />}
+      {showPowerUps && <PowerUpsPanel boardId={board.id} onClose={() => setShowPowerUps(false)} />}
       {showShare && <ShareDialog boardId={board.id} onClose={() => setShowShare(false)} />}
     </>
   );

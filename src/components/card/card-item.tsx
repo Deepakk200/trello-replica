@@ -11,13 +11,12 @@ import type { ID } from '@/types';
 import { LABEL_VAR } from '@/lib/colors';
 import { useLabelExpansion } from '@/lib/label-expansion';
 import { CardBadges } from './card-badges';
+import { CardPowerUpBadges } from './card-powerup-badges';
 import { QuickEditPopover } from './quick-edit-popover';
 import { archiveCardWithUndo } from '@/features/undo/archive-actions';
 
 export const CardItem = memo(
   function CardItem({ boardId, listId, cardId }: { boardId: ID; listId: ID; cardId: ID }) {
-    void boardId;
-
     const card           = useBoardStore((s) => s.cards[cardId]);
     const cardLabels     = useBoardStore(
       useShallow((s) => (s.cards[cardId]?.labelIds ?? []).map((id) => s.labels[id]).filter(Boolean)),
@@ -213,6 +212,9 @@ export const CardItem = memo(
 
               {/* Badges — CardBadges returns null when nothing to show */}
               <CardBadges card={card} />
+
+              {/* Power-Up badges (votes + custom fields) — null when off/empty */}
+              <CardPowerUpBadges boardId={boardId} cardId={cardId} />
 
               {/* Member avatar stack */}
               {cardMemberIds.length > 0 && (

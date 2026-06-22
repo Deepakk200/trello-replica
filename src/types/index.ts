@@ -24,6 +24,12 @@ export interface SavedFilter {
   filter: Pick<FilterState, 'search' | 'labelIds' | 'memberIds' | 'dueFilter' | 'complete'>;
 }
 
+/** Board view surfaces. `timeline` is the Gantt view; `map` plots located cards. */
+export type BoardViewKind = 'board' | 'calendar' | 'table' | 'dashboard' | 'timeline' | 'map';
+
+/** A card's optional location for the Map view. */
+export interface CardLocation { address: string; lat?: number; lng?: number }
+
 export type PanelKey = 'inbox' | 'planner' | 'board';
 export interface PanelLayout {
   inboxWidth: number;       // px when expanded
@@ -79,6 +85,18 @@ export interface CardTemplate {
   checklistTemplates: Array<{ title: string; items: string[] }>;
 }
 
+// Power-Ups (in-house, per-board feature toggles — not a 3rd-party marketplace).
+export type PowerUpKey = 'voting' | 'customFields';
+export type CustomFieldType = 'text' | 'number' | 'date' | 'dropdown' | 'checkbox';
+export interface CustomFieldDef {
+  id: ID;
+  name: string;
+  type: CustomFieldType;
+  /** Options for `dropdown` fields. */
+  options?: string[];
+}
+export type CustomFieldValue = string | number | boolean | null;
+
 export interface Label { id: ID; name: string; color: LabelColor }
 export interface ActivityEntry { id: ID; type: 'created'|'moved'|'renamed'|'commented'|'labeled'|'due'|'described'; text: string; createdAt: string; author?: string; authorInitials?: string }
 export interface ChecklistItem { id: ID; text: string; completed: boolean; createdAt: string }
@@ -91,6 +109,12 @@ export interface Card {
   reminder?: string | null;
   linkedCardIds: ID[];
   checklists: Checklist[];
+  /** Power-Up: Voting — member ids who voted (count = length). Optional/additive. */
+  votes?: ID[];
+  /** Power-Up: Custom Fields — values keyed by the board's field def id. Additive. */
+  customFieldValues?: Record<ID, CustomFieldValue>;
+  /** Optional location for the Map view. Additive. */
+  location?: CardLocation | null;
   activity: ActivityEntry[]; createdAt: string; updatedAt: string;
   cover: {
     type: 'none' | 'color' | 'image';
@@ -107,6 +131,10 @@ export interface Board {
   workspaceId: ID; visibility: BoardVisibility;
   /** Closed (soft-deleted) board — hidden from the grid, restorable from "Closed boards". */
   isArchived?: boolean; archivedAt?: string | null;
+  /** Power-Ups enabled on this board (in-house feature toggles). Additive. */
+  powerUps?: Partial<Record<PowerUpKey, boolean>>;
+  /** Custom Fields power-up: per-board field definitions. Additive. */
+  customFields?: CustomFieldDef[];
 }
 export interface BoardState {
   boards: Record<ID, Board>;
@@ -141,7 +169,7 @@ export interface BoardState {
   starredBoardIds: ID[];
   recentBoardIds: ID[];
   sidebarCollapsed: boolean;
-  activeViewByBoard: Record<ID, 'board' | 'calendar' | 'table' | 'dashboard'>;
+  activeViewByBoard: Record<ID, BoardViewKind>;
   notifications: Notification[];
   selectedCardIds: ID[];
   /** Named, persisted board filters keyed by board id. */

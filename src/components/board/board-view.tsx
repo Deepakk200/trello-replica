@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { EmptyState } from '@/components/ui/empty-state';
+import type { BoardViewKind } from '@/types';
 import { BoardHeader } from './board-header';
 import { ListsRow } from './lists-row';
 import { BoardShortcuts } from './board-shortcuts';
@@ -18,6 +19,8 @@ const viewFallback = () => <div className="flex-1 min-h-0 animate-pulse bg-white
 const CalendarView = dynamic(() => import('./calendar-view').then((m) => m.CalendarView), { ssr: false, loading: viewFallback });
 const TableView = dynamic(() => import('./table-view').then((m) => m.TableView), { ssr: false, loading: viewFallback });
 const DashboardView = dynamic(() => import('./dashboard-view').then((m) => m.DashboardView), { ssr: false, loading: viewFallback });
+const TimelineView = dynamic(() => import('./timeline-view').then((m) => m.TimelineView), { ssr: false, loading: viewFallback });
+const MapView = dynamic(() => import('./map-view').then((m) => m.MapView), { ssr: false, loading: viewFallback });
 const CardModal = dynamic(
   () => import('@/components/card/card-modal').then((m) => m.CardModal),
   { ssr: false },
@@ -59,7 +62,7 @@ export function BoardView() {
   const activeView = useBoardStore((s) => {
     const id = s.activeBoardId ?? Object.keys(s.boards)[0] ?? null;
     return (id ? s.activeViewByBoard[id] : null) ?? 'board';
-  }) as 'board' | 'calendar' | 'table' | 'dashboard';
+  }) as BoardViewKind;
 
   const visibleListCount = useBoardStore((s) => {
     const id = s.activeBoardId ?? Object.keys(s.boards)[0] ?? null;
@@ -159,6 +162,16 @@ export function BoardView() {
           {activeView === 'dashboard' && (
             <div className="flex-1 min-h-0 overflow-auto px-3 pb-28">
               <DashboardView boardId={board.id} />
+            </div>
+          )}
+          {activeView === 'timeline' && (
+            <div className="flex-1 min-h-0 overflow-hidden px-3 pb-28">
+              <TimelineView boardId={board.id} />
+            </div>
+          )}
+          {activeView === 'map' && (
+            <div className="flex-1 min-h-0 overflow-hidden px-3 pb-28">
+              <MapView boardId={board.id} />
             </div>
           )}
         </div>

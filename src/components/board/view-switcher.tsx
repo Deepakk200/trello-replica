@@ -1,15 +1,15 @@
 'use client';
 
-import { BarChart3, Calendar, LayoutGrid, Table2 } from 'lucide-react';
+import { BarChart3, Calendar, GanttChart, LayoutGrid, Map, Table2 } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
-import type { ID } from '@/types';
+import type { BoardViewKind, ID } from '@/types';
 
-type View = 'board' | 'calendar' | 'table' | 'dashboard';
-
-const TABS: Array<{ view: View; label: string; icon: React.ReactNode }> = [
+const TABS: Array<{ view: BoardViewKind; label: string; icon: React.ReactNode }> = [
   { view: 'board',     label: 'Board',     icon: <LayoutGrid className="w-3.5 h-3.5" /> },
   { view: 'calendar',  label: 'Calendar',  icon: <Calendar   className="w-3.5 h-3.5" /> },
   { view: 'table',     label: 'Table',     icon: <Table2     className="w-3.5 h-3.5" /> },
+  { view: 'timeline',  label: 'Timeline',  icon: <GanttChart className="w-3.5 h-3.5" /> },
+  { view: 'map',       label: 'Map',       icon: <Map        className="w-3.5 h-3.5" /> },
   { view: 'dashboard', label: 'Dashboard', icon: <BarChart3  className="w-3.5 h-3.5" /> },
 ];
 
