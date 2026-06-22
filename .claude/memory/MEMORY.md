@@ -1,1 +1,0 @@
-- [Project Bootstrap](project_bootstrap.md) — PRODUCTION READY 2026-06-01; all 13 phases done; build clean; nanoid resolved

@@ -55,3 +55,8 @@ next-env.d.ts
 # stale repo backup — an accidentally-embedded nested git repo (no .gitmodules).
 # Untracked from the parent and ignored so it never re-enters lint/build/git.
 /trello-replica-backup/
+.claude/ 
+.agents/ 
+CLAUDE.md 
+AGENTS.md 
+skills-lock.json 
