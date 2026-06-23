@@ -9,7 +9,7 @@ import { getActiveWorkspaceId, getSessionUser } from "@/lib/authz";
 import { DbWorkspaceSwitcher } from "@/components/ui/db-workspace-switcher";
 import { TemplatesRow } from "@/components/db-board/templates-row";
 import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
-import { EmptyState } from "@/components/ui/empty-state";
+import { CreateBoardTile } from "@/components/db-board/create-board-tile";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +46,6 @@ export default async function BoardsPage() {
     : [0, 0, 0, 0];
   const showOnboarding = boardCount < 3;
 
-  const totalBoards = grouped.reduce((s, g) => s + g.boards.length, 0) + shared.length;
-
   return (
     <main className="min-h-screen bg-trello-bg px-6 py-8">
       <div className="mx-auto max-w-5xl">
@@ -70,43 +68,39 @@ export default async function BoardsPage() {
 
         <TemplatesRow />
 
-        {totalBoards === 0 ? (
-          <EmptyState
-            title="No boards yet"
-            subtitle="Pick a template above to create your first board and start organising your work."
-          />
-        ) : (
-          <div className="flex flex-col gap-8">
-            {grouped.map((g) => (
-              <section key={g.workspaceId}>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="w-7 h-7 rounded bg-linear-to-br from-sky-500 to-indigo-500 text-white text-xs font-bold flex items-center justify-center">
-                    {g.workspaceName[0]?.toUpperCase()}
-                  </span>
-                  <h2 className="text-sm font-semibold text-trello-text">{g.workspaceName}</h2>
-                  <span className="text-[10px] uppercase font-semibold tracking-wide text-trello-textSubtle bg-trello-cardHover px-1.5 py-0.5 rounded">{g.role}</span>
-                  {g.isActive && <span className="text-[10px] uppercase tracking-wide text-emerald-400">Active</span>}
-                </div>
-                {g.boards.length === 0 ? (
-                  <p className="text-sm text-trello-textSubtle italic">No boards in this workspace.</p>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {g.boards.map((b) => <BoardCard key={b.id} id={b.id} title={b.title} background={b.background} lists={b._count.lists} />)}
-                  </div>
-                )}
-              </section>
-            ))}
-
-            {shared.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-trello-text mb-3">Shared with you</h2>
+        <div className="flex flex-col gap-8">
+          {grouped.map((g) => (
+            <section key={g.workspaceId}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-7 h-7 rounded bg-linear-to-br from-sky-500 to-indigo-500 text-white text-xs font-bold flex items-center justify-center">
+                  {g.workspaceName[0]?.toUpperCase()}
+                </span>
+                <h2 className="text-sm font-semibold text-trello-text">{g.workspaceName}</h2>
+                <span className="text-[10px] uppercase font-semibold tracking-wide text-trello-textSubtle bg-trello-cardHover px-1.5 py-0.5 rounded">{g.role}</span>
+                {g.isActive && <span className="text-[10px] uppercase tracking-wide text-emerald-400">Active</span>}
+              </div>
+              {/* The active workspace always shows the create tile — it doubles as the
+                  empty-state CTA when the workspace has no boards yet. */}
+              {g.boards.length === 0 && !g.isActive ? (
+                <p className="text-sm text-trello-textSubtle italic">No boards in this workspace.</p>
+              ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {shared.map((b) => <BoardCard key={b.id} id={b.id} title={b.title} background={b.background} lists={b._count.lists} />)}
+                  {g.boards.map((b) => <BoardCard key={b.id} id={b.id} title={b.title} background={b.background} lists={b._count.lists} />)}
+                  {g.isActive && <CreateBoardTile />}
                 </div>
-              </section>
-            )}
-          </div>
-        )}
+              )}
+            </section>
+          ))}
+
+          {shared.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-trello-text mb-3">Shared with you</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {shared.map((b) => <BoardCard key={b.id} id={b.id} title={b.title} background={b.background} lists={b._count.lists} />)}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
     </main>
   );

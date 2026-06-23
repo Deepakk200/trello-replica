@@ -1,10 +1,12 @@
 'use client';
 
-import { Inbox, CalendarDays, LayoutDashboard, ArrowLeftRight } from 'lucide-react';
+import { Inbox, CalendarDays, LayoutDashboard, ArrowLeftRight, LayoutGrid } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 
 export function BottomNav() {
+  const router = useRouter();
   const { inboxOpen, plannerOpen } = useBoardStore(
     useShallow((s) => ({ inboxOpen: s.inboxOpen, plannerOpen: s.plannerOpen })),
   );
@@ -19,6 +21,7 @@ export function BottomNav() {
   const boardActive = true;
 
   const tabs = [
+    { id: 'boards',  label: 'Boards',        Icon: LayoutGrid,      active: false,       onClick: () => router.push('/boards') },
     { id: 'inbox',   label: 'Inbox',         Icon: Inbox,           active: inboxOpen,   onClick: () => setInboxOpen(!inboxOpen) },
     { id: 'planner', label: 'Planner',       Icon: CalendarDays,    active: plannerOpen, onClick: () => setPlannerOpen(!plannerOpen) },
     { id: 'board',   label: 'Board',         Icon: LayoutDashboard, active: boardActive, onClick: () => { setInboxOpen(false); setPlannerOpen(false); } },

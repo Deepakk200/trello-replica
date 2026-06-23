@@ -7,10 +7,10 @@ import {
   DndContext, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable, closestCorners, type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, X, Download } from "lucide-react";
+import { Plus, X, Download, GripVertical } from "lucide-react";
 import type { getBoard } from "@/features/boards/actions";
 import { moveCard, createCard, deleteCard } from "@/features/cards/actions";
-import { createList, deleteList } from "@/features/lists/actions";
+import { createList, deleteList, updateList, reorderLists } from "@/features/lists/actions";
 import { copyList, moveAllCards, sortCardsInList } from "@/features/lists/bulk-actions";
 import { positionBetween } from "@/lib/position";
 import {
@@ -97,6 +97,29 @@ export function DbBoardView({ board }: { board: BoardData }) {
     if (!over) return;
     const overData = over.data.current as { type: string; listId: string; position?: number } | undefined;
     if (!overData) return;
+
+    // ── List reorder (active is a list, dragged by its grip handle) ──
+    const activeData = e.active.data.current as { type?: string; listId?: string } | undefined;
+    if (activeData?.type === "list-reorder") {
+      const movingListId = activeData.listId;
+      const overListId = overData.listId;
+      if (!movingListId || !overListId || overListId === movingListId) return;
+      const ids = b.lists.map((l) => l.id);
+      const from = ids.indexOf(movingListId);
+      const to = ids.indexOf(overListId);
+      if (from < 0 || to < 0) return;
+      const next = [...ids];
+      next.splice(from, 1);
+      next.splice(to, 0, movingListId);
+      const snapshot = b;
+      setB((prev) => ({ ...prev, lists: [...prev.lists].sort((a, c) => next.indexOf(a.id) - next.indexOf(c.id)) }));
+      startTransition(async () => {
+        try { await reorderLists(b.id, next); router.refresh(); }
+        catch (err) { setB(snapshot); notify.error("Couldn't reorder the lists"); Sentry.captureException(err); }
+      });
+      return;
+    }
+
     const toListId = overData.listId;
 
     // Snapshot from current state.
@@ -262,7 +285,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
 
       <LiveCursors />
 
-      {openCardId && <DbCardModal cardId={openCardId} onClose={closeCard} />}
+      {openCardId && <DbCardModal cardId={openCardId} boardId={b.id} boardLabels={b.labels} onClose={closeCard} />}
     </div>
   );
 }
@@ -282,10 +305,23 @@ function ListColumn({
   onDeleteList: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `list:${list.id}`, data: { type: "list", listId: list.id } });
+  const listDrag = useDraggable({ id: `listdrag:${list.id}`, data: { type: "list-reorder", listId: list.id }, disabled: !canEdit });
+  const setListRef = (el: HTMLElement | null) => { listDrag.setNodeRef(el); };
+  const listDragStyle = listDrag.transform
+    ? { transform: `translate3d(${listDrag.transform.x}px, ${listDrag.transform.y}px, 0)`, zIndex: 50 }
+    : undefined;
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(list.title);
   const router = useRouter();
+
+  async function saveTitle() {
+    const t = titleDraft.trim();
+    setEditingTitle(false);
+    if (t && t !== list.title) { await updateList(list.id, { title: t }); router.refresh(); }
+  }
 
   const otherLists = boardLists.filter((l) => l.id !== list.id);
   async function doCopy() { setMenuOpen(false); await copyList(list.id); router.refresh(); }
@@ -293,10 +329,37 @@ function ListColumn({
   async function doMoveAll(toId: string) { setMenuOpen(false); await moveAllCards(list.id, toId); router.refresh(); }
 
   return (
-    <div className={`w-[272px] shrink-0 max-h-full flex flex-col rounded-xl bg-trello-listBg ${isOver ? "ring-2 ring-trello-accent" : ""}`}>
+    <div
+      ref={setListRef}
+      style={listDragStyle}
+      className={`w-[272px] shrink-0 max-h-full flex flex-col rounded-xl bg-trello-listBg ${isOver ? "ring-2 ring-trello-accent" : ""} ${listDrag.isDragging ? "opacity-60" : ""}`}
+    >
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">{list.title}</h2>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          {canEdit && (
+            <button
+              {...(canEdit ? listDrag.attributes : {})} {...(canEdit ? listDrag.listeners : {})}
+              className="cursor-grab text-trello-textSubtle hover:text-white shrink-0 touch-none" title="Drag to reorder list" aria-label="Reorder list"
+            >
+              <GripVertical size={14} />
+            </button>
+          )}
+          {editingTitle && canEdit ? (
+            <input
+              autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } if (e.key === "Escape") setEditingTitle(false); }}
+              className="w-full mr-1 text-sm font-semibold bg-trello-cardBg border border-trello-borderSubtle rounded px-1.5 py-0.5 text-trello-text outline-none"
+            />
+          ) : (
+            <h2
+              onClick={() => { if (canEdit) { setTitleDraft(list.title); setEditingTitle(true); } }}
+              className={`text-sm font-semibold text-white truncate ${canEdit ? "cursor-text" : ""}`}
+            >
+              {list.title}
+            </h2>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-xs text-trello-textSubtle">{list.cards.length}</span>
           {canEdit && <div className="relative">
             <button onClick={() => setMenuOpen((v) => !v)} title="List actions" className="text-trello-textSubtle hover:text-white text-sm px-1 leading-none">⋯</button>
@@ -417,7 +480,16 @@ function DraggableCard({
       {(card._count.comments > 0 || card.dueDate || card.completed || card.assignees.length > 0) && (
         <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-subtle)]">
           {card.completed && <span className="text-emerald-400">✓</span>}
-          {card.dueDate && <span>{new Date(card.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+          {card.dueDate && (() => {
+            const t = new Date(card.dueDate).getTime();
+            const now = new Date().getTime();
+            const cls = card.completed
+              ? "bg-emerald-600/80 text-white"
+              : t < now ? "bg-red-600/80 text-white"
+              : t - now < 86400000 ? "bg-amber-500/90 text-black"
+              : "";
+            return <span className={`px-1 rounded ${cls}`}>{new Date(card.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>;
+          })()}
           {card._count.comments > 0 && <span>💬 {card._count.comments}</span>}
           {card.assignees.length > 0 && (
             <div className="ml-auto flex -space-x-1.5">

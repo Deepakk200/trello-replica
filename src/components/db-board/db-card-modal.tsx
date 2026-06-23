@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { X, Sparkles, Loader2, Paperclip, FileText, Plus, Trash2, Users, Check } from "lucide-react";
-import { getCardDetails, updateCard, createComment, deleteAttachment, setCardCover, getBoardsForMoveDialog, moveCardToList, listAssignableMembers, assignCardMember, unassignCardMember } from "@/features/cards/actions";
+import { getCardDetails, updateCard, createComment, deleteAttachment, setCardCover, getBoardsForMoveDialog, moveCardToList, listAssignableMembers, assignCardMember, unassignCardMember, toggleCardLabel } from "@/features/cards/actions";
+import { upsertLabel } from "@/features/boards/actions";
 import { createChecklist, deleteChecklist, createChecklistItem, updateChecklistItem, deleteChecklistItem } from "@/features/checklists/actions";
 import { getCardActivity } from "@/features/activity/actions";
 import { generateCardDescription } from "@/features/ai/actions";
@@ -11,6 +13,16 @@ import { useEventListener } from "@/lib/liveblocks.config";
 import { CommentReactions } from "./comment-reactions";
 
 const COVER_COLORS = ["#E2483D", "#FF9F1A", "#61BD4F", "#0079BF", "#6554C0"];
+const LABEL_COLORS = ["#61BD4F", "#F2D600", "#FF9F1A", "#EB5A46", "#C377E0", "#0079BF", "#00C2E0", "#51E898", "#FF78CB", "#344563"];
+
+// Format an ISO/Date value into the `YYYY-MM-DDTHH:mm` a datetime-local input wants
+// (in the viewer's local timezone). Empty string when there's no date.
+function toLocalInput(d: Date | string | null): string {
+  if (!d) return "";
+  const dt = new Date(d);
+  const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
 
 type CardDetails = NonNullable<Awaited<ReturnType<typeof getCardDetails>>>;
 type CardActivity = Awaited<ReturnType<typeof getCardActivity>>[number];
@@ -30,11 +42,18 @@ function activityMessage(type: string, data: Record<string, unknown>, who: strin
   }
 }
 
-export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () => void }) {
+export function DbCardModal({ cardId, boardId, boardLabels, onClose }: {
+  cardId: string;
+  boardId: string;
+  boardLabels: { id: string; name: string | null; color: string }[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
   const [card, setCard] = useState<CardDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState("");
   const [desc, setDesc] = useState("");
+  const [due, setDue] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [activities, setActivities] = useState<CardActivity[]>([]);
 
@@ -42,7 +61,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
     getCardActivity(cardId).then(setActivities).catch(() => {});
     return getCardDetails(cardId).then((data) => {
       setCard(data);
-      if (data) setDesc(data.description ?? "");
+      if (data) { setDesc(data.description ?? ""); setDue(toLocalInput(data.dueDate)); }
       setLoading(false);
     });
   }
@@ -99,6 +118,25 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
   const [moveBoardId, setMoveBoardId] = useState("");
   const [moveListId, setMoveListId] = useState("");
 
+  const [newLabel, setNewLabel] = useState(false);
+  const [labelName, setLabelName] = useState("");
+  const [labelColor, setLabelColor] = useState(LABEL_COLORS[0]);
+  async function toggleLabel(labelId: string) { await toggleCardLabel(cardId, labelId); await refetch(); router.refresh(); }
+  async function createLabel() {
+    await upsertLabel({ boardId, name: labelName.trim() || undefined, color: labelColor });
+    setNewLabel(false); setLabelName(""); router.refresh();
+  }
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  async function saveTitle() {
+    const t = titleDraft.trim();
+    setEditingTitle(false);
+    if (t && t !== card?.title) { await updateCard(cardId, { title: t }); refetch(); }
+  }
+  async function archiveCard() { await updateCard(cardId, { archived: true }); onClose(); router.refresh(); }
+  async function saveDue() { await updateCard(cardId, { dueDate: due ? new Date(due) : null }); refetch(); }
+  async function clearDue() { setDue(""); await updateCard(cardId, { dueDate: null }); refetch(); }
+  async function toggleComplete() { if (card) { await updateCard(cardId, { completed: !card.completed }); refetch(); } }
   async function pickColorCover(value: string) { await setCardCover(cardId, { type: "color", value }); refetch(); }
   async function clearCover() { await setCardCover(cardId, null); refetch(); }
   async function setImageCover(url: string) { await setCardCover(cardId, { type: "image", url }); refetch(); }
@@ -136,7 +174,20 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
     <div className="fixed inset-0 z-[70] bg-black/50 flex items-start justify-center overflow-y-auto py-10 px-4" onClick={onClose}>
       <div className="w-full max-w-2xl bg-trello-surfaceRaised border border-trello-border rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-4 border-b border-trello-border">
-          <h2 className="text-lg font-semibold text-trello-text pr-8">{card?.title ?? (loading ? "Loading…" : "Card")}</h2>
+          {editingTitle && canEdit ? (
+            <input
+              autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } if (e.key === "Escape") setEditingTitle(false); }}
+              className="flex-1 mr-2 text-lg font-semibold bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-0.5 text-trello-text outline-none"
+            />
+          ) : (
+            <h2
+              onClick={() => { if (canEdit && card) { setTitleDraft(card.title); setEditingTitle(true); } }}
+              className={`text-lg font-semibold text-trello-text pr-8 ${canEdit ? "cursor-text rounded px-1 -mx-1 hover:bg-trello-cardHover" : ""}`}
+            >
+              {card?.title ?? (loading ? "Loading…" : "Card")}
+            </h2>
+          )}
           <button onClick={onClose} aria-label="Close" className="p-1 rounded hover:bg-trello-cardHover text-trello-textSubtle hover:text-trello-text">
             <X className="w-5 h-5" />
           </button>
@@ -156,6 +207,7 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
               {cover && <button onClick={clearCover} className="text-xs text-trello-danger hover:underline">Remove</button>}
               <div className="w-px h-4 bg-trello-border mx-1" />
               <button onClick={addChecklist} className="text-xs px-2 py-1 rounded bg-muted/60 text-foreground hover:bg-muted">☑ Add checklist</button>
+              <button onClick={archiveCard} className="text-xs px-2 py-1 rounded bg-muted/60 text-foreground hover:bg-muted">Archive</button>
               <div className="relative">
                 <button onClick={openMove} className="text-xs px-2 py-1 rounded bg-muted/60 text-foreground hover:bg-muted">Move</button>
                 {moveOpen && (
@@ -216,6 +268,70 @@ export function DbCardModal({ cardId, onClose }: { cardId: string; onClose: () =
                   </div>
                 )}
               </div>
+            </section>
+
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">Labels</h3>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {boardLabels.map((l) => {
+                  const on = card.labels.some((cl) => cl.labelId === l.id);
+                  return (
+                    <button
+                      key={l.id} onClick={canEdit ? () => toggleLabel(l.id) : undefined} disabled={!canEdit}
+                      style={{ background: l.color }}
+                      title={l.name ?? "Label"}
+                      className={`h-7 px-3 rounded text-xs font-medium text-white flex items-center gap-1 disabled:cursor-default ${on ? "ring-2 ring-white" : "opacity-60 hover:opacity-100"}`}
+                    >
+                      {l.name || "  "}{on && <Check size={12} />}
+                    </button>
+                  );
+                })}
+                {boardLabels.length === 0 && !newLabel && <span className="text-xs text-trello-textSubtle italic">No labels yet.</span>}
+                {canEdit && !newLabel && (
+                  <button onClick={() => setNewLabel(true)} className="h-7 px-2 rounded bg-trello-cardHover text-trello-textSubtle hover:text-trello-text text-xs flex items-center gap-1">
+                    <Plus size={12} /> New
+                  </button>
+                )}
+              </div>
+              {canEdit && newLabel && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <input
+                    autoFocus value={labelName} onChange={(e) => setLabelName(e.target.value)} placeholder="Label name (optional)"
+                    onKeyDown={(e) => { if (e.key === "Enter") createLabel(); if (e.key === "Escape") { setNewLabel(false); setLabelName(""); } }}
+                    className="bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1 text-sm text-trello-text outline-none"
+                  />
+                  <div className="flex gap-1">
+                    {LABEL_COLORS.map((c) => (
+                      <button key={c} type="button" onClick={() => setLabelColor(c)} style={{ background: c }} aria-label={`Color ${c}`}
+                        className={`w-6 h-6 rounded ${labelColor === c ? "ring-2 ring-white" : ""}`} />
+                    ))}
+                  </div>
+                  <button onClick={createLabel} className="btn-primary text-xs px-3 py-1.5">Add</button>
+                  <button onClick={() => { setNewLabel(false); setLabelName(""); }} className="btn-ghost text-xs px-2 py-1.5">Cancel</button>
+                </div>
+              )}
+            </section>
+
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-trello-textSubtle mb-2">Due date</h3>
+              {canEdit ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)}
+                    className="bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1 text-sm text-trello-text outline-none"
+                  />
+                  <button onClick={saveDue} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                  {card.dueDate && <button onClick={clearDue} className="text-xs text-trello-danger hover:underline">Remove</button>}
+                  <label className="flex items-center gap-1.5 text-xs text-trello-text ml-1 cursor-pointer">
+                    <input type="checkbox" checked={card.completed} onChange={toggleComplete} /> Complete
+                  </label>
+                </div>
+              ) : (
+                <p className="text-sm text-trello-textSecondary">
+                  {card.dueDate ? new Date(card.dueDate).toLocaleString() : "No due date."}
+                  {card.completed && " · Complete"}
+                </p>
+              )}
             </section>
 
             <section>
