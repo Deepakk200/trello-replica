@@ -6,8 +6,47 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 
+// Build the OAuth provider list. CRITICAL: register a provider ONLY when both its
+// id AND secret are present. Auth.js v5 runs `assertConfig` per request, and a
+// single OAuth provider with an undefined clientId/secret makes the ENTIRE config
+// invalid — so EVERY sign-in (Google, GitHub, AND credentials) fails with
+// `?error=Configuration`. Previously Google was registered unconditionally with
+// `process.env.GOOGLE_CLIENT_ID!`; if that var was absent/misnamed in the
+// environment it broke all auth. We also accept both env-var naming conventions:
+// the Auth.js default (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`) and the project's
+// historical `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`.
+function oauthProviders() {
+  const list = [];
+  const googleId = process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID;
+  const googleSecret = process.env.AUTH_GOOGLE_SECRET ?? process.env.GOOGLE_CLIENT_SECRET;
+  if (googleId && googleSecret)
+    list.push(
+      Google({
+        clientId: googleId,
+        clientSecret: googleSecret,
+        // Link a Google sign-in to an existing user with the SAME email (e.g. one
+        // created via email/password) instead of failing with
+        // `OAuthAccountNotLinked`. Safe for Google specifically because Google
+        // verifies email ownership (the OIDC `email_verified` claim) — the person
+        // signing in provably controls that inbox, so this is not an
+        // account-takeover vector. Deliberately NOT enabled for GitHub below,
+        // where an email can be unverified.
+        allowDangerousEmailAccountLinking: true,
+      }),
+    );
+
+  const githubId = process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_CLIENT_ID;
+  const githubSecret = process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_CLIENT_SECRET;
+  if (githubId && githubSecret) list.push(GitHub({ clientId: githubId, clientSecret: githubSecret }));
+
+  return list;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
+  // Read the session/JWT secret explicitly, supporting both the Auth.js name and
+  // the legacy NextAuth name so a mis-named env var can't silently disable auth.
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   // Trust the incoming host. Required for self-hosted / local dev (and any non-
   // Vercel host, e.g. a different port, 127.0.0.1, or a LAN IP): without it
   // Auth.js v5 throws `UntrustedHost`, which makes `auth()` fail inside proxy.ts
@@ -17,14 +56,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    // GitHub OAuth — only registered when configured, so it stays inert otherwise.
-    ...(process.env.GITHUB_CLIENT_ID
-      ? [GitHub({ clientId: process.env.GITHUB_CLIENT_ID, clientSecret: process.env.GITHUB_CLIENT_SECRET! })]
-      : []),
+    // OAuth providers are only added when fully configured (see oauthProviders).
+    ...oauthProviders(),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },

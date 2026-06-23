@@ -40,6 +40,13 @@ function dedupeRecent(items: RecentItem[], next: RecentItem) {
   return [next, ...items.filter((item) => !(item.kind === next.kind && item.id === next.id))].slice(0, 5);
 }
 
+// Single entry-point so other UI (e.g. the top-bar search pill) can open the one
+// global CommandPalette instead of spawning a second search system.
+const OPEN_EVENT = 'open-command-palette';
+export function openCommandPalette(query?: string) {
+  document.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: query ?? '' }));
+}
+
 function matchesCardNumber(query: string, number: number) {
   const cleaned = query.trim().replace(/^#/, '');
   return cleaned.length > 0 && String(number).includes(cleaned);
@@ -81,8 +88,18 @@ export function CommandPalette() {
       if (e.key === 'Escape') setOpen(false);
     }
 
+    function onOpen(e: Event) {
+      const seed = (e as CustomEvent<string>).detail;
+      if (typeof seed === 'string' && seed) setQuery(seed);
+      setOpen(true);
+    }
+
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener(OPEN_EVENT, onOpen);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener(OPEN_EVENT, onOpen);
+    };
   }, []);
 
   useEffect(() => {

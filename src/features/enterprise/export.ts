@@ -1,20 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
-
-async function requireAuth() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user;
-}
+import { requireBoardAccess } from "@/lib/authz";
 
 // Returns a CSV string for a board — downloaded client-side.
 export async function exportBoardAsCSV(boardId: string): Promise<string> {
-  const user = await requireAuth();
+  // Read access is enough to export, but it MUST be a board the caller can see
+  // (workspace member, board member, creator, or public) — not any board by id.
+  await requireBoardAccess(boardId);
 
   const board = await db.board.findFirst({
-    where: { id: boardId, workspaceId: user.workspaceId ?? "", deletedAt: null },
+    where: { id: boardId, deletedAt: null },
     include: {
       lists: {
         where: { deletedAt: null, archived: false },

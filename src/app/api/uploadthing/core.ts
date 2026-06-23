@@ -54,6 +54,29 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
+  // Legacy (localStorage) board attachments. The legacy app stores its board
+  // graph in Zustand/localStorage (synced as a snapshot), not the DB Attachment
+  // table, and uses nanoid card ids — so it can't go through `cardAttachment`
+  // (uuid + DB row + board-edit). This route just hosts the file for a signed-in
+  // user and returns its URL; the legacy store persists the reference. It exists
+  // to replace the old base64/FileReader approach (no more data: URLs bloating
+  // localStorage and the synced snapshot).
+  legacyAttachment: f({ blob: { maxFileSize: "8MB", maxFileCount: 1 } })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user?.id) throw new UploadThingError("Unauthorized");
+      try {
+        const { rateLimits, checkRateLimit } = await import("@/lib/rate-limit");
+        await checkRateLimit(rateLimits.api, `upload:${session.user.id}`);
+      } catch (e) {
+        throw new UploadThingError(e instanceof Error ? e.message : "Rate limit exceeded");
+      }
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return { uploadedBy: metadata.userId, url: file.ufsUrl, name: file.name };
+    }),
+
   // User avatar — image only, max 4MB.
   userAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
     .middleware(async () => {

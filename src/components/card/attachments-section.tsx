@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { FileText, Globe, MoreHorizontal, Paperclip, Plus } from 'lucide-react';
 import { useBoardStore } from '@/store/use-board-store';
+import { useUploadThing } from '@/lib/uploadthing';
 import type { ID } from '@/types';
+
+const IMAGE_RE = /\.(jpe?g|png|gif|webp|svg|avif)(\?.*)?$/i;
 
 function detectType(url: string): 'image' | 'link' {
   return /\.(jpe?g|png|gif|webp|svg|avif)(\?.*)?$/i.test(url) ? 'image' : 'link';
@@ -37,6 +40,26 @@ export function AttachmentsSection({
   const [error, setError]       = useState('');
   const [openMenu, setOpenMenu] = useState<ID | null>(null);
 
+  // Upload files to object storage (UploadThing) instead of inlining base64 into
+  // localStorage/the synced snapshot. Store only the hosted URL.
+  const { startUpload, isUploading } = useUploadThing('legacyAttachment', {
+    onClientUploadComplete: (res) => {
+      for (const f of res ?? []) {
+        const fileUrl = f.ufsUrl ?? f.url;
+        const isImage = IMAGE_RE.test(f.name);
+        addAttachment(cardId, {
+          name: f.name,
+          url: fileUrl,
+          type: isImage ? 'image' : 'file',
+          thumbnail: isImage ? fileUrl : undefined,
+          addedBy: 'me',
+        });
+      }
+      setAdding(false);
+    },
+    onUploadError: (e) => setError(e.message || 'Upload failed. Check your connection and try again.'),
+  });
+
   if (!card) return null;
   const attachments = card.attachments ?? [];
   // Stay hidden until there's something to show OR the add form is open
@@ -55,23 +78,9 @@ export function AttachmentsSection({
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setError('File exceeds the 5MB limit.'); return; }
+    if (file.size > 8 * 1024 * 1024) { setError('File exceeds the 8MB limit.'); return; }
     setError('');
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const isImage = file.type.startsWith('image/');
-      addAttachment(cardId, {
-        name: file.name,
-        url: dataUrl,
-        type: isImage ? 'image' : 'file',
-        thumbnail: isImage ? dataUrl : undefined,
-        addedBy: 'me',
-      });
-      setAdding(false);
-    };
-    reader.onerror = () => setError('Could not read that file.');
-    reader.readAsDataURL(file);
+    void startUpload([file]); // onClientUploadComplete adds the attachment with the hosted URL
   }
 
   function extOf(fileName: string): string {
@@ -138,13 +147,15 @@ export function AttachmentsSection({
             </>
           ) : (
             <>
-              <label className="text-xs text-trello-textSubtle">Choose a file (max 5MB)</label>
+              <label className="text-xs text-trello-textSubtle">Choose a file (max 8MB)</label>
               <input
                 type="file"
                 accept="image/*,.pdf,.doc,.docx,.txt,.csv"
                 onChange={handleFile}
-                className="text-xs text-trello-textSecondary file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-trello-primary file:text-trello-textOnBold file:text-xs file:font-medium hover:file:brightness-110 file:cursor-pointer"
+                disabled={isUploading}
+                className="text-xs text-trello-textSecondary file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-trello-primary file:text-trello-textOnBold file:text-xs file:font-medium hover:file:brightness-110 file:cursor-pointer disabled:opacity-50"
               />
+              {isUploading && <p className="text-xs text-trello-textSubtle">Uploading…</p>}
               <button onClick={() => { setAdding(false); setError(''); }} className="btn-ghost text-xs px-3 py-1.5 self-start">Cancel</button>
             </>
           )}

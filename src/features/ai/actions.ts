@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { requireBoardAccess } from "@/lib/authz";
 import { generateText, getAI, AI_MODEL } from "@/lib/ai";
 import { z } from "zod";
 
@@ -38,6 +39,7 @@ Include: what needs to be done, acceptance criteria, and any relevant considerat
 export async function generateBoardSummary(boardId: string) {
   try {
     await requireAuth();
+    await requireBoardAccess(boardId);
     const board = await db.board.findUnique({
       where: { id: boardId },
       include: {
@@ -150,6 +152,7 @@ export async function askBoardAssistant(raw: unknown) {
         content: z.string(),
       })).max(10).optional().default([]),
     }).parse(raw);
+    await requireBoardAccess(boardId);
 
     const board = await db.board.findUnique({
       where: { id: boardId },

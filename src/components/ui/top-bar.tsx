@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bell, HelpCircle, Megaphone, Plus, Search, Users, X } from 'lucide-react';
+import { Bell, HelpCircle, Megaphone, Plus, Search, Users } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { boardStore, useBoardStore, useHasHydrated } from '@/store/use-board-store';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -10,6 +10,7 @@ import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal';
 import { AccountMenu } from './account-menu';
 import { CreateWorkspaceModal } from './create-workspace-modal';
 import { NotificationsDrawer } from './notifications-drawer';
+import { openCommandPalette } from './command-palette';
 
 type Menu = 'create' | 'account' | 'announce' | 'help' | null;
 
@@ -21,7 +22,6 @@ export function TopBar() {
   const [menu, setMenu] = useState<Menu>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [createWsOpen, setCreateWsOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const hydrated = useHasHydrated();
 
   const { notifications, notificationsOpen } = useBoardStore(
@@ -55,7 +55,7 @@ export function TopBar() {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === '?') setShortcutsOpen((v) => !v);
-      if (e.key === 'Escape') { setMenu(null); setMobileSearchOpen(false); }
+      if (e.key === 'Escape') setMenu(null);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -124,10 +124,17 @@ export function TopBar() {
       <div className="hidden sm:flex justify-center min-w-0">
         <div className="flex items-center gap-2 w-full max-w-[480px] rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
           <Search size={14} className="text-white/50 flex-shrink-0" />
+          {/* Read-only trigger: opens the single global CommandPalette (Cmd/Ctrl+K)
+              rather than running a second search. Typed query continues in the
+              palette's own auto-focused input. */}
           <input
             type="text"
             placeholder="Search"
-            className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none border-transparent"
+            readOnly
+            onFocus={() => openCommandPalette()}
+            onClick={() => openCommandPalette()}
+            onKeyDown={(e) => { if (e.key.length === 1) openCommandPalette(e.key); }}
+            className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none border-transparent cursor-pointer"
           />
           <kbd className="hidden md:inline text-xs text-white/40 border border-white/20 rounded px-1 py-0.5 ml-auto">
             {isMac ? '⌘K' : 'Ctrl K'}
@@ -141,7 +148,7 @@ export function TopBar() {
       <div className="flex items-center gap-1 flex-shrink-0">
         {/* Mobile search icon */}
         <button
-          onClick={() => setMobileSearchOpen(true)}
+          onClick={() => openCommandPalette()}
           className={`sm:hidden ${iconBtn}`}
           aria-label="Search"
         >
@@ -270,24 +277,6 @@ export function TopBar() {
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {createWsOpen && <CreateWorkspaceModal onClose={() => setCreateWsOpen(false)} />}
       <NotificationsDrawer />
-
-      {/* Mobile full-width search overlay */}
-      {mobileSearchOpen && (
-        <div className="absolute inset-0 z-50 flex items-center gap-2 px-3 sm:hidden" style={{ background: '#1D2125' }}>
-          <div className="flex items-center gap-2 flex-1 rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
-            <Search size={14} className="text-white/50 flex-shrink-0" />
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search"
-              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-white/50 outline-none"
-            />
-          </div>
-          <button onClick={() => setMobileSearchOpen(false)} className={iconBtn} aria-label="Close search">
-            <X size={18} />
-          </button>
-        </div>
-      )}
     </header>
   );
 }

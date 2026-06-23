@@ -1,21 +1,25 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireBoardEdit } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { initialPosition } from "@/lib/position";
 
-async function requireAuth() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user;
+// Resolve a list's board, gating on EDIT access via the central authz module
+// (not the stale single-workspace JWT check — that bypassed board-membership
+// sharing and let observers mutate). Returns the boardId for reuse.
+async function requireListBoardEdit(listId: string): Promise<string> {
+  const list = await db.list.findFirst({ where: { id: listId, deletedAt: null }, select: { boardId: true } });
+  if (!list) throw new Error("List not found");
+  await requireBoardEdit(list.boardId);
+  return list.boardId;
 }
 
 // Copy a list (and all its cards) within the same board.
 export async function copyList(listId: string, newTitle?: string) {
-  const user = await requireAuth();
+  await requireListBoardEdit(listId);
   const source = await db.list.findFirst({
-    where: { id: listId, board: { workspaceId: user.workspaceId ?? "" } },
+    where: { id: listId },
     include: { cards: { where: { deletedAt: null, archived: false }, orderBy: { position: "asc" }, include: { labels: true } } },
   });
   if (!source) throw new Error("List not found");
@@ -48,12 +52,14 @@ export async function copyList(listId: string, newTitle?: string) {
 
 // Move all cards in a list to another list.
 export async function moveAllCards(fromListId: string, toListId: string) {
-  const user = await requireAuth();
   const [from, to] = await Promise.all([
-    db.list.findFirst({ where: { id: fromListId, board: { workspaceId: user.workspaceId ?? "" } }, select: { id: true, boardId: true } }),
-    db.list.findFirst({ where: { id: toListId, board: { workspaceId: user.workspaceId ?? "" } }, select: { id: true, boardId: true } }),
+    db.list.findFirst({ where: { id: fromListId, deletedAt: null }, select: { id: true, boardId: true } }),
+    db.list.findFirst({ where: { id: toListId, deletedAt: null }, select: { id: true, boardId: true } }),
   ]);
   if (!from || !to) throw new Error("List not found");
+  // Must be able to edit both the source and destination boards.
+  await requireBoardEdit(from.boardId);
+  if (to.boardId !== from.boardId) await requireBoardEdit(to.boardId);
 
   const lastInTo = await db.card.findFirst({ where: { listId: toListId, deletedAt: null }, orderBy: { position: "desc" }, select: { position: true } });
   const cards = await db.card.findMany({ where: { listId: fromListId, deletedAt: null, archived: false }, orderBy: { position: "asc" }, select: { id: true } });
@@ -70,9 +76,8 @@ export async function moveAllCards(fromListId: string, toListId: string) {
 
 // Sort cards in a list by title (A→Z) or due date (ascending, nulls last).
 export async function sortCardsInList(listId: string, by: "title" | "dueDate") {
-  const user = await requireAuth();
-  const list = await db.list.findFirst({ where: { id: listId, board: { workspaceId: user.workspaceId ?? "" } }, select: { boardId: true } });
-  if (!list) throw new Error("List not found");
+  const boardId = await requireListBoardEdit(listId);
+  const list = { boardId };
 
   const cards = await db.card.findMany({
     where: { listId, deletedAt: null, archived: false },
