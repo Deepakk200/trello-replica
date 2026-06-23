@@ -480,6 +480,8 @@ function ListColumn({
     <div
       ref={setListRef}
       style={listDragStyle}
+      data-diag-list-id={list.id}
+      data-diag-card-count={list.cards.length}
       className={`w-[272px] shrink-0 max-h-full flex flex-col rounded-xl bg-trello-listBg ${isOver ? "ring-2 ring-trello-accent" : ""} ${listDrag.isDragging ? "opacity-60" : ""}`}
     >
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
@@ -622,6 +624,7 @@ function DraggableCard({
       {...(canEdit ? drag.attributes : {})}
       {...(canEdit ? drag.listeners : {})}
       data-testid="card"
+      data-diag-card-id={card.id}
       onClick={onOpen}
       className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] hover:ring-2 hover:ring-inset hover:ring-white/30 transition-shadow ${drag.isDragging ? "opacity-40" : ""}`}
     >

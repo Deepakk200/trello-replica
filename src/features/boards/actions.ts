@@ -142,6 +142,14 @@ export async function getBoard(boardId: string) {
     if (board) await cacheSet(cacheKey, board, BOARD_TTL);
   }
   if (!board) return null;
+  // [DIAG] TEMPORARY: log the exact server-returned structure (lists + card ids)
+  // so we can tell whether the duplicate card node comes from the data (e.g. two
+  // "QA" lists, or one card under two lists) vs pure client render. Remove after.
+  console.log(
+    `[DIAG getBoard] board=${board.id} lists=${board.lists.length} ` +
+      `cards=${board.lists.reduce((n, l) => n + l.cards.length, 0)} ` +
+      JSON.stringify(board.lists.map((l) => ({ listId: l.id, title: l.title, cardIds: l.cards.map((c) => c.id) }))),
+  );
   // Attach the caller's effective access so the UI can gate edit affordances.
   return { ...board, _access: { role: access.role, canEdit: access.canEdit, canAdmin: access.canAdmin } };
 }
