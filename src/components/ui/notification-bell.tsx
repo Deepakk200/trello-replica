@@ -72,7 +72,7 @@ export function NotificationBell() {
     const data = notif.data as Record<string, string>;
     handleMarkRead(notif.id);
     setOpen(false);
-    if (data.boardId) router.push(`/board/${data.boardId}`);
+    if (data.boardId) router.push(data.cardId ? `/board/${data.boardId}?card=${data.cardId}` : `/board/${data.boardId}`);
   }
 
   return (

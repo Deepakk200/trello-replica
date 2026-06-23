@@ -110,7 +110,7 @@ export function TopBar() {
             <rect x="0" y="12" width="4" height="4" rx="0.5" /><rect x="6" y="12" width="4" height="4" rx="0.5" /><rect x="12" y="12" width="4" height="4" rx="0.5" />
           </svg>
         </button>
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+        <Link href="/boards" className="flex items-center gap-2 flex-shrink-0">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
             <rect width="28" height="28" rx="6" fill="#0052CC" />
             <rect x="5" y="5" width="8" height="18" rx="2" fill="white" />
@@ -120,9 +120,9 @@ export function TopBar() {
         </Link>
       </div>
 
-      {/* Center: search pill — hidden on mobile (collapses to an icon on the right) */}
-      <div className="hidden sm:flex justify-center min-w-0">
-        <div className="flex items-center gap-2 w-full max-w-[480px] rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
+      {/* Center: search pill + Create grouped together (Create sits beside Search) */}
+      <div className="flex justify-center items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 w-[440px] max-w-[46vw] rounded-full px-3 h-8" style={{ background: 'rgba(255,255,255,0.12)' }}>
           <Search size={14} className="text-white/50 flex-shrink-0" />
           {/* Read-only trigger: opens the single global CommandPalette (Cmd/Ctrl+K)
               rather than running a second search. Typed query continues in the
@@ -140,26 +140,11 @@ export function TopBar() {
             {isMac ? '⌘K' : 'Ctrl K'}
           </kbd>
         </div>
-      </div>
-      {/* Spacer to keep the 3-col grid balanced on mobile */}
-      <div className="sm:hidden" />
-
-      {/* Right cluster */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Mobile search icon */}
-        <button
-          onClick={() => openCommandPalette()}
-          className={`sm:hidden ${iconBtn}`}
-          aria-label="Search"
-        >
-          <Search size={18} />
-        </button>
-
-        {/* Create */}
-        <div className="relative">
+        {/* Create — directly beside Search */}
+        <div className="relative flex-shrink-0">
           <button
             onClick={() => openMenu('create')}
-            className="h-8 px-3 text-sm font-medium text-white rounded-sm flex-shrink-0"
+            className="h-8 px-3 text-sm font-medium text-white rounded-sm flex items-center"
             style={{ background: '#0052CC' }}
           >
             <span className="hidden sm:inline">Create</span>
@@ -179,7 +164,10 @@ export function TopBar() {
             </div>
           )}
         </div>
+      </div>
 
+      {/* Right cluster */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         {/* Trial badge → billing */}
         <Link
           href="/w/billing"

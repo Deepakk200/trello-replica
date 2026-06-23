@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { getBoard } from "@/features/boards/actions";
 import { BoardRoom } from "@/components/db-board/board-room";
 import { DbBoardView } from "@/components/db-board/db-board-view";
+import { DbTopBar, DbBottomNav } from "@/components/db-board/board-chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,14 @@ export default async function BoardPage({ params }: Props) {
   if (!board) notFound();
 
   return (
-    <BoardRoom boardId={boardId}>
-      <DbBoardView board={board} />
-    </BoardRoom>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <DbTopBar />
+      <div className="flex-1 min-h-0">
+        <BoardRoom boardId={boardId}>
+          <DbBoardView board={board} />
+        </BoardRoom>
+      </div>
+      <DbBottomNav />
+    </div>
   );
 }

@@ -171,8 +171,8 @@ export function DbCardModal({ cardId, boardId, boardLabels, onClose }: {
   const moveLists = moveBoards.find((b) => b.id === moveBoardId)?.lists ?? [];
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 flex items-start justify-center overflow-y-auto py-10 px-4" onClick={onClose}>
-      <div className="w-full max-w-2xl bg-trello-surfaceRaised border border-trello-border rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[70] bg-black/50 flex items-start justify-center overflow-y-auto py-10 px-4 animate-backdrop-enter" onClick={onClose}>
+      <div className="w-full max-w-2xl bg-trello-surfaceRaised border border-trello-border rounded-xl shadow-2xl anim-modal-enter" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-4 border-b border-trello-border">
           {editingTitle && canEdit ? (
             <input

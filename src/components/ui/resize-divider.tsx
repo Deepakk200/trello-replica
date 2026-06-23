@@ -5,9 +5,12 @@ import { useCallback, useRef } from 'react';
 interface Props {
   // Called continuously during drag with the horizontal delta (px).
   onResize: (deltaX: number) => void;
+  // Optional drag lifecycle hooks (e.g. to disable a width transition while dragging).
+  onResizeStart?: () => void;
+  onResizeEnd?: () => void;
 }
 
-export function ResizeDivider({ onResize }: Props) {
+export function ResizeDivider({ onResize, onResizeStart, onResizeEnd }: Props) {
   const dragging = useRef(false);
   const lastX = useRef(0);
 
@@ -17,7 +20,8 @@ export function ResizeDivider({ onResize }: Props) {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-  }, []);
+    onResizeStart?.();
+  }, [onResizeStart]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging.current) return;
@@ -27,11 +31,13 @@ export function ResizeDivider({ onResize }: Props) {
   }, [onResize]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
     dragging.current = false;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-  }, []);
+    onResizeEnd?.();
+  }, [onResizeEnd]);
 
   return (
     <div

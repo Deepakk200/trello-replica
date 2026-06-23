@@ -7,21 +7,21 @@ import {
   DndContext, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable, closestCorners, type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, X, Download, GripVertical } from "lucide-react";
-import type { getBoard } from "@/features/boards/actions";
-import { moveCard, createCard, deleteCard } from "@/features/cards/actions";
+import { Plus, X, GripVertical, Star, ChevronDown, LayoutDashboard, MoreHorizontal, AlignLeft, Paperclip, CheckSquare, Pencil, Copy, Plug, Zap, Circle, CheckCircle2, Users } from "lucide-react";
+import { type getBoard, updateBoard } from "@/features/boards/actions";
+import { BOARD_BACKGROUNDS } from "./create-board-tile";
+import { BoardFilterButton, cardMatches, filterCount, EMPTY_FILTER, type BoardFilter } from "./board-filter";
+import { moveCard, createCard, deleteCard, updateCard } from "@/features/cards/actions";
 import { createList, deleteList, updateList, reorderLists } from "@/features/lists/actions";
 import { copyList, moveAllCards, sortCardsInList } from "@/features/lists/bulk-actions";
 import { positionBetween } from "@/lib/position";
 import {
   useMyPresence, useSelf, useOthers, useBroadcastEvent, useEventListener,
 } from "@/lib/liveblocks.config";
-import { PresenceAvatars } from "./presence-avatars";
+import { MemberPopover } from "./member-popover";
 import { LiveCursors } from "./live-cursors";
 import { DbCardModal } from "./db-card-modal";
-import { AIPanel } from "./ai-panel";
-import { ArchivedCardsDrawer } from "./archived-cards-drawer";
-import { BoardActivityDrawer } from "./board-activity-drawer";
+import { BoardMenuPanel } from "./board-menu-panel";
 import { BoardShareBar } from "./board-share-bar";
 import { exportBoardAsCSV } from "@/features/enterprise/export";
 import { notify } from "@/store/use-toast-store";
@@ -201,6 +201,42 @@ export function DbBoardView({ board }: { board: BoardData }) {
     });
   }
 
+  // Board title + background editing (optimistic, snap-back on failure).
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(b.title);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [starred, setStarred] = useState<boolean>(Boolean((b as { starred?: boolean }).starred));
+
+  function toggleStar() {
+    const next = !starred;
+    setStarred(next);
+    startTransition(async () => {
+      try { await updateBoard(b.id, { starred: next }); router.refresh(); }
+      catch (err) { setStarred(!next); notify.error("Couldn't update star"); Sentry.captureException(err); }
+    });
+  }
+
+  // Client-side card filter (Trello "Filter"): hides non-matching cards.
+  const [filter, setFilter] = useState<BoardFilter>(EMPTY_FILTER);
+  const matches = (card: CardData) => cardMatches(card, filter);
+  const activeFilters = filterCount(filter);
+
+  function saveBoard(patch: { title?: string; background?: string }) {
+    const snapshot = b;
+    setB((prev) => ({ ...prev, ...patch }));
+    startTransition(async () => {
+      try { await updateBoard(b.id, patch); router.refresh(); }
+      catch (err) { setB(snapshot); notify.error("Couldn't save the board"); Sentry.captureException(err); }
+    });
+  }
+
+  function commitTitle() {
+    const t = titleDraft.trim();
+    setEditingTitle(false);
+    if (t && t !== b.title) saveBoard({ title: t });
+  }
+
   function openCard(cardId: string) {
     setOpenCardId(cardId);
     updateMyPresence({ selectedCardId: cardId });
@@ -227,39 +263,117 @@ export function DbBoardView({ board }: { board: BoardData }) {
     }
   }
 
+  const initials = (session?.user?.name ?? "U").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "U";
+
+  function closeBoardAction() {
+    setMoreOpen(false);
+    run(async () => { await updateBoard(b.id, { closed: true }); router.push("/boards"); }, "Couldn't close the board");
+  }
+  function graceful(label: string) {
+    setMoreOpen(false);
+    notify.info(`${label} isn't available yet`);
+  }
+
   return (
     <div
-      className="h-screen w-full flex flex-col"
+      className="h-full w-full flex flex-col"
       style={{ background: b.background }}
       onPointerMove={(e) => updateMyPresence({ cursor: { x: e.clientX, y: e.clientY } })}
       onPointerLeave={() => updateMyPresence({ cursor: null })}
     >
       <header className="px-4 py-3 shrink-0 flex items-center gap-3">
-        <a href="/boards" className="text-white/80 hover:text-white text-sm">← Boards</a>
-        <h1 className="text-white font-bold text-base">{b.title}</h1>
+        <button className="flex items-center gap-1.5 text-white/90 hover:bg-white/15 rounded px-2 py-1 text-sm font-medium shrink-0" title="Board view">
+          <LayoutDashboard size={15} /><span className="hidden sm:inline">Board</span><ChevronDown size={13} className="text-white/70" />
+        </button>
+        {editingTitle && canEdit ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitTitle(); } if (e.key === "Escape") setEditingTitle(false); }}
+            aria-label="Board title"
+            className="font-bold text-base bg-white/15 text-white rounded px-1.5 py-0.5 outline-none ring-2 ring-white/40 min-w-0 max-w-[40vw]"
+          />
+        ) : (
+          <h1
+            onClick={() => { if (canEdit) { setTitleDraft(b.title); setEditingTitle(true); } }}
+            className={`text-white font-bold text-base rounded px-1.5 py-0.5 truncate max-w-[40vw] ${canEdit ? "cursor-text hover:bg-white/15" : ""}`}
+            title={canEdit ? "Click to rename" : undefined}
+          >
+            {b.title}
+          </h1>
+        )}
         {!canEdit && (
           <span className="text-[10px] uppercase font-semibold tracking-wide bg-white/20 text-white px-1.5 py-0.5 rounded">View only</span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Single account avatar — opens the member profile popover */}
           <button
-            onClick={handleExport}
-            title="Export board as CSV"
-            className="flex items-center gap-1.5 text-white/80 hover:text-white hover:bg-white/20 px-2 py-1 rounded text-sm"
+            onClick={() => setMemberOpen(true)}
+            className="relative w-7 h-7 rounded-full bg-[#00B8D9] text-white text-[11px] font-bold flex items-center justify-center shrink-0 select-none"
+            aria-label="Account"
+            aria-haspopup="dialog"
+            title={initials}
+            suppressHydrationWarning
           >
-            <Download size={14} /><span className="hidden sm:inline">Export</span>
+            {initials}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#1D2125] flex items-center justify-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#579DFF]" />
+            </span>
           </button>
-          <ArchivedCardsDrawer boardId={b.id} />
-          <BoardActivityDrawer boardId={b.id} />
-          <AIPanel boardId={b.id} boardTitle={b.title} firstListId={b.lists[0]?.id ?? null} />
+          <button onClick={() => graceful("Power-Ups")} title="Power-Ups" className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded">
+            <Plug size={16} />
+          </button>
+          <button onClick={() => graceful("Automation")} title="Automation" className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded">
+            <Zap size={16} />
+          </button>
+          <BoardFilterButton
+            labels={b.labels.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
+            members={b.members.map((m) => ({ userId: m.userId, user: { name: m.user.name, avatarUrl: m.user.avatarUrl } }))}
+            filter={filter}
+            onChange={setFilter}
+          />
+          <button
+            onClick={toggleStar}
+            aria-pressed={starred}
+            title={starred ? "Unstar this board" : "Star this board"}
+            className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded"
+          >
+            <Star size={16} className={starred ? "fill-yellow-400 text-yellow-400" : ""} />
+          </button>
+          <button onClick={() => graceful("Members")} title="Members" className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded">
+            <Users size={16} />
+          </button>
           <BoardShareBar
             boardId={b.id}
             members={b.members.map((m) => ({ userId: m.userId, role: m.role, user: m.user }))}
             visibility={b.visibility}
             canAdmin={canAdmin}
           />
-          <PresenceAvatars />
+          {/* "⋯" — opens Trello's right-docked board menu panel. */}
+          <button
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            title="Show menu"
+            className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded"
+          >
+            <MoreHorizontal size={16} />
+          </button>
         </div>
       </header>
+
+      {activeFilters > 0 && (
+        <div className="px-4 pb-2 shrink-0 flex items-center gap-2 text-sm text-white">
+          <span className="bg-black/25 rounded px-2 py-1">
+            Filtering — {activeFilters} {activeFilters === 1 ? "criterion" : "criteria"}
+          </span>
+          <button onClick={() => setFilter(EMPTY_FILTER)} className="underline hover:no-underline text-white/90">
+            Clear filters
+          </button>
+        </div>
+      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <div className="flex-1 min-h-0 overflow-x-auto px-3 pb-4">
@@ -271,9 +385,12 @@ export function DbBoardView({ board }: { board: BoardData }) {
                 boardLists={b.lists.map((l) => ({ id: l.id, title: l.title }))}
                 labelColor={labelColor}
                 canEdit={canEdit}
+                matches={activeFilters > 0 ? matches : null}
                 viewersFor={(cid) => others.filter((o) => o.presence?.selectedCardId === cid)}
                 onOpenCard={openCard}
                 onDeleteCard={(cid) => run(() => deleteCard(cid), "Couldn't delete the card")}
+                onRenameCard={(cid, t) => run(() => updateCard(cid, { title: t }), "Couldn't rename the card")}
+                onToggleCardComplete={(cid, done) => run(() => updateCard(cid, { completed: done }), "Couldn't update the card")}
                 onAddCard={(title) => run(() => createCard({ listId: list.id, title }), "Couldn't add the card")}
                 onDeleteList={() => run(() => deleteList(list.id), "Couldn't delete the list")}
               />
@@ -286,21 +403,50 @@ export function DbBoardView({ board }: { board: BoardData }) {
       <LiveCursors />
 
       {openCardId && <DbCardModal cardId={openCardId} boardId={b.id} boardLabels={b.labels} onClose={closeCard} />}
+
+      {memberOpen && (
+        <MemberPopover
+          onClose={() => setMemberOpen(false)}
+          onEditProfile={() => { setMemberOpen(false); router.push("/settings"); }}
+          onViewActivity={() => { setMemberOpen(false); graceful("Board activity"); }}
+        />
+      )}
+
+      {moreOpen && (
+        <BoardMenuPanel
+          onClose={() => setMoreOpen(false)}
+          canEdit={canEdit}
+          starred={starred}
+          visibility={b.visibility}
+          backgrounds={BOARD_BACKGROUNDS}
+          currentBg={b.background}
+          initials={initials}
+          onToggleStar={toggleStar}
+          onChangeBackground={(sw) => { setMoreOpen(false); saveBoard({ background: sw }); }}
+          onExport={() => { setMoreOpen(false); handleExport(); }}
+          onSettings={() => { setMoreOpen(false); router.push("/settings"); }}
+          onCloseBoard={closeBoardAction}
+          onGraceful={graceful}
+        />
+      )}
     </div>
   );
 }
 
 // ── List column ──────────────────────────────────────────────────────────────
 function ListColumn({
-  list, boardLists, labelColor, canEdit, viewersFor, onOpenCard, onDeleteCard, onAddCard, onDeleteList,
+  list, boardLists, labelColor, canEdit, matches, viewersFor, onOpenCard, onDeleteCard, onRenameCard, onToggleCardComplete, onAddCard, onDeleteList,
 }: {
   list: ListData;
   boardLists: { id: string; title: string }[];
   labelColor: Map<string, string>;
   canEdit: boolean;
+  matches: ((card: CardData) => boolean) | null;
   viewersFor: (cardId: string) => { connectionId: number; info?: { color: string; name: string } }[];
   onOpenCard: (id: string) => void;
   onDeleteCard: (id: string) => void;
+  onRenameCard: (cardId: string, title: string) => void;
+  onToggleCardComplete: (cardId: string, completed: boolean) => void;
   onAddCard: (title: string) => void;
   onDeleteList: () => void;
 }) {
@@ -316,6 +462,8 @@ function ListColumn({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(list.title);
   const router = useRouter();
+
+  const visibleCards = matches ? list.cards.filter(matches) : list.cards;
 
   async function saveTitle() {
     const t = titleDraft.trim();
@@ -360,7 +508,7 @@ function ListColumn({
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-xs text-trello-textSubtle">{list.cards.length}</span>
+          <span className="text-xs text-trello-textSubtle">{matches ? `${visibleCards.length}/${list.cards.length}` : list.cards.length}</span>
           {canEdit && <div className="relative">
             <button onClick={() => setMenuOpen((v) => !v)} title="List actions" className="text-trello-textSubtle hover:text-white text-sm px-1 leading-none">⋯</button>
             {menuOpen && (
@@ -387,7 +535,7 @@ function ListColumn({
       </div>
 
       <div ref={setNodeRef} className="flex-1 overflow-y-auto px-1.5 pb-2 space-y-1.5 min-h-6">
-        {list.cards.map((card) => (
+        {visibleCards.map((card) => (
           <DraggableCard
             key={card.id}
             card={card}
@@ -396,6 +544,8 @@ function ListColumn({
             viewers={viewersFor(card.id)}
             onOpen={() => onOpenCard(card.id)}
             onDelete={() => onDeleteCard(card.id)}
+            onRename={(t) => onRenameCard(card.id, t)}
+            onToggleComplete={(done) => onToggleCardComplete(card.id, done)}
           />
         ))}
       </div>
@@ -405,22 +555,30 @@ function ListColumn({
           <div className="flex flex-col gap-1.5">
             <textarea
               autoFocus rows={2} value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Card title…"
+              placeholder="Enter a title or paste a link"
               className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1.5 text-sm text-trello-text outline-none resize-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (title.trim()) { onAddCard(title.trim()); setTitle(""); } }
                 if (e.key === "Escape") { setAdding(false); setTitle(""); }
               }}
             />
-            <div className="flex gap-2">
-              <button onClick={() => { if (title.trim()) { onAddCard(title.trim()); setTitle(""); } }} className="btn-primary text-xs px-3 py-1.5">Add</button>
-              <button onClick={() => { setAdding(false); setTitle(""); }} className="btn-ghost text-xs px-2 py-1.5">Cancel</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { if (title.trim()) { onAddCard(title.trim()); setTitle(""); } }} className="btn-primary text-xs px-3 py-1.5">Add card</button>
+              <span className="text-[11px] text-trello-textSubtle bg-trello-cardHover rounded px-1.5 py-0.5">Tip</span>
+              <button onClick={() => { setAdding(false); setTitle(""); }} aria-label="Cancel" className="ml-auto text-trello-textSubtle hover:text-trello-text p-1 rounded hover:bg-white/10">
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className="w-full flex items-center gap-1.5 text-sm text-trello-textSubtle hover:text-trello-text px-2 py-1.5 rounded hover:bg-white/5">
-            <Plus className="w-4 h-4" /> Add a card
-          </button>
+          <div className="flex items-center">
+            <button onClick={() => setAdding(true)} className="flex-1 flex items-center gap-1.5 text-sm text-trello-textSubtle hover:text-trello-text px-2 py-1.5 rounded hover:bg-white/5">
+              <Plus className="w-4 h-4" /> Add a card
+            </button>
+            <button aria-label="Card templates" title="Card templates" className="text-trello-textSubtle hover:text-trello-text p-1.5 rounded hover:bg-white/5">
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -429,7 +587,7 @@ function ListColumn({
 
 // ── Draggable + droppable card ───────────────────────────────────────────────
 function DraggableCard({
-  card, labelColor, canEdit, viewers, onOpen, onDelete,
+  card, labelColor, canEdit, viewers, onOpen, onDelete, onRename, onToggleComplete,
 }: {
   card: CardData;
   labelColor: Map<string, string>;
@@ -437,6 +595,8 @@ function DraggableCard({
   viewers: { connectionId: number; info?: { color: string; name: string } }[];
   onOpen: () => void;
   onDelete: () => void;
+  onRename: (title: string) => void;
+  onToggleComplete: (completed: boolean) => void;
 }) {
   const drag = useDraggable({ id: card.id, data: { type: "card", listId: card.listId, position: card.position }, disabled: !canEdit });
   const drop = useDroppable({ id: `card:${card.id}`, data: { type: "card", listId: card.listId, position: card.position } });
@@ -445,6 +605,15 @@ function DraggableCard({
     ? { transform: `translate3d(${drag.transform.x}px, ${drag.transform.y}px, 0)`, zIndex: 40 }
     : undefined;
 
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(card.title);
+
+  // Aggregate checklist progress across all checklists on the card.
+  const items = card.checklists.flatMap((c) => c.items);
+  const checkTotal = items.length;
+  const checkDone = items.filter((i) => i.checked).length;
+  const hasDesc = Boolean(card.description && card.description.trim());
+
   return (
     <div
       ref={ref}
@@ -452,7 +621,7 @@ function DraggableCard({
       {...(canEdit ? drag.attributes : {})}
       {...(canEdit ? drag.listeners : {})}
       onClick={onOpen}
-      className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] ${drag.isDragging ? "opacity-40" : ""}`}
+      className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] hover:ring-2 hover:ring-inset hover:ring-white/30 transition-shadow ${drag.isDragging ? "opacity-40" : ""}`}
     >
       {card.coverColor && (
         <div
@@ -469,17 +638,59 @@ function DraggableCard({
           ))}
         </div>
       )}
-      <div className="flex items-start gap-1">
-        <p className="flex-1 text-sm text-[var(--text-primary)] leading-snug break-words">{card.title}</p>
-        {canEdit && (
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-trello-danger text-xs shrink-0" title="Delete card">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-      {(card._count.comments > 0 || card.dueDate || card.completed || card.assignees.length > 0) && (
+      {renaming ? (
+        <textarea
+          autoFocus
+          rows={2}
+          value={draft}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => { setRenaming(false); const t = draft.trim(); if (t && t !== card.title) onRename(t); }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") { e.preventDefault(); setRenaming(false); const t = draft.trim(); if (t && t !== card.title) onRename(t); }
+            if (e.key === "Escape") { setRenaming(false); setDraft(card.title); }
+          }}
+          className="w-full text-sm bg-trello-cardBg border border-trello-accent rounded px-1.5 py-1 text-[var(--text-primary)] outline-none resize-none"
+        />
+      ) : (
+        <div className="flex items-start gap-1">
+          {(canEdit || card.completed) && (
+            <button
+              onClick={canEdit ? (e) => { e.stopPropagation(); onToggleComplete(!card.completed); } : undefined}
+              disabled={!canEdit}
+              title={card.completed ? "Mark incomplete" : "Mark complete"}
+              aria-pressed={card.completed}
+              className={`shrink-0 mt-0.5 overflow-hidden transition-all duration-150 ease-out motion-reduce:transition-none ${
+                card.completed ? "w-4 opacity-100" : "w-0 opacity-0 group-hover:w-4 group-hover:opacity-100"
+              }`}
+            >
+              {card.completed
+                ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                : <Circle className="w-4 h-4 text-white/50 hover:text-white" />}
+            </button>
+          )}
+          <p className={`flex-1 text-sm leading-snug break-words ${card.completed ? "text-[var(--text-subtle)] line-through" : "text-[var(--text-primary)]"}`}>{card.title}</p>
+          {canEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setDraft(card.title); setRenaming(true); }}
+              className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-white text-xs shrink-0"
+              title="Edit card"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canEdit && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-0 group-hover:opacity-100 text-trello-textSubtle hover:text-trello-danger text-xs shrink-0" title="Delete card">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+      {(card._count.comments > 0 || card.dueDate || card.completed || card.assignees.length > 0 || hasDesc || card._count.attachments > 0 || checkTotal > 0) && (
         <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-subtle)]">
           {card.completed && <span className="text-emerald-400">✓</span>}
+          {hasDesc && <AlignLeft className="w-3.5 h-3.5" />}
           {card.dueDate && (() => {
             const t = new Date(card.dueDate).getTime();
             const now = new Date().getTime();
@@ -490,6 +701,14 @@ function DraggableCard({
               : "";
             return <span className={`px-1 rounded ${cls}`}>{new Date(card.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>;
           })()}
+          {card._count.attachments > 0 && (
+            <span className="flex items-center gap-0.5"><Paperclip className="w-3.5 h-3.5" />{card._count.attachments}</span>
+          )}
+          {checkTotal > 0 && (
+            <span className={`flex items-center gap-0.5 ${checkDone === checkTotal ? "text-emerald-400" : ""}`}>
+              <CheckSquare className="w-3.5 h-3.5" />{checkDone}/{checkTotal}
+            </span>
+          )}
           {card._count.comments > 0 && <span>💬 {card._count.comments}</span>}
           {card.assignees.length > 0 && (
             <div className="ml-auto flex -space-x-1.5">
@@ -528,7 +747,7 @@ function AddListForm({ onAdd }: { onAdd: (title: string) => void }) {
     return (
       <button onClick={() => { setAdding(true); setTimeout(() => ref.current?.focus(), 0); }}
         className="w-[272px] shrink-0 flex items-center gap-1.5 text-sm text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2.5">
-        <Plus className="w-4 h-4" /> Add a list
+        <Plus className="w-4 h-4" /> Add another list
       </button>
     );
   }

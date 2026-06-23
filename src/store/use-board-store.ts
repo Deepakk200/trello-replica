@@ -189,7 +189,7 @@ function buildCardTemplates(): Record<ID, CardTemplate> {
 function buildSeed(): BoardState {
   const boardId = newId();
   const listIds = [newId(), newId(), newId(), newId()];
-  const listTitles = ['Backlog', 'To Do', 'In Progress', 'Done'];
+  const listTitles = ['Trello Starter Guide', 'Today', 'This Week', 'Later'];
   const labelDefs: Array<{ name: string; color: Label['color'] }> = [
     { name: 'Bug', color: 'red' }, { name: 'Feature', color: 'green' },
     { name: 'Improvement', color: 'blue' }, { name: 'Question', color: 'yellow' },
@@ -203,10 +203,10 @@ function buildSeed(): BoardState {
 
   const boards: Record<ID, Board> = {
     [boardId]: {
-      id: boardId, title: 'My Trello Board',
-      background: 'linear-gradient(135deg,#0079bf,#5067c5)',
+      id: boardId, title: 'My Trello board',
+      background: 'linear-gradient(135deg,#8b3dd6 0%,#c44ad0 55%,#e85a9c 100%)',
       description: '', listIds, createdAt: now(),
-      memberIds: memberIds.slice(0, 4), nextCardNumber: 9,
+      memberIds: memberIds.slice(0, 4), nextCardNumber: 5,
       workspaceId: ws1Id, visibility: 'workspace',
     },
   };
@@ -216,10 +216,12 @@ function buildSeed(): BoardState {
   for (const def of labelDefs) { const id = newId(); labels[id] = { id, ...def }; seedLabelIds.push(id); }
   // [0]=Bug/red [1]=Feature/green [2]=Improvement/blue [3]=Question/yellow [4]=Design/purple [5]=Urgent/orange
 
-  const overdueDt = new Date(Date.now() - 2 * 86400000).toISOString();
-  const soonDt    = new Date(Date.now() + 20 * 3600000).toISOString();
-  const futureDt  = new Date(Date.now() + 7 * 86400000).toISOString();
-  const pastDt    = new Date(Date.now() - 3 * 86400000).toISOString();
+  const todayDt = new Date(Date.now() + 6 * 3600000).toISOString();
+
+  // 6 / 7 unchecked items so the card fronts show "0/6" and "0/7" checklist badges.
+  const six   = ['Create your first card', 'Add a due date', 'Invite a teammate', 'Attach a file', 'Add a label', 'Move a card between lists'];
+  const seven = ['Make a board', 'Add lists', 'Add cards', 'Drag to reorder', 'Open a card', 'Add a checklist', 'Mark a card complete'];
+  const clItems = (texts: string[]) => texts.map((text) => ({ text, completed: false }));
 
   type RichDef = {
     title: string; description: string; lIdxs: number[];
@@ -228,43 +230,34 @@ function buildSeed(): BoardState {
     mIdxs: number[];
     cover?: { type: 'color'; color: string; size: 'half' };
     comments?: string[];
+    attachments?: Array<{ name: string; type: 'link' | 'image' | 'file' }>;
   };
   const richDefs: RichDef[][] = [
-    // Backlog
+    // Trello Starter Guide
     [
-      { title: 'Research competitors', description: 'Analyze Trello, Jira, Asana for feature gaps and UX patterns.', lIdxs: [3], dueDate: overdueDt, completed: false, cls: [], mIdxs: [0], cover: { type: 'color', color: '#579DFF', size: 'half' } },
-      { title: 'Define MVP scope',     description: '', lIdxs: [1, 5], dueDate: null, completed: false, cls: [], mIdxs: [1] },
+      { title: 'New to Trello? Start here', description: 'Watch a 1-minute tour, then make this board your own.',
+        lIdxs: [1], dueDate: null, completed: false, cls: [], mIdxs: [0],
+        cover: { type: 'color', color: '#E8590C', size: 'half' },
+        attachments: [{ name: 'Loom', type: 'link' }] },
+      { title: 'Capture from email, Slack, and Teams', description: 'Turn messages into cards so nothing slips through.',
+        lIdxs: [2], dueDate: null, completed: false,
+        cls: [{ title: 'Checklist', items: clItems(six) }], mIdxs: [1],
+        cover: { type: 'color', color: '#1D7AFC', size: 'half' },
+        attachments: [{ name: 'Integrations guide', type: 'link' }] },
+      { title: 'Dive into Trello basics', description: 'Lists, cards, due dates, labels — the building blocks.',
+        lIdxs: [4], dueDate: null, completed: false,
+        cls: [{ title: 'Checklist', items: clItems(seven) }], mIdxs: [2],
+        cover: { type: 'color', color: '#4BCE97', size: 'half' },
+        attachments: [{ name: 'Trello basics', type: 'link' }] },
     ],
-    // To Do
+    // Today
     [
-      { title: 'Set up project repo', description: 'Initialize Next.js with TypeScript, Tailwind, and Zustand.',
-        lIdxs: [2], dueDate: soonDt, completed: false,
-        cls: [{ title: 'Setup Tasks', items: [
-          { text: 'Create GitHub repo', completed: true },
-          { text: 'Install dependencies', completed: true },
-          { text: 'Configure ESLint', completed: false },
-          { text: 'Setup CI/CD', completed: false },
-        ] }],
-        mIdxs: [0, 2] },
-      { title: 'Write user stories', description: '', lIdxs: [1], dueDate: futureDt, completed: false, cls: [], mIdxs: [1], comments: ['Should we include edge cases in the stories?', 'Added acceptance criteria to each story.'] },
+      { title: 'Try dragging this card to another list 👋', description: '', lIdxs: [], dueDate: todayDt, completed: false, cls: [], mIdxs: [0] },
     ],
-    // In Progress
-    [
-      { title: 'Build board view', description: 'Implement the main Kanban board with draggable lists and cards.', lIdxs: [1, 2], dueDate: null, completed: false, cls: [], mIdxs: [0] },
-      { title: 'Implement drag-and-drop', description: '', lIdxs: [0], dueDate: soonDt, completed: false,
-        cls: [{ title: 'DnD Checklist', items: [
-          { text: 'Card drag within list', completed: true },
-          { text: 'Cross-list drag', completed: true },
-          { text: 'List reorder', completed: true },
-          { text: 'Touch + keyboard support', completed: true },
-        ] }],
-        mIdxs: [2, 3] },
-    ],
-    // Done
-    [
-      { title: 'Deploy to Vercel', description: 'Configure production deployment with environment variables.', lIdxs: [5], dueDate: pastDt, completed: true, cls: [], mIdxs: [0] },
-      { title: 'Write README',     description: '', lIdxs: [4], dueDate: null, completed: false, cls: [], mIdxs: [1] },
-    ],
+    // This Week
+    [],
+    // Later
+    [],
   ];
 
   const lists: Record<ID, List> = {};
@@ -287,7 +280,9 @@ function buildSeed(): BoardState {
         id: cardId, listId, title: def.title, description: def.description,
         number: cardNumber++,
         memberIds: def.mIdxs.map((mi) => memberIds[mi]).filter(Boolean),
-        attachments: [],
+        attachments: (def.attachments ?? []).map((a) => ({
+          id: newId(), name: a.name, url: '#', type: a.type, addedAt: ts, addedBy: memberIds[0] ?? '',
+        })),
         labelIds: def.lIdxs.map((li) => seedLabelIds[li]).filter(Boolean),
         dueDate: def.dueDate, completed: def.completed, isArchived: false, linkedCardIds: [],
         cover: def.cover ?? { type: 'none', size: 'half' }, checklists,
@@ -307,7 +302,7 @@ function buildSeed(): BoardState {
     inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, BoardViewKind>,
-    activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
+    activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false, sidebarWidth: 260,
     // Notifications start empty and are generated from real events (comments,
     // mentions, assignments, due dates) — never seeded with placeholder data.
     notifications: [],
@@ -347,6 +342,7 @@ type Actions = {
   setPlannerOpen(v: boolean): void;
   setInboxWidth(w: number): void;
   setPlannerWidth(w: number): void;
+  setSidebarWidth(w: number): void;
   addInboxCard(title: string): void;
   deleteInboxCard(id: ID): void;
   moveInboxCardToList(inboxCardId: ID, listId: ID): void;
@@ -480,13 +476,12 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, BoardViewKind>,
-      // Board opens board-only (Trello behavior): Inbox and Planner are independent,
-      // additive toggle panels that default CLOSED. inboxOpen/plannerOpen are NOT
-      // persisted (see partialize), so every fresh load / deep link / refresh resets
-      // to board-only; the user opens each panel explicitly from the dock.
+      // Inbox and Planner are independent toggle panels beside the board. Their open
+      // state IS persisted (see partialize) so a refresh restores the exact view.
+      // switchBoardsOpen stays transient (it's a modal — never restored on load).
       activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
-      starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
+      starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false, sidebarWidth: 260,
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
       savedFilters: {}, watchedCardIds: [], cardAgingEnabled: false,
       notificationsOpen: false, activeCardModalId: null, watchedListIds: [], currentUserId: null,
@@ -598,8 +593,17 @@ export const boardStore = create<Store>()(
       setInboxOpen(v) { set((s) => { s.inboxOpen = v; }); },
       setSwitchBoardsOpen(v) { set((s) => { s.switchBoardsOpen = v; }); },
       setPlannerOpen(v) { set((s) => { s.plannerOpen = v; }); },
-      setInboxWidth(w) { set((s) => { s.inboxWidth = Math.max(280, Math.min(560, w)); }); },
-      setPlannerWidth(w) { set((s) => { s.plannerWidth = Math.max(280, Math.min(640, w)); }); },
+      // Min 160 so the divider can shrink the panel toward the 120px close
+      // threshold (handled in app-shell) before it snaps shut.
+      setInboxWidth(w) { set((s) => { s.inboxWidth = Math.max(160, Math.min(560, w)); }); },
+      setPlannerWidth(w) { set((s) => { s.plannerWidth = Math.max(160, Math.min(640, w)); }); },
+      setSidebarWidth(w) {
+        set((s) => {
+          // Drag below the collapse threshold auto-collapses; otherwise clamp 200–420px.
+          if (w <= 64) { s.sidebarCollapsed = true; }
+          else { s.sidebarCollapsed = false; s.sidebarWidth = Math.max(200, Math.min(420, w)); }
+        });
+      },
       addInboxCard(title) {
         const t = title.trim(); if (!t) return;
         set((s) => { s.inboxCards.unshift({ id: newId(), title: t, createdAt: now() }); });
@@ -1593,7 +1597,7 @@ export const boardStore = create<Store>()(
     })),
     {
       name: 'trello-clone-v1',
-      version: 10,
+      version: 12,
       storage: safeStorage,
       partialize: (state) => ({
         boards: state.boards, lists: state.lists, cards: state.cards,
@@ -1608,7 +1612,9 @@ export const boardStore = create<Store>()(
         inboxCards: state.inboxCards,
         calendarViewDate: state.calendarViewDate, calendarGranularity: state.calendarGranularity,
         starredBoardIds: state.starredBoardIds, recentBoardIds: state.recentBoardIds,
-        sidebarCollapsed: state.sidebarCollapsed,
+        sidebarCollapsed: state.sidebarCollapsed, sidebarWidth: state.sidebarWidth,
+        // View state persisted so a refresh restores the exact Inbox/Planner layout.
+        inboxOpen: state.inboxOpen, plannerOpen: state.plannerOpen,
         // Q3 depth: saved filters + watch subscriptions + aging now survive refresh.
         savedFilters: state.savedFilters, watchedCardIds: state.watchedCardIds,
         watchedListIds: state.watchedListIds, cardAgingEnabled: state.cardAgingEnabled,
@@ -1658,6 +1664,7 @@ export const boardStore = create<Store>()(
           if (!p.starredBoardIds)      p.starredBoardIds      = [];
           if (!p.recentBoardIds)       p.recentBoardIds       = p.activeBoardId ? [p.activeBoardId] : [];
           if (p.sidebarCollapsed === undefined) p.sidebarCollapsed = false;
+          if (typeof p.sidebarWidth !== 'number') p.sidebarWidth = 260;
           if (!p.members)              p.members              = {};
           if (!p.workspaces)           p.workspaces           = {};
           if (!p.boardTemplates)       p.boardTemplates       = {};
@@ -1670,6 +1677,23 @@ export const boardStore = create<Store>()(
           if (p.workspaceVisibility !== 'private' && p.workspaceVisibility !== 'public') p.workspaceVisibility = 'private';
           if (!p.workspaceAvatarColor) p.workspaceAvatarColor = DEFAULT_WS_AVATAR;
           if (!Array.isArray(p.workspaceMembers) || p.workspaceMembers.length === 0) p.workspaceMembers = buildWorkspaceMembers();
+
+          // v11: ensure the default "My Trello board" starter board exists.
+          // Non-destructive — only ADDED when absent (existing boards untouched).
+          const hasStarter = Object.values(p.boards ?? {}).some(
+            (bd) => (bd as { title?: string }).title === 'My Trello board',
+          );
+          if (!hasStarter) {
+            const seed = buildSeed();
+            const seedBoardId = Object.keys(seed.boards)[0];
+            p.boards = { ...(p.boards ?? {}), ...(seed.boards as unknown as Record<string, Record<string, unknown>>) };
+            p.lists = { ...(p.lists ?? {}), ...(seed.lists as unknown as Record<string, Record<string, unknown>>) };
+            p.cards = { ...(p.cards ?? {}), ...(seed.cards as unknown as Record<string, Record<string, unknown>>) };
+            p.labels = { ...((p.labels as Record<string, unknown>) ?? {}), ...(seed.labels as unknown as Record<string, unknown>) };
+            p.workspaces = { ...((p.workspaces as Record<string, unknown>) ?? {}), ...(seed.workspaces as unknown as Record<string, unknown>) };
+            p.activeBoardId = seedBoardId;
+            p.recentBoardIds = [seedBoardId, ...(Array.isArray(p.recentBoardIds) ? (p.recentBoardIds as string[]) : [])];
+          }
         }
         return persisted;
       },

@@ -19,6 +19,7 @@ import { WorkspaceRole } from "@prisma/client";
 const CreateSchema = z.object({
   title: z.string().min(1).max(100),
   background: z.string().default("#0052CC"),
+  visibility: z.enum(["private", "workspace", "public"]).default("workspace"),
 });
 
 const UpdateSchema = z.object({
@@ -122,7 +123,8 @@ function fetchBoard(boardId: string) {
             include: {
               labels: { select: { labelId: true } },
               assignees: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
-              _count: { select: { comments: true } },
+              checklists: { select: { items: { select: { checked: true } } } },
+              _count: { select: { comments: true, attachments: true } },
             },
           },
         },
@@ -167,6 +169,14 @@ export async function createBoard(raw: unknown) {
       shortId: shortId(),
       slug: slugify(data.title),
     },
+  });
+  // Seed Trello's default lists so a new board opens ready to use (A3).
+  await db.list.createMany({
+    data: ["To Do", "Doing", "Done"].map((title, i) => ({
+      boardId: board.id,
+      title,
+      position: (i + 1) * 65536,
+    })),
   });
   revalidatePath("/boards");
   await cacheDel(CacheKeys.boards(wid));

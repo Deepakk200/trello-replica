@@ -169,6 +169,8 @@ export interface BoardState {
   starredBoardIds: ID[];
   recentBoardIds: ID[];
   sidebarCollapsed: boolean;
+  /** Workspace sidebar width (px) when expanded. Persisted. */
+  sidebarWidth: number;
   activeViewByBoard: Record<ID, BoardViewKind>;
   notifications: Notification[];
   selectedCardIds: ID[];

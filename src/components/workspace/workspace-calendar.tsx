@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable, closestCenter,
@@ -78,33 +77,37 @@ export function WorkspaceCalendar() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const boards = useBoardStore(
-    useShallow((s) => {
-      const ws = s.activeWorkspaceId;
-      return Object.values(s.boards)
-        .filter((b) => !b.isArchived && (!ws || b.workspaceId === ws))
-        .map((b) => ({ id: b.id, title: b.title, background: b.background }));
-    }),
+  // Select STABLE store records and derive in useMemo. Selectors that build new
+  // objects/arrays (e.g. .map(b => ({...}))) return a fresh reference every call,
+  // which breaks snapshot caching (even with useShallow on mapped objects) and
+  // causes an infinite render loop. Same pattern as planner-view.
+  const ws = useBoardStore((s) => s.activeWorkspaceId);
+  const boardsById = useBoardStore((s) => s.boards);
+  const listsById = useBoardStore((s) => s.lists);
+  const cardsById = useBoardStore((s) => s.cards);
+
+  const boards = useMemo(
+    () => Object.values(boardsById)
+      .filter((b) => !b.isArchived && (!ws || b.workspaceId === ws))
+      .map((b) => ({ id: b.id, title: b.title, background: b.background })),
+    [boardsById, ws],
   );
 
-  const cards = useBoardStore(
-    useShallow((s) => {
-      const ws = s.activeWorkspaceId;
-      const out: WsCard[] = [];
-      for (const b of Object.values(s.boards)) {
-        if (b.isArchived || (ws && b.workspaceId !== ws)) continue;
-        for (const listId of b.listIds) {
-          const list = s.lists[listId];
-          if (!list || list.isArchived) continue;
-          for (const cardId of list.cardIds) {
-            const card = s.cards[cardId];
-            if (card && !card.isArchived && card.dueDate) out.push({ ...card, _boardBg: b.background, _boardId: b.id });
-          }
+  const cards = useMemo(() => {
+    const out: WsCard[] = [];
+    for (const b of Object.values(boardsById)) {
+      if (b.isArchived || (ws && b.workspaceId !== ws)) continue;
+      for (const listId of b.listIds) {
+        const list = listsById[listId];
+        if (!list || list.isArchived) continue;
+        for (const cardId of list.cardIds) {
+          const card = cardsById[cardId];
+          if (card && !card.isArchived && card.dueDate) out.push({ ...card, _boardBg: b.background, _boardId: b.id });
         }
       }
-      return out;
-    }),
-  );
+    }
+    return out;
+  }, [boardsById, listsById, cardsById, ws]);
 
   const visibleCards = useMemo(
     () => (boardFilter === 'all' ? cards : cards.filter((c) => c._boardId === boardFilter)),

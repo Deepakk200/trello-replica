@@ -332,6 +332,32 @@ export async function getBoardsForMoveDialog() {
   });
 }
 
+/** All due-dated cards across the active workspace's open boards. Powers the
+ *  DB Planner (week calendar). Authz-scoped: only the user's active workspace. */
+export async function getWorkspaceDueCards() {
+  const user = await requireUser();
+  const { getActiveWorkspaceId } = await import("@/lib/authz");
+  const wid = await getActiveWorkspaceId(user.id);
+  if (!wid) return [];
+  const cards = await db.card.findMany({
+    where: {
+      dueDate: { not: null },
+      deletedAt: null,
+      archived: false,
+      list: { deletedAt: null, archived: false, board: { workspaceId: wid, deletedAt: null, closed: false } },
+    },
+    orderBy: { dueDate: "asc" },
+    select: {
+      id: true, title: true, dueDate: true, completed: true,
+      list: { select: { board: { select: { id: true, title: true, background: true } } } },
+    },
+  });
+  return cards.map((c) => ({
+    id: c.id, title: c.title, dueDate: c.dueDate, completed: c.completed,
+    boardId: c.list.board.id, boardTitle: c.list.board.title, boardBg: c.list.board.background,
+  }));
+}
+
 export async function moveCardToList(cardId: string, targetListId: string) {
   await requireCardEdit(cardId);
   const { boardId } = await requireListEdit(targetListId);

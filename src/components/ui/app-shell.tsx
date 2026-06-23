@@ -10,7 +10,7 @@ import { useBoardStore } from '@/store/use-board-store';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { InboxPanel } from '@/components/ui/inbox-panel';
 import { SwitchBoardsPopup } from '@/components/board/switch-boards-popup';
-import { PlannerView } from '@/components/board/planner-view';
+import { DbPlannerView as PlannerView } from '@/components/db-board/db-planner-view';
 import { BoardUrlSync } from '@/components/ui/board-url-sync';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -71,14 +71,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <InboxPanel />
               </div>
             </div>
-            {inboxOpen && <ResizeDivider onResize={(dx) => setInboxWidth(inboxWidth + dx)} />}
+            {inboxOpen && <ResizeDivider onResize={(dx) => { const n = inboxWidth + dx; if (n <= 120) setInboxOpen(false); else setInboxWidth(n); }} />}
 
             <div className={animWrap} style={{ width: plannerOpen ? plannerWidth : 0, opacity: plannerOpen ? 1 : 0 }} aria-hidden={!plannerOpen}>
               <div style={{ width: plannerWidth }} className="h-full">
                 <PlannerView />
               </div>
             </div>
-            {plannerOpen && <ResizeDivider onResize={(dx) => setPlannerWidth(plannerWidth + dx)} />}
+            {plannerOpen && <ResizeDivider onResize={(dx) => { const n = plannerWidth + dx; if (n <= 120) setPlannerOpen(false); else setPlannerWidth(n); }} />}
           </>
         )}
 

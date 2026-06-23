@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import { useBoardStore } from '@/store/use-board-store';
 import { MemberAvatar } from '@/components/ui/member-avatar';
 import { CardModal } from '@/components/card/card-modal';
@@ -58,36 +57,40 @@ export function WorkspaceTable() {
 
   const labels = useBoardStore((s) => s.labels);
 
+  // Select STABLE store records and derive in useMemo. Selectors that build new
+  // objects/arrays return a fresh reference every call, breaking snapshot caching
+  // (even with useShallow on mapped objects) → infinite render loop. Same pattern
+  // as planner-view / workspace-calendar.
+  const ws = useBoardStore((s) => s.activeWorkspaceId);
+  const boardsById = useBoardStore((s) => s.boards);
+  const listsById = useBoardStore((s) => s.lists);
+  const cardsById = useBoardStore((s) => s.cards);
+
   // All boards in the active workspace (exclude closed boards).
-  const boards = useBoardStore(
-    useShallow((s) => {
-      const ws = s.activeWorkspaceId;
-      return Object.values(s.boards)
-        .filter((b) => !b.isArchived && (!ws || b.workspaceId === ws))
-        .map((b) => ({ id: b.id, title: b.title, background: b.background }));
-    }),
+  const boards = useMemo(
+    () => Object.values(boardsById)
+      .filter((b) => !b.isArchived && (!ws || b.workspaceId === ws))
+      .map((b) => ({ id: b.id, title: b.title, background: b.background })),
+    [boardsById, ws],
   );
 
-  const rows = useBoardStore(
-    useShallow((s) => {
-      const ws = s.activeWorkspaceId;
-      const out: Row[] = [];
-      for (const b of Object.values(s.boards)) {
-        if (b.isArchived || (ws && b.workspaceId !== ws)) continue;
-        for (const listId of b.listIds) {
-          const list = s.lists[listId];
-          if (!list || list.isArchived) continue;
-          for (const cardId of list.cardIds) {
-            const card = s.cards[cardId];
-            if (card && !card.isArchived) {
-              out.push({ ...card, _boardId: b.id, _boardTitle: b.title, _boardBg: b.background, _listTitle: list.title });
-            }
+  const rows = useMemo(() => {
+    const out: Row[] = [];
+    for (const b of Object.values(boardsById)) {
+      if (b.isArchived || (ws && b.workspaceId !== ws)) continue;
+      for (const listId of b.listIds) {
+        const list = listsById[listId];
+        if (!list || list.isArchived) continue;
+        for (const cardId of list.cardIds) {
+          const card = cardsById[cardId];
+          if (card && !card.isArchived) {
+            out.push({ ...card, _boardId: b.id, _boardTitle: b.title, _boardBg: b.background, _listTitle: list.title });
           }
         }
       }
-      return out;
-    }),
-  );
+    }
+    return out;
+  }, [boardsById, listsById, cardsById, ws]);
 
   const filtered = useMemo(
     () => (boardFilter === 'all' ? rows : rows.filter((r) => r._boardId === boardFilter)),

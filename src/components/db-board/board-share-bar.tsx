@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Users, X, Link2, Check } from "lucide-react";
+import { UserPlus, X, Link2, Check } from "lucide-react";
 import { addBoardMember, removeBoardMember, setBoardVisibility } from "@/features/boards/actions";
 
 type Member = {
@@ -39,8 +39,6 @@ export function BoardShareBar({
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
 
-  const stack = members.slice(0, 4);
-  const extra = members.length - stack.length;
 
   async function invite() {
     if (!email.trim()) return;
@@ -63,25 +61,11 @@ export function BoardShareBar({
 
   return (
     <div className="flex items-center gap-2">
-      {/* Member avatar stack (real users) */}
-      {members.length > 0 && (
-        <div className="flex -space-x-2">
-          {stack.map((m) => (
-            <Avatar key={m.userId} user={m.user} />
-          ))}
-          {extra > 0 && (
-            <div className="w-7 h-7 rounded-full bg-white/25 text-white text-[11px] font-semibold flex items-center justify-center ring-2 ring-black/10">
-              +{extra}
-            </div>
-          )}
-        </div>
-      )}
-
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-white/90 hover:text-white bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded text-sm"
+        className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-[#172B4D] font-medium px-3 py-1 rounded text-sm shadow-sm"
       >
-        <Users size={14} /> <span className="hidden sm:inline">Share</span>
+        <UserPlus size={15} /> <span className="hidden sm:inline">Share</span>
       </button>
 
       {open && (
