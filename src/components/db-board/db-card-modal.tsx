@@ -171,7 +171,7 @@ export function DbCardModal({ cardId, boardId, boardLabels, onClose }: {
   const moveLists = moveBoards.find((b) => b.id === moveBoardId)?.lists ?? [];
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 flex items-start justify-center overflow-y-auto py-10 px-4 animate-backdrop-enter" onClick={onClose}>
+    <div data-testid="card-modal" className="fixed inset-0 z-[70] bg-black/50 flex items-start justify-center overflow-y-auto py-10 px-4 animate-backdrop-enter" onClick={onClose}>
       <div className="w-full max-w-2xl bg-trello-surfaceRaised border border-trello-border rounded-xl shadow-2xl anim-modal-enter" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-4 border-b border-trello-border">
           {editingTitle && canEdit ? (
@@ -434,13 +434,13 @@ export function DbCardModal({ cardId, boardId, boardLabels, onClose }: {
               {canEdit && (
                 <div className="flex flex-col gap-2 mb-3">
                   <textarea
-                    rows={2} value={comment} onChange={(e) => setComment(e.target.value)}
+                    rows={2} data-testid="comment-input" value={comment} onChange={(e) => setComment(e.target.value)}
                     placeholder="Write a comment… (use @name to mention)"
                     className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-3 py-2 text-sm text-trello-text outline-none resize-none"
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                   />
                   {comment.trim() && (
-                    <button onClick={submitComment} className="btn-primary text-xs px-3 py-1.5 self-start">Comment</button>
+                    <button data-testid="comment-submit" onClick={submitComment} className="btn-primary text-xs px-3 py-1.5 self-start">Comment</button>
                   )}
                 </div>
               )}

@@ -4,7 +4,44 @@ import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import type { Adapter, AdapterUser } from "next-auth/adapters";
 import { db } from "@/lib/db";
+import { slugify, shortId } from "@/lib/slug";
+
+// This project's User model uses `avatarUrl`, NOT Auth.js's default `image`
+// column. The stock PrismaAdapter writes `image` on create/update, which throws
+// ("Unknown argument image") and breaks Google/OAuth sign-in. Wrap the adapter
+// so create/update map image → avatarUrl; reads map avatarUrl → image so the rest
+// of Auth.js still sees an `image` field. No schema change / migration needed.
+type DbUserRow = { id: string; email: string; name: string | null; avatarUrl: string | null; emailVerified: Date | null };
+const toAdapterUser = (u: DbUserRow): AdapterUser => ({
+  id: u.id, email: u.email, name: u.name, image: u.avatarUrl, emailVerified: u.emailVerified,
+});
+
+function authAdapter(): Adapter {
+  const base = PrismaAdapter(db);
+  return {
+    ...base,
+    createUser: async ({ email, name, emailVerified, image }) => {
+      const u = await db.user.create({
+        data: { email: email!, name: name ?? null, emailVerified: emailVerified ?? null, avatarUrl: image ?? null },
+      });
+      return toAdapterUser(u);
+    },
+    updateUser: async ({ id, email, name, emailVerified, image }) => {
+      const u = await db.user.update({
+        where: { id },
+        data: {
+          ...(email != null ? { email } : {}),
+          ...(name !== undefined ? { name } : {}),
+          ...(emailVerified !== undefined ? { emailVerified } : {}),
+          ...(image !== undefined ? { avatarUrl: image ?? null } : {}),
+        },
+      });
+      return toAdapterUser(u);
+    },
+  };
+}
 
 // Build the OAuth provider list. CRITICAL: register a provider ONLY when both its
 // id AND secret are present. Auth.js v5 runs `assertConfig` per request, and a
@@ -53,7 +90,7 @@ function oauthProviders() {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(db),
+  adapter: authAdapter(),
   // Read the session/JWT secret explicitly, supporting both the Auth.js name and
   // the legacy NextAuth name so a mis-named env var can't silently disable auth.
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -108,6 +145,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.workspaceId = (token.workspaceId as string | null) ?? null;
       }
       return session;
+    },
+  },
+  events: {
+    // OAuth users are created via the adapter with no workspace. The credentials
+    // flow (signUpUser) creates a personal workspace + OWNER membership; mirror
+    // that here so OAuth users can create boards (board.createdById/workspace FK
+    // both resolve). Credentials users never hit the adapter, so this won't
+    // double-create for them.
+    async createUser({ user }) {
+      if (!user.id) return;
+      const existing = await db.workspaceMember.findFirst({ where: { userId: user.id } });
+      if (existing) return;
+      const base = user.name ?? user.email?.split("@")[0] ?? "My";
+      await db.workspace.create({
+        data: {
+          name: `${base}'s Workspace`,
+          slug: `${slugify(base)}-${shortId()}`,
+          members: { create: { userId: user.id, role: "OWNER" } },
+        },
+      });
     },
   },
   pages: {

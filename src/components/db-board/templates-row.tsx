@@ -27,7 +27,7 @@ export function TemplatesRow() {
   if (dismissed) return null;
 
   return (
-    <section className="mb-8">
+    <section className="mb-8" data-testid="template-section">
       {/* Promo header */}
       <div className="flex items-start gap-3 mb-3">
         <LayoutTemplate size={18} className="text-trello-accent mt-0.5 flex-shrink-0" />
@@ -49,6 +49,7 @@ export function TemplatesRow() {
         {BOARD_TEMPLATES.map((t) => (
           <button
             key={t.id}
+            data-testid="template-card"
             onClick={() => create(t.id)}
             disabled={pending}
             className="group relative h-24 text-left rounded-lg overflow-hidden flex flex-col justify-start p-3 shadow-card hover:ring-2 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-white/60 transition-shadow disabled:opacity-50"

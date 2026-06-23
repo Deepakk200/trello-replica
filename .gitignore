@@ -45,6 +45,10 @@ yarn-error.log*
 .env*
 !.env*.example
 
+# local backups (never commit — may contain secrets)
+*.bak
+*.bak-*
+
 # vercel
 .vercel
 

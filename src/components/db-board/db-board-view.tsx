@@ -555,6 +555,7 @@ function ListColumn({
           <div className="flex flex-col gap-1.5">
             <textarea
               autoFocus rows={2} value={title} onChange={(e) => setTitle(e.target.value)}
+              data-testid="card-composer-input"
               placeholder="Enter a title or paste a link"
               className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1.5 text-sm text-trello-text outline-none resize-none"
               onKeyDown={(e) => {
@@ -563,7 +564,7 @@ function ListColumn({
               }}
             />
             <div className="flex items-center gap-2">
-              <button onClick={() => { if (title.trim()) { onAddCard(title.trim()); setTitle(""); } }} className="btn-primary text-xs px-3 py-1.5">Add card</button>
+              <button data-testid="card-composer-submit" onClick={() => { if (title.trim()) { onAddCard(title.trim()); setTitle(""); } }} className="btn-primary text-xs px-3 py-1.5">Add card</button>
               <span className="text-[11px] text-trello-textSubtle bg-trello-cardHover rounded px-1.5 py-0.5">Tip</span>
               <button onClick={() => { setAdding(false); setTitle(""); }} aria-label="Cancel" className="ml-auto text-trello-textSubtle hover:text-trello-text p-1 rounded hover:bg-white/10">
                 <X className="w-4 h-4" />
@@ -572,7 +573,7 @@ function ListColumn({
           </div>
         ) : (
           <div className="flex items-center">
-            <button onClick={() => setAdding(true)} className="flex-1 flex items-center gap-1.5 text-sm text-trello-textSubtle hover:text-trello-text px-2 py-1.5 rounded hover:bg-white/5">
+            <button data-testid="card-add-trigger" onClick={() => setAdding(true)} className="flex-1 flex items-center gap-1.5 text-sm text-trello-textSubtle hover:text-trello-text px-2 py-1.5 rounded hover:bg-white/5">
               <Plus className="w-4 h-4" /> Add a card
             </button>
             <button aria-label="Card templates" title="Card templates" className="text-trello-textSubtle hover:text-trello-text p-1.5 rounded hover:bg-white/5">
@@ -620,6 +621,7 @@ function DraggableCard({
       style={style}
       {...(canEdit ? drag.attributes : {})}
       {...(canEdit ? drag.listeners : {})}
+      data-testid="card"
       onClick={onOpen}
       className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] hover:ring-2 hover:ring-inset hover:ring-white/30 transition-shadow ${drag.isDragging ? "opacity-40" : ""}`}
     >
@@ -745,7 +747,7 @@ function AddListForm({ onAdd }: { onAdd: (title: string) => void }) {
 
   if (!adding) {
     return (
-      <button onClick={() => { setAdding(true); setTimeout(() => ref.current?.focus(), 0); }}
+      <button data-testid="add-list" onClick={() => { setAdding(true); setTimeout(() => ref.current?.focus(), 0); }}
         className="w-[272px] shrink-0 flex items-center gap-1.5 text-sm text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2.5">
         <Plus className="w-4 h-4" /> Add another list
       </button>
@@ -754,7 +756,7 @@ function AddListForm({ onAdd }: { onAdd: (title: string) => void }) {
   return (
     <div className="w-[272px] shrink-0 bg-trello-listBg rounded-xl p-2 flex flex-col gap-1.5">
       <input
-        ref={ref} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="List title…"
+        ref={ref} data-testid="list-title-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="List title…"
         className="w-full bg-trello-cardBg border border-trello-borderSubtle rounded px-2 py-1.5 text-sm text-trello-text outline-none"
         onKeyDown={(e) => {
           if (e.key === "Enter") { if (title.trim()) { onAdd(title.trim()); setTitle(""); setAdding(false); } }
