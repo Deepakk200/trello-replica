@@ -28,10 +28,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setPlannerOpen = useBoardStore((s) => s.setPlannerOpen);
   const isMobile = useIsMobile();
 
-  // Mobile is board-first. The Inbox/Planner side panels open by default for the
-  // desktop 3-panel layout; at phone width two 360px panels would push the board
-  // off-screen, so collapse them when the viewport drops to mobile. They reopen
-  // from the dock as full-screen overlays.
+  // Mobile is board-first. Inbox/Planner default closed everywhere; this guard also
+  // force-closes them if the viewport drops to mobile while a panel is open, since at
+  // phone width a 360px side panel would crowd the board. They reopen from the dock as
+  // full-screen overlays.
   useEffect(() => {
     if (isMobile) {
       setInboxOpen(false);
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const animWrap = 'h-full flex-shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-out motion-reduce:transition-none';
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#1D2125' }}>
+    <div className="flex flex-col h-screen overflow-hidden bg-trello-bg">
       {/* Reflects the active board (and renamed-title slug) into the URL. */}
       <BoardUrlSync />
 
@@ -128,7 +128,7 @@ function MobilePanelOverlay({
   return (
     <div className="md:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/50 animate-backdrop-enter" onClick={onClose} aria-hidden="true" />
-      <div className="anim-panel-enter-left relative h-full w-[88%] max-w-[420px] flex flex-col shadow-2xl" style={{ background: '#1D2125' }}>
+      <div className="anim-panel-enter-left relative h-full w-[88%] max-w-[420px] flex flex-col shadow-2xl bg-trello-bg">
         <div className="flex items-center justify-between px-3 h-12 border-b border-white/10 shrink-0">
           <span className="text-sm font-semibold text-white">{title}</span>
           <button

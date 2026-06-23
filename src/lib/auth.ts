@@ -24,20 +24,30 @@ function oauthProviders() {
       Google({
         clientId: googleId,
         clientSecret: googleSecret,
-        // Link a Google sign-in to an existing user with the SAME email (e.g. one
+        // Link an OAuth sign-in to an existing user with the SAME email (e.g. one
         // created via email/password) instead of failing with
-        // `OAuthAccountNotLinked`. Safe for Google specifically because Google
-        // verifies email ownership (the OIDC `email_verified` claim) — the person
-        // signing in provably controls that inbox, so this is not an
-        // account-takeover vector. Deliberately NOT enabled for GitHub below,
-        // where an email can be unverified.
+        // `OAuthAccountNotLinked`. Enabled ONLY for providers that verify email
+        // ownership: Google asserts the OIDC `email_verified` claim, so the signer
+        // provably controls that inbox — this is not an account-takeover vector.
         allowDangerousEmailAccountLinking: true,
       }),
     );
 
   const githubId = process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_CLIENT_ID;
   const githubSecret = process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_CLIENT_SECRET;
-  if (githubId && githubSecret) list.push(GitHub({ clientId: githubId, clientSecret: githubSecret }));
+  if (githubId && githubSecret)
+    list.push(
+      GitHub({
+        clientId: githubId,
+        clientSecret: githubSecret,
+        // GitHub's OAuth provider resolves the account's PRIMARY email, which
+        // GitHub requires to be verified before it can become primary. We treat
+        // that as proof of ownership and allow same-email linking, matching Google
+        // above. The app's account model intentionally treats one email = one
+        // user, so credentials + Google + GitHub on the same address converge.
+        allowDangerousEmailAccountLinking: true,
+      }),
+    );
 
   return list;
 }

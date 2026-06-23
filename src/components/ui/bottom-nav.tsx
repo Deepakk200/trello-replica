@@ -12,11 +12,10 @@ export function BottomNav() {
   const setPlannerOpen = useBoardStore((s) => s.setPlannerOpen);
   const setSwitchOpen = useBoardStore((s) => s.setSwitchBoardsOpen);
 
-  // The kanban canvas is always rendered (Inbox/Planner are side panels beside it),
-  // so the Board tab is the current "view" and stays active alongside the open
-  // Inbox/Planner panels — matching Trello, where the board opens as Inbox | Planner
-  // | Board with Board highlighted. Clicking Board focuses the kanban (closes both
-  // panels); clicking Inbox/Planner toggles each panel.
+  // The kanban canvas is always rendered (Inbox/Planner are independent side panels
+  // beside it, both closed by default), so the Board tab is the current "view" and
+  // stays active alongside whichever panels the user has opened. Clicking Board
+  // focuses the kanban (closes both panels); Inbox/Planner each toggle independently.
   const boardActive = true;
 
   const tabs = [
@@ -31,8 +30,7 @@ export function BottomNav() {
     <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none max-sm:left-2 max-sm:right-2 max-sm:translate-x-0">
       <nav
         aria-label="App navigation"
-        className="pointer-events-auto flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-xl shadow-2xl border border-white/10 backdrop-blur-md max-sm:w-full"
-        style={{ background: 'rgba(31, 33, 37, 0.92)' }}
+        className="pointer-events-auto flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-xl shadow-2xl border border-trello-border backdrop-blur-md max-sm:w-full bg-trello-bg/90"
       >
         {tabs.map(({ id, label, Icon, active, onClick }) => (
           <button
@@ -40,8 +38,8 @@ export function BottomNav() {
             onClick={onClick}
             aria-current={active ? 'page' : undefined}
             style={{ touchAction: 'manipulation' }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#579DFF] ${
-              active ? 'bg-[#1C3D5A] text-[#579DFF]' : 'text-white/70 hover:text-white hover:bg-white/10'
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-trello-accent ${
+              active ? 'bg-trello-accent/15 text-trello-accent' : 'text-white/70 hover:text-white hover:bg-white/10'
             }`}
           >
             <Icon size={16} className="flex-shrink-0" />

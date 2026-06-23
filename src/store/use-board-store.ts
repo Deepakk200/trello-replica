@@ -304,7 +304,7 @@ function buildSeed(): BoardState {
     workspaces, activeWorkspaceId: ws1Id,
     boardTemplates, cardTemplates,
     activePanel: 'board',
-    inboxOpen: true, switchBoardsOpen: false, plannerOpen: true, inboxWidth: 360, plannerWidth: 360,
+    inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
     panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
     activeViewByBoard: {} as Record<ID, BoardViewKind>,
     activeBoardId: boardId, starredBoardIds: [], recentBoardIds: [boardId], sidebarCollapsed: false,
@@ -480,10 +480,11 @@ export const boardStore = create<Store>()(
       workspaces: {}, activeWorkspaceId: null,
       boardTemplates: {}, cardTemplates: {},
       activeViewByBoard: {} as Record<ID, BoardViewKind>,
-      // Board opens to the Trello 3-panel layout: Inbox | Planner | Board (kanban).
-      // inboxOpen/plannerOpen are NOT persisted (see partialize), so every fresh load
-      // resets to this default and a hard refresh keeps the 3-panel layout.
-      activeBoardId: null, activePanel: 'board', inboxOpen: true, switchBoardsOpen: false, plannerOpen: true, inboxWidth: 360, plannerWidth: 360,
+      // Board opens board-only (Trello behavior): Inbox and Planner are independent,
+      // additive toggle panels that default CLOSED. inboxOpen/plannerOpen are NOT
+      // persisted (see partialize), so every fresh load / deep link / refresh resets
+      // to board-only; the user opens each panel explicitly from the dock.
+      activeBoardId: null, activePanel: 'board', inboxOpen: false, switchBoardsOpen: false, plannerOpen: false, inboxWidth: 360, plannerWidth: 360,
       panelLayout: { inboxWidth: 320, plannerWidth: 380, inboxCollapsed: true, plannerCollapsed: true, boardCollapsed: false },
       starredBoardIds: [], recentBoardIds: [], sidebarCollapsed: false,
       notifications: [], selectedCardIds: [], inboxCards: [], calendarViewDate: new Date().toISOString(), calendarGranularity: 'Month',
