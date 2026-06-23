@@ -221,6 +221,9 @@ export function DbBoardView({ board }: { board: BoardData }) {
   const [filter, setFilter] = useState<BoardFilter>(EMPTY_FILTER);
   const matches = (card: CardData) => cardMatches(card, filter);
   const activeFilters = filterCount(filter);
+  // Render from an id-deduped list collection (same invariant as cards: a board
+  // can't contain the same list id twice).
+  const renderLists = Array.from(new Map(b.lists.map((l) => [l.id, l])).values());
 
   function saveBoard(patch: { title?: string; background?: string }) {
     const snapshot = b;
@@ -378,7 +381,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <div className="flex-1 min-h-0 overflow-x-auto px-3 pb-4">
           <div className="flex gap-3 items-start h-full">
-            {b.lists.map((list) => (
+            {renderLists.map((list) => (
               <ListColumn
                 key={list.id}
                 list={list}
@@ -463,7 +466,12 @@ function ListColumn({
   const [titleDraft, setTitleDraft] = useState(list.title);
   const router = useRouter();
 
-  const visibleCards = matches ? list.cards.filter(matches) : list.cards;
+  // A list can never legitimately hold the same card twice. Dedupe by id at the
+  // render source so a duplicated entry (which would render two DOM nodes with
+  // the same React key for one card) collapses to a single node. Root-cause fix
+  // for the post-reload duplicate-card node, not a mask.
+  const uniqueCards = Array.from(new Map(list.cards.map((c) => [c.id, c])).values());
+  const visibleCards = matches ? uniqueCards.filter(matches) : uniqueCards;
 
   async function saveTitle() {
     const t = titleDraft.trim();
@@ -480,8 +488,6 @@ function ListColumn({
     <div
       ref={setListRef}
       style={listDragStyle}
-      data-diag-list-id={list.id}
-      data-diag-card-count={list.cards.length}
       className={`w-[272px] shrink-0 max-h-full flex flex-col rounded-xl bg-trello-listBg ${isOver ? "ring-2 ring-trello-accent" : ""} ${listDrag.isDragging ? "opacity-60" : ""}`}
     >
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
@@ -624,7 +630,6 @@ function DraggableCard({
       {...(canEdit ? drag.attributes : {})}
       {...(canEdit ? drag.listeners : {})}
       data-testid="card"
-      data-diag-card-id={card.id}
       onClick={onOpen}
       className={`group bg-[var(--card-bg)] rounded-lg p-2 cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)] hover:ring-2 hover:ring-inset hover:ring-white/30 transition-shadow ${drag.isDragging ? "opacity-40" : ""}`}
     >
