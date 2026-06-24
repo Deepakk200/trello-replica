@@ -5,6 +5,9 @@ import { test, expect } from "@playwright/test";
 // data-testid so UI copy changes don't break the suite.
 test("create board → list → card persists across reload", async ({ page }) => {
   await page.goto("/boards");
+  // Wait for client JS to hydrate so the template card's create handler is wired
+  // before we click (avoids a click landing before hydration → no nav → /boards).
+  await page.waitForLoadState("networkidle");
 
   // Create from the first template → navigates to /board/[id].
   await expect(page.getByTestId("template-card").first()).toBeVisible();

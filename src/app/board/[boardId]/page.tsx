@@ -31,9 +31,6 @@ export default async function BoardPage({ params }: Props) {
   const board = await getBoard(boardId);
   if (!board) notFound();
 
-  // [DIAG] one line per server render of the board page (CI stdout). Remove after.
-  console.log(`[RENDER] BoardPage board=${boardId}`);
-
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <DbTopBar />

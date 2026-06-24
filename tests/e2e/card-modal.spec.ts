@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 // so UI copy changes don't break the suite.
 test("card modal: add a comment", async ({ page }) => {
   await page.goto("/boards");
+  await page.waitForLoadState("networkidle"); // hydrate before clicking (see board.spec)
 
   // Create a board + list + card to operate on.
   await expect(page.getByTestId("template-card").first()).toBeVisible();

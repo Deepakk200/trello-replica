@@ -7,6 +7,8 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 // DATABASE_URL + AUTH_SECRET in the environment.
 export default defineConfig({
   testDir: "tests/e2e",
+  // Wipe the test DB before the suite (test isolation; guarded to *_test DBs).
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

@@ -243,8 +243,8 @@ export function DbPlannerView() {
 
               {/* Empty state — only when the visible week has nothing scheduled */}
               {weekCount === 0 && (
-                <div className="absolute inset-x-0 flex flex-col items-center justify-center gap-5 px-8 pointer-events-none" style={{ top: '24px', bottom: '24px' }}>
-                  <div className="flex items-center gap-2">
+                <div className="absolute inset-x-0 flex flex-col items-center justify-center gap-5 px-4 pointer-events-none" style={{ top: '24px', bottom: '24px' }}>
+                  <div className="flex items-center justify-center flex-wrap gap-2">
                     {/* Outlook */}
                     <div className="w-11 h-11 rounded-xl bg-[#0078D4] flex items-center justify-center text-white text-base font-bold shadow-lg">O</div>
                     {/* Google Calendar */}
@@ -263,8 +263,8 @@ export function DbPlannerView() {
                   <div className="text-center pointer-events-auto">
                     <h3 className="text-lg font-bold text-white mb-2">Planner</h3>
                     <p className="text-sm text-white/60 leading-relaxed mb-5 max-w-[300px]">Connect your calendars to get a side-by-side view of your Planner and your to-do&apos;s.</p>
-                    <button className="flex items-center gap-2 mx-auto bg-[#579DFF] hover:bg-[#85B8FF] text-[#1D2125] text-sm font-medium px-4 py-1.5 rounded transition-colors">
-                      <RefreshCw size={14} />Connect an account
+                    <button className="flex items-center justify-center gap-2 mx-auto whitespace-nowrap shrink-0 bg-[#579DFF] hover:bg-[#85B8FF] text-[#1D2125] text-sm font-medium px-4 py-1.5 rounded transition-colors">
+                      <RefreshCw size={14} className="shrink-0" />Connect an account
                     </button>
                   </div>
                 </div>
