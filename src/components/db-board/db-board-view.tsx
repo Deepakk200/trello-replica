@@ -31,8 +31,17 @@ type BoardData = NonNullable<Awaited<ReturnType<typeof getBoard>>>;
 type ListData = BoardData["lists"][number];
 type CardData = ListData["cards"][number];
 
+// [DIAG] module-level mount counter — increments once per DbBoardView instance.
+// If two instances mount, the board root shows data-board-mount="1" and "2" in
+// the trace, and the SSR log prints twice. Remove after root-causing.
+let __dbgBoardMount = 0;
+
 export function DbBoardView({ board }: { board: BoardData }) {
   const [b, setB] = useState<BoardData>(board);
+  const [__mount] = useState(() => ++__dbgBoardMount);
+  // Runs on the server during SSR (→ CI `npm run start` stdout) and on each
+  // client render (→ browser console). Reveals how many times the board renders.
+  console.log(`[RENDER] DbBoardView mount=${__mount} board=${board.id} lists=${board.lists.length} cards=${board.lists.reduce((n, l) => n + l.cards.length, 0)}`);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
@@ -279,6 +288,7 @@ export function DbBoardView({ board }: { board: BoardData }) {
 
   return (
     <div
+      data-board-mount={__mount}
       className="h-full w-full flex flex-col"
       style={{ background: b.background }}
       onPointerMove={(e) => updateMyPresence({ cursor: { x: e.clientX, y: e.clientY } })}
@@ -613,6 +623,10 @@ function DraggableCard({
   const style = drag.transform
     ? { transform: `translate3d(${drag.transform.x}px, ${drag.transform.y}px, 0)`, zIndex: 40 }
     : undefined;
+
+  // [DIAG] one line per DraggableCard render (SSR → CI stdout). Two lines for the
+  // same card id per request = the card is rendered by two component instances.
+  console.log(`[RENDER] card=${card.id} list=${card.listId} title=${card.title}`);
 
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(card.title);
