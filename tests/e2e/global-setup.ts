@@ -11,10 +11,19 @@ import { PrismaClient } from "@prisma/client";
 // real data.
 export default async function globalSetup() {
   const url = process.env.DATABASE_URL ?? "";
-  if (!/test/i.test(url)) {
+  // Isolate on the DATABASE NAME, not the whole URL: a prod/Neon URL whose host
+  // happens to contain "test" must never match. Only a db named like a test DB
+  // (e.g. `trello_test`) is eligible for truncation.
+  let dbName = "";
+  try {
+    dbName = new URL(url).pathname.replace(/^\//, "").split("?")[0];
+  } catch {
+    /* malformed/empty URL → dbName stays "" → guard below skips */
+  }
+  if (!/test/i.test(dbName)) {
     console.warn(
-      "[e2e global-setup] DATABASE_URL does not look like a test DB — skipping truncate. " +
-        "Set a *_test database to enable isolation.",
+      `[e2e global-setup] DATABASE_URL db "${dbName || "?"}" is not a test DB — skipping truncate. ` +
+        "Point DATABASE_URL at a *_test database to enable isolation.",
     );
     return;
   }
